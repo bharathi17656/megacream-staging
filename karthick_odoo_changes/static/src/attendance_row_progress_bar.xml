@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<templates xml:space="preserve">
+    <t t-inherit="hr_attendance.AttendanceGanttRowProgressBar" t-inherit-mode="extension">
+     <xpath expr="//span[hasclass('position-absolute')]"   position="replace">
+        <span class="position-relative h-100 d-flex align-items-center justify-content-center" style="background-color: #fff; padding: 0 5px;">
+            <t t-esc="normalHours"/>
+        </span>
+    
+        </xpath>
+    </t>
+</templates>
+
+
+
+
+
+
+
+
+
+
