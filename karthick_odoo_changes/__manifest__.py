@@ -1,6 +1,6 @@
 {
     'name': 'Karthick Odoo Changes',
-    'version': '1.0',
+    'version': '1.0', 
     'category': 'Sales',
     'summary': 'Add SOR Details tab to Sale Order',
     'description': 'Adds start date, end date, and PO reference to Sale Orders under a new tab SOR Details.',
