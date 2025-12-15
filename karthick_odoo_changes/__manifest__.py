@@ -17,5 +17,5 @@
         ],
     },
     'installable': True,
-    'application': False,
+    'application': True,
 }
