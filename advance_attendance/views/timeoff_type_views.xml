@@ -1,0 +1,24 @@
+<odoo>
+  <!-- Inherit the base hr.leave.type form view -->
+  <record id="view_attendance_advance_timeoff_type_form" model="ir.ui.view">
+    <field name="name">attendance.advance.timeoff.type.form</field>
+    <field name="model">hr.leave.type</field>
+    <field name="inherit_id" ref="hr_holidays.edit_holiday_status_form"/>
+    <field name="arch" type="xml">
+
+      <!-- Insert after allocation type (safe spot present in your form) -->
+      <xpath expr="//sheet/group/group" position="after">
+        <group string="Advanced Leave Configuration">
+          <field name="max_continuous_days"
+                 placeholder="e.g. 10"
+                 help="Maximum number of continuous leave days allowed for this type."/>
+          <field name="sandwich_rule"
+                 help="If enabled, weekends or holidays between two leave days will also count as leave."/>
+          <field name="counts_non_working_days"
+                 help="Enable this if non-working days should count in total leave duration."/>
+        </group>
+      </xpath>
+
+    </field>
+  </record>
+</odoo>

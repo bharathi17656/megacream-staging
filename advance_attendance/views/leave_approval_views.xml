@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <record id="attendance_advance_leave_approval_view_tree" model="ir.ui.view">
+        <field name="name">attendance_advance.leave_approval.view.tree</field>
+        <field name="model">attendance_advance.leave_approval</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="name"/>
+                <field name="department_id"/>
+                <field name="leave_id" groups="hr_holidays.group_hr_holidays_manager,base.group_system"/>
+                <field name="approver_employee_ids" widget="many2many_tags"/>
+                <field name="status"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="attendance_advance_leave_approval_view_form" model="ir.ui.view">
+        <field name="name">attendance_advance.leave_approval.view.form</field>
+        <field name="model">attendance_advance.leave_approval</field>
+        <field name="arch" type="xml">
+            <form string="Leave Approval">
+                <header>
+                    <button name="action_open_leave" type="object" string="View Leave" class="btn-primary"/>
+                    <field name="status" widget="statusbar" statusbar_visible="pending,approved,refused"/>
+                </header>
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                        <field name="leave_id" readonly="1"/>
+                        <field name="department_id" readonly="1"/>
+                        <field name="approver_employee_ids" widget="many2many_tags"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_attendance_advance_leave_approval" model="ir.actions.act_window">
+        <field name="name">Approval Requests</field>
+        <field name="res_model">attendance_advance.leave_approval</field>
+        <field name="view_mode">list,form</field>
+        <field name="context">{}</field>
+    </record>
+
+    <menuitem id="menu_attendance_advance_leave_approvals" name="Approval Requests" parent="menu_attendance_advance_operations" action="action_attendance_advance_leave_approval" sequence="30"/>
+</odoo>

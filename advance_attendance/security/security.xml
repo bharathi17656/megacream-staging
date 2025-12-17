@@ -1,0 +1,24 @@
+<odoo>
+
+
+
+    <!-- 1️⃣ HR / MD: Can see ALL records -->
+    <record id="rule_late_entry_hr_md_all" model="ir.rule">
+        <field name="name">Late Entry - HR and MD Access</field>
+        <field name="model_id" ref="model_attendance_advance_late_entry"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="groups" eval="[(4, ref('adevx_hr_leave_rule.group_leave_hr')), (4, ref('adevx_hr_leave_rule.group_leave_md'))]"/>
+    </record>
+
+    <!-- 2️⃣ Employees: Can see only their own records -->
+    <record id="rule_late_entry_employee_own" model="ir.rule">
+        <field name="name">Late Entry - Own Records Only</field>
+        <field name="model_id" ref="model_attendance_advance_late_entry"/>
+        <field name="domain_force">[('employee_id.user_id', '=', user.id)]</field>
+        <field name="groups" eval="[(4, ref('base.group_user'))]"/>
+    </record>
+
+
+
+</odoo>
+

@@ -1,0 +1,9 @@
+<odoo>
+
+  <menuitem id="menu_attendance_advance_root" name="Attendance Advance" sequence="80" groups="adevx_hr_leave_rule.group_leave_md,adevx_hr_leave_rule.group_leave_hr" />
+  <menuitem id="menu_attendance_advance_config" name="Configuration" parent="menu_attendance_advance_root" sequence="10"/>
+
+  <menuitem id="menu_attendance_advance_operations" name="Operations" parent="menu_attendance_advance_root" sequence="20"/>
+
+ </odoo>
+

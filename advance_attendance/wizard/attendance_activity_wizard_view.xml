@@ -1,0 +1,25 @@
+<odoo>
+    <record id="view_attendance_activity_wizard" model="ir.ui.view">
+        <field name="name">attendance.activity.wizard.form</field>
+        <field name="model">attendance.activity.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Check Out Activity">
+                <group>
+                    <field name="activity" placeholder="Describe today's activity..."/>
+                </group>
+                <footer>
+                    <button string="Submit" type="object"
+                            name="action_submit_activity" class="btn-primary"/>
+                    <button string="Cancel" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_attendance_activity_wizard" model="ir.actions.act_window">
+        <field name="name">Add Activity</field>
+        <field name="res_model">attendance.activity.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+</odoo>

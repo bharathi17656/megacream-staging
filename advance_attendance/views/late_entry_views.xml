@@ -1,0 +1,78 @@
+<odoo>
+  <record id="view_attendance_advance_late_entry_tree" model="ir.ui.view">
+    <field name="name">attendance.advance.late.entry.tree</field>
+    <field name="model">attendance_advance.late_entry</field>
+    <field name="arch" type="xml">
+      <list>
+        <field name="name"/>
+        <field name="employee_id"/>
+        <field name="date"/>
+        <field name="minutes_late_in"/>
+        <field name="minutes_early_out"/>
+        <field name="total_violation_minutes"/>
+        <field name="status"/>
+      </list>
+    </field>
+  </record>
+
+  <record id="view_attendance_advance_late_entry_form" model="ir.ui.view">
+    <field name="name">attendance.advance.late.entry.form</field>
+    <field name="model">attendance_advance.late_entry</field>
+    <field name="arch" type="xml">
+      <form>
+         <header>
+            <button name="action_request_approval" string="Request Approval" type="object"
+                    class="oe_highlight" invisible="status != 'draft' "/>
+            <button name="action_approve" string="Approve" type="object"
+                    class="btn-success" invisible="status != 'requested' "/>
+            <button name="action_reject" string="Reject" type="object"
+                    class="btn-danger" invisible="status != 'requested' "/>
+
+
+             <field name="status" widget="statusbar" readonly="1"
+                              options="{'clickable': '0', 'fold_field': 'fold'}" />
+          
+        </header>
+        
+        <sheet>
+          <group>
+            <field name="employee_id" readonly="1"/>
+            <field name="date" readonly="1"/>
+            <field name="minutes_late_in" readonly="1"/>
+           <field name="minutes_early_out" readonly="1"/>
+           <field name="total_violation_minutes" readonly="1"/>
+            <field name="status" readonly="1"/>
+          </group>
+          <group>
+            <field name="appeal_reason" readonly="status != 'draft'"/>
+            <field name="half_pay"  readonly="1"/>
+            <field name="full_day"  readonly="1"/>
+          </group>
+          
+        </sheet>
+      </form>
+    </field>
+  </record>
+
+  <record id="action_attendance_advance_late_entry" model="ir.actions.act_window">
+    <field name="name">Late Entries</field>
+    <field name="res_model">attendance_advance.late_entry</field>
+    <field name="view_mode">list,form</field>
+  </record>
+
+   <menuitem id="menu_attendance_advance_late_entries" name="Late Entries" parent="menu_attendance_advance_operations" action="action_attendance_advance_late_entry"/>
+   <menuitem id="menu_attendance_advance_late_entries_attendance" name="Late Entries" parent="hr_attendance.menu_hr_attendance_root" action="action_attendance_advance_late_entry"/>
+
+</odoo>
+
+
+
+
+
+
+
+
+
+
+
+
