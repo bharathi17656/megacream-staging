@@ -1,0 +1,62 @@
+<odoo>
+
+    <record id="group_leave_super_admin" model="res.groups">
+        <field name="name">Super Admin  - Leave Approval</field>
+    </record>
+
+  
+    <record id="group_leave_manager" model="res.groups">
+        <field name="name"> Project Manager - Leave Approval</field>
+    </record>
+
+    <record id="group_leave_hr" model="res.groups">
+        <field name="name">Resource Manager - Leave Approval</field>
+    </record>
+
+    <record id="group_leave_md" model="res.groups">
+        <field name="name">Md - Leave Approval</field>
+    </record>
+
+
+
+    <record id="rule_leave_md_full_access" model="ir.rule">
+        <field name="name">Leave - MD Full Access</field>
+        <field name="model_id" ref="hr_holidays.model_hr_leave"/>
+        <field name="groups" eval="[(4, ref('adevx_hr_leave_rule.group_leave_md'))]"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+    </record>
+
+   
+    <record id="rule_leave_hr_access" model="ir.rule">
+        <field name="name">Leave - HR Access (Manager + HR)</field>
+        <field name="model_id" ref="hr_holidays.model_hr_leave"/>
+        <field name="groups" eval="[(4, ref('adevx_hr_leave_rule.group_leave_hr'))]"/>
+        <field name="domain_force">
+            ['|',
+                ('approval_level', 'in', ['manager', 'hr']),
+                ('employee_id.user_id', '=', user.id)
+            ]
+        </field>
+    </record>
+
+  
+    <record id="rule_leave_manager_access" model="ir.rule">
+        <field name="name">Leave - Manager Access (Own + Manager)</field>
+        <field name="model_id" ref="hr_holidays.model_hr_leave"/>
+        <field name="groups" eval="[(4, ref('adevx_hr_leave_rule.group_leave_manager'))]"/>
+        <field name="domain_force">
+            ['|',
+                ('approval_level', '=', ['manager', 'hr']),
+                ('employee_id.user_id', '=', user.id)
+            ]
+        </field>
+    </record>
+
+ 
+    <record id="rule_leave_employee_own" model="ir.rule">
+        <field name="name">Leave - Employee Own Records Only</field>
+        <field name="model_id" ref="hr_holidays.model_hr_leave"/>
+        <field name="domain_force">[('employee_id.user_id', '=', user.id)]</field>
+    </record>
+
+</odoo>

@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+
+    <!-- ==============================
+         HR Attendance Approval - Tree View
+    =============================== -->
+    <record id="view_hr_attendance_approval_tree" model="ir.ui.view">
+        <field name="name">hr.attendance.approval.tree</field>
+        <field name="model">hr.attendance.approval</field>
+        <field name="arch" type="xml">
+            <list string="Attendance Approvals" decoration-warning="state == 'draft'" decoration-success="state == 'approved'" decoration-danger="state == 'rejected'">
+                <field name="name"/>
+                <field name="employee_id"/>
+                <field name="attendance_id"/>
+                <field name="check_in"/>
+                <field name="check_out"/>
+                <field name="reason"/>
+                <field name="suggested_work_type_code"/>
+                <field name="state"/>
+                <field name="processed"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- ==============================
+         HR Attendance Approval - Form View
+    =============================== -->
+    <record id="view_hr_attendance_approval_form" model="ir.ui.view">
+        <field name="name">hr.attendance.approval.form</field>
+        <field name="model">hr.attendance.approval</field>
+        <field name="arch" type="xml">
+            <form string="Attendance Approval">
+                <header>
+                    <button name="action_approve" string="Approve" type="object" class="btn-primary" invisible="state != 'draft'" />
+                    <button name="action_reject" string="Reject" type="object" class="btn-danger" invisible="state != 'draft'"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,approved,rejected"/>
+                </header>
+
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="name" readonly="1"/>
+                            <field name="employee_id" readonly="1"/>
+                            <field name="attendance_id" readonly="1"/>
+                            <field name="check_in" />
+                        </group>
+                        <group>
+                            <field name="suggested_work_type_code"/>
+                            <field name="processed"/>
+                            <field name="state" readonly="1"/>
+                            <field name="check_out" />
+                        </group>
+                    </group>
+                    <group>
+                        <field name="reason" placeholder="Enter reason or note for this approval..."/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- ==============================
+         HR Attendance Approval - Action
+    =============================== -->
+    <record id="action_hr_attendance_approval" model="ir.actions.act_window">
+        <field name="name">Attendance Approvals</field>
+        <field name="res_model">hr.attendance.approval</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No attendance approvals yet
+            </p>
+            <p>
+                This list shows attendance records that need HR approval before salary computation.
+            </p>
+        </field>
+    </record>
+
+    <!-- ==============================
+         HR Menu Item
+    =============================== -->
+    <menuitem id="menu_hr_attendance_approval_root"
+              name="Attendance Approvals"
+              parent="hr_attendance.menu_hr_attendance_root"
+              action="action_hr_attendance_approval"
+              sequence="50"
+              groups="hr.group_hr_user,hr.group_hr_manager"/>
+</odoo>

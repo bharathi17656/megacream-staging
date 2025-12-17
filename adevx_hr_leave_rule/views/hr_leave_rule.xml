@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+    <record id="view_hr_leave_rule_before_config_tree" model="ir.ui.view">
+        <field name="name">hr.leave.rule.before.config.tree</field>
+        <field name="model">hr.leave.rule.before.config</field>
+        <field name="arch" type="xml">
+            <list string="Time-off Request Before Configurations" editable="bottom">
+                <field name="leave_rule_id"/>
+                <field name="max_days"/>
+                <field name="before_days" />
+            </list>
+        </field>
+    </record>
+
+        
+
+        <record id="view_hr_leave_rule_form" model="ir.ui.view">
+            <field name="name">view.hr.leave.rule.form</field>
+            <field name="model">hr.leave.rule</field>
+            <field name="arch" type="xml">
+                <form string="Leave Rules">
+                    <sheet>
+                        <div class="oe_title">
+                            <label for="name" class="oe_edit_only"/>
+                            <h1>
+                                <field name="name" placeholder="Rule name .."/>
+                            </h1>
+                        </div>
+                        <group>
+                            <group>
+                                <label for="maximum_allocation"/>
+                                <div>
+                                    <div class="o_row">
+                                        <field name="maximum_allocation" class="oe_inline"/>
+                                        <span class="oe_inline">Unit</span>
+                                        <field name="allocation_unit" class="oe_inline"/>
+                                    </div>
+                                </div>
+                                <field name="maximum_time_off_each_request"/>
+                            </group>
+                        </group>
+                        <group>
+                            <group>
+                                <field name="time_off_request_rule"/>
+                            </group>
+                            <group>
+                                <field name="start_time_off_allocation"/>
+                            </group>
+                        </group>
+                        <group>
+                            <group>
+
+                                <field name="time_off_request_before_config_ids" invisible="not time_off_request_rule" required="time_off_request_rule" />
+                    
+                            </group>
+                            <group>
+                                <label for="start_time_off_allocation_after" invisible="not start_time_off_allocation"/>
+                                <div invisible="not start_time_off_allocation" required="start_time_off_allocation">
+                                    <div class="o_row">
+                                        <field name="start_time_off_allocation_after" class="oe_inline"/>
+                                        <span class="oe_inline font-weight-bold">Months</span>
+                                    </div>
+                                </div>
+                            </group>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record id="view_hr_leave_rule_tree" model="ir.ui.view">
+            <field name="name">view.hr.leave.rule.tree</field>
+            <field name="model">hr.leave.rule</field>
+            <field name="arch" type="xml">
+                <list string="Leave Rules">
+                    <field name="name"/>
+                    <field name="maximum_allocation"/>
+                    <field name="allocation_unit"/>
+                </list>
+            </field>
+        </record>
+
+
+        
+
+        <record id="action_hr_leave_rule_view" model="ir.actions.act_window">
+            <field name="name">Leave Rules</field>
+            <field name="type">ir.actions.act_window</field>
+            <field name="res_model">hr.leave.rule</field>
+            <field name="view_mode">list,form</field>
+            <field name="help" type="html">
+                <p class="oe_view_nocontent_create">
+                    Create record here !!
+                </p>
+            </field>
+        </record>
+
+        <menuitem id="menu_hr_leave_rule_view"
+                  name="Leave Rules"
+                  parent="hr_holidays.menu_hr_holidays_configuration"
+                  action="action_hr_leave_rule_view"
+                  sequence="3"/>
+
+    </data>
+</odoo>

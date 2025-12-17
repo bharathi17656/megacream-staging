@@ -1,0 +1,7 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_hr_leave_rule,hr.leave.rule,model_hr_leave_rule,,1,1,1,1
+access_hr_leave_rule_before_config_user,access_hr_leave_rule_before_config_user,model_hr_leave_rule_before_config,base.group_user,1,1,1,1
+
+access_hr_attendance_approval_user,hr.attendance.approval user,model_hr_attendance_approval,base.group_user,1,0,0,0
+access_hr_attendance_approval_hr,hr.attendance.approval hr,model_hr_attendance_approval,hr.group_hr_user,1,1,1,1
+access_hr_attendance_approval_manager,hr.attendance.approval manager,model_hr_attendance_approval,hr.group_hr_manager,1,1,1,1
