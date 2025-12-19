@@ -1,0 +1,109 @@
+<odoo>
+    <!-- Tree / List view with default group by month_name -->
+    <record id="view_employee_salary_report_tree" model="ir.ui.view">
+        <field name="name">employee.salary.report.tree</field>
+        <field name="model">employee.salary.report</field>
+        <field name="arch" type="xml">
+            <list string="Salary Reports" default_group_by="month_name">
+                <field name="month_name"/>
+                <field name="employee_id"/>
+                <field name="gross_salary"/>
+                <field name="basic_da"/>
+                <field name="hra"/>
+                <field name="spl_allowance"/>
+                <field name="employee_pf"/>
+                <field name="employer_pf"/>
+                <field name="prof_tax"/>
+                <field name="net_salary"/>
+                <field name="ctc"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- Form view for detailed inspection -->
+    <record id="view_employee_salary_report_form" model="ir.ui.view">
+        <field name="name">employee.salary.report.form</field>
+        <field name="model">employee.salary.report</field>
+        <field name="arch" type="xml">
+            <form string="Employee Salary Report">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="employee_id"/>
+                            <field name="contract_id"/>
+                            <field name="payslip_id"/>
+                        </group>
+                        <group>
+                            <field name="date_from"/>
+                            <field name="date_to"/>
+                            <field name="month_name" readonly="1"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="Earnings">
+                            <field name="gross_salary"/>
+                            <field name="basic_da"/>
+                            <field name="hra"/>
+                            <field name="spl_allowance"/>
+                            <field name="conveyance"/>
+                        </group>
+                        <group string="Deductions and Employer">
+                            <field name="employee_pf"/>
+                            <field name="employer_pf"/>
+                            <field name="employer_esi"/>
+                            <field name="prof_tax"/>
+                            <field name="other_deduction"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="Benefits">
+                            <field name="gratuity"/>
+                            <field name="bonus"/>
+                            <field name="insurance"/>
+                            <field name="encashment_leave"/>
+                        </group>
+                        <group string="Summary">
+                            <field name="net_salary"/>
+                            <field name="ctc"/>
+                            <field name="monthly_ctc"/>
+                            <field name="yearly_ctc"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Search view with group by options -->
+    <record id="view_employee_salary_report_search" model="ir.ui.view">
+        <field name="name">employee.salary.report.search</field>
+        <field name="model">employee.salary.report</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="employee_id"/>
+                <field name="month_name" string="Month"/>
+                <field name="contract_id"/>
+                <field name="payslip_id"/>
+                <filter string="This Month" name="this_month" domain="[('date_from','>=', context_today().replace(day=1))]"/>
+                <group expand="0" string="Group By">
+                    <filter string="Employee" name="group_employee" context="{'group_by':'employee_id'}"/>
+                    <filter string="Month" name="group_month" context="{'group_by':'month_name'}"/>
+                    <filter string="Contract" name="group_contract" context="{'group_by':'contract_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Action and menu -->
+    <record id="action_employee_salary_report" model="ir.actions.act_window">
+        <field name="name">Salary Reports</field>
+        <field name="res_model">employee.salary.report</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_employee_salary_report_search"/>
+        <field name="context">{'group_by':'month_name'}</field>
+    </record>
+
+    <menuitem id="menu_employee_salary_report_root" name="Salary Reports"
+              parent="hr_payroll.menu_hr_payroll_report"
+              action="action_employee_salary_report"/>
+</odoo>

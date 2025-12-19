@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Inherit Employee Form View - Add custom fields to Payroll tab -->
+    <record id="view_employee_form_inherit_salary_fields" model="ir.ui.view">
+        <field name="name">hr.employee.form.inherit.salary.fields</field>
+        <field name="model">hr.employee</field>
+        <field name="inherit_id" ref="hr.view_employee_form"/>
+        <field name="arch" type="xml">
+            <!-- Ensure wage onchange triggers in employee form -->
+            <xpath expr="//page[@name='payroll_information']//field[@name='wage']" position="attributes">
+                <attribute name="on_change">1</attribute>
+            </xpath>
+            
+            <!-- Add invisible fields to contract group to ensure they're in the view for onchange -->
+            <xpath expr="//page[@name='payroll_information']//group[@name='contract']" position="inside">
+                <field name="basic_da" invisible="1"/>
+                <field name="hra" invisible="1"/>
+                <field name="spl_allowance" invisible="1"/>
+                <field name="conveyance" invisible="1"/>
+                <field name="employee_pf" invisible="1"/>
+                <field name="employer_pf" invisible="1"/>
+                <field name="employer_prof_tax" invisible="1"/>
+                <field name="insurance" invisible="1"/>
+                <field name="gratuity" invisible="1"/>
+                <field name="net_salary" invisible="1"/>
+                <field name="ctc" invisible="1"/>
+                <field name="monthly_ctc" invisible="1"/>
+                <field name="yearly_ctc" invisible="1"/>
+            </xpath>
+            
+            <!-- Add custom salary fields after the contract group in Payroll tab -->
+            <xpath expr="//page[@name='payroll_information']//group[@name='contract']" position="after">
+                <group name="salary_breakdown_section" string="Salary Breakdown">
+                    <group name="salary_left_column">
+                        <field name="basic_da"/>
+                        <field name="hra"/>
+                        <field name="spl_allowance"/>
+                        <field name="conveyance"/>
+                        <field name="net_salary"/>
+                        <field name="ctc"/>
+                    </group>
+                    <group name="salary_right_column">
+                        <field name="insurance"/>
+                        <field name="employee_pf"/>
+                        <field name="employer_pf"/>
+                        <field name="employer_prof_tax"/>
+                        <field name="gratuity"/>
+                    </group>
+                    <group name="salary_totals_centered" col="2" string="">
+                        <field name="monthly_ctc"/>
+                        <field name="yearly_ctc"/>
+                    </group>
+                </group>
+                <field name="gross_salary_computed" invisible="1"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Inherit Contract Template Form View - Add custom fields to Salary Information page -->
+    <record id="hr_contract_template_form_view_inherit_salary_fields" model="ir.ui.view">
+        <field name="name">hr.contract.template.form.inherit.salary.fields</field>
+        <field name="model">hr.version</field>
+        <field name="inherit_id" ref="hr.hr_contract_template_form_view"/>
+        <field name="arch" type="xml">
+            <!-- Add custom salary fields in the Salary Information page -->
+            <xpath expr="//page[@name='information']//group[@name='salary_info']" position="inside">
+                <group name="salary_breakdown" string="Salary Breakdown">
+                    <group name="salary_left_column">
+                        <field name="basic_da"/>
+                        <field name="hra"/>
+                        <field name="spl_allowance"/>
+                        <field name="conveyance"/>
+                        <field name="net_salary"/>
+                        <field name="ctc"/>
+                    </group>
+                    <group name="salary_right_column">
+                        <field name="insurance"/>
+                        <field name="employee_pf"/>
+                        <field name="employer_pf"/>
+                        <field name="employer_prof_tax"/>
+                        <field name="gratuity"/>
+                    </group>
+                    <group name="salary_totals_centered" col="2" string="">
+                        <field name="monthly_ctc"/>
+                        <field name="yearly_ctc"/>
+                    </group>
+                </group>
+                <field name="gross_salary_computed" invisible="1"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>
