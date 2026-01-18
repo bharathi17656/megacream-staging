@@ -28,7 +28,7 @@ class HrPayslip(models.Model):
        
 
         for payslip in self:
-            contract = payslip.contract_id
+            contract = payslip.version_id
             employee = contract.employee_id if contract else payslip.employee_id
             if not contract or not employee:
                 continue
@@ -113,7 +113,7 @@ class HrPayslip(models.Model):
                             'code': code,
                             'number_of_days': 0,
                             'number_of_hours': 0,
-                            'contract_id': contract.id,
+                            'version_id': contract.id,
                             'work_entry_type_id': entry.work_entry_type_id.id,
                         }
                 
@@ -396,7 +396,7 @@ class HrPayslip(models.Model):
                         'code': 'WORK100',
                         'number_of_days': full_days,
                         'number_of_hours': full_days * 8,
-                        'contract_id': contract.id,
+                        'version_id': contract.id,
                         'work_entry_type_id': work_type_normal.id,
                         'amount': per_day_cost * full_days,
                     })
@@ -409,7 +409,7 @@ class HrPayslip(models.Model):
                         'code': 'HALF',
                         'number_of_days': half_days * 0.5,
                         'number_of_hours': half_days * 4,
-                        'contract_id': contract.id,
+                        'version_id': contract.id,
                         'work_entry_type_id': work_type_half.id,
                         'amount': half_days * half_day_cost,
                     })
@@ -434,7 +434,7 @@ class HrPayslip(models.Model):
                         'code': lt[:8].upper(),
                         'number_of_days': days,
                         'number_of_hours': days * 8,
-                        'contract_id': contract.id,
+                        'version_id': contract.id,
                         'work_entry_type_id': wentry.id,
                         'amount': days * per_day_cost,
                     })
@@ -447,7 +447,7 @@ class HrPayslip(models.Model):
                         'code': 'LEAVE90',
                         'number_of_days': total_unpaid_days,
                         'number_of_hours': total_unpaid_days * 8,
-                        'contract_id': contract.id,
+                        'version_id': contract.id,
                         'work_entry_type_id': work_type_unpaid.id,
                         'amount': total_unpaid_days * per_day_cost,
                     })
@@ -460,7 +460,7 @@ class HrPayslip(models.Model):
                         'code': 'OUT',
                         'number_of_days': out_day_count,
                         'number_of_hours': out_day_count * 8,
-                        'contract_id': contract.id,
+                        'version_id': contract.id,
                         'work_entry_type_id': work_type_out.id,
                         'amount': out_day_count * per_day_cost,
                     })
