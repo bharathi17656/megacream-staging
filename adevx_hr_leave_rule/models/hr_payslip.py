@@ -3,6 +3,10 @@ from odoo import models, fields, api
 from datetime import timedelta, time , datetime
 import math
 import calendar
+import logging
+
+
+_logger = logging.getLogger(__name__)
 
 class HrPayslip(models.Model):
     _inherit = 'hr.payslip'
