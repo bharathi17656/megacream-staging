@@ -333,14 +333,20 @@ class HrPayslip(models.Model):
                 # -------------------------------------------------------
                 # 5️⃣ AUTO UNPAID DAYS (ABSENT)
                 # -------------------------------------------------------
-                unpaid_auto_days = len([
-                    d for d in working_days
-                    if d not in attendance_map
-                    and d not in leave_dates_paid
-                    and d not in leave_dates_unpaid
-                    and d not in out_days
-                ])
-            
+                unpaid_auto_days = 0.0
+
+                for d in working_days:
+                    if d in out_days:
+                        continue
+                    if d in leave_dates_paid or d in leave_dates_unpaid:
+                        continue
+                
+                    if d not in attendance_map:
+                        unpaid_auto_days += 1.0
+                    else:
+                        hrs = attendance_map[d]
+                        if 3 <= hrs < 7:
+                            unpaid_auto_days += 0.5   # 🔑 HALF DAY BALANCE
                 # -------------------------------------------------------
                 # 6️⃣ FINAL COUNTS (BALANCED)
                 # -------------------------------------------------------
