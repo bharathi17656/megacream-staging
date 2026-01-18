@@ -245,7 +245,7 @@ class HrPayslip(models.Model):
                 def _is_working_day(cal, day):
                     start = datetime.combine(day, time.min)
                     end = datetime.combine(day, time.max)
-                    return cal._get_work_hours_count(start, end) > 0
+                    return cal.get_work_hours_count(start, end) > 0
             
                 working_days = []
                 cur = date_from
