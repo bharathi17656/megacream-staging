@@ -226,7 +226,7 @@ class HrPayslip(models.Model):
                 continue
 
 
-            
+         
             # -------------------------------------------------------------------
             # CASE 2: If NOT calendar → CUSTOM attendance based payroll
             # -------------------------------------------------------------------
@@ -240,7 +240,7 @@ class HrPayslip(models.Model):
                 payslip.worked_days_line_ids.unlink()
             
                 # -------------------------------------------------------
-                # 1️⃣ Get ALL WORKING DAYS dynamically from calendar
+                # 1️⃣ Get WORKING DAYS dynamically from calendar
                 # -------------------------------------------------------
                 def _is_working_day(cal, day):
                     start = datetime.combine(day, time.min)
@@ -258,8 +258,11 @@ class HrPayslip(models.Model):
                 payslip.total_working_days_in_month = expected_working_days
             
                 # -------------------------------------------------------
-                # 2️⃣ Fetch APPROVED LEAVES
+                # 2️⃣ Fetch APPROVED LEAVES (DAY-WISE, NO DOUBLE COUNT)
                 # -------------------------------------------------------
+                leave_dates_paid = set()
+                leave_dates_unpaid = set()
+            
                 leaves = Leave.search([
                     ('employee_id', '=', employee.id),
                     ('state', 'in', ('validate', 'approved')),
@@ -267,26 +270,23 @@ class HrPayslip(models.Model):
                     ('request_date_to', '>=', date_from),
                 ])
             
-                leave_dates = set()
-                paid_leave_days = 0.0
-                unpaid_leave_days = 0.0
-            
                 for lv in leaves:
                     cur = max(lv.request_date_from, date_from)
                     end = min(lv.request_date_to, date_to)
             
                     while cur <= end:
                         if cur in working_days:
-                            leave_dates.add(cur)
+                            if lv.holiday_status_id.unpaid:
+                                leave_dates_unpaid.add(cur)
+                            else:
+                                leave_dates_paid.add(cur)
                         cur += timedelta(days=1)
             
-                    if lv.holiday_status_id.unpaid:
-                        unpaid_leave_days += lv.number_of_days
-                    else:
-                        paid_leave_days += lv.number_of_days
+                paid_leave_days = len(leave_dates_paid)
+                unpaid_leave_days = len(leave_dates_unpaid)
             
                 # -------------------------------------------------------
-                # 3️⃣ Fetch ATTENDANCE
+                # 3️⃣ Fetch ATTENDANCE (DAY-WISE)
                 # -------------------------------------------------------
                 attendances = Attendance.search([
                     ('employee_id', '=', employee.id),
@@ -294,9 +294,7 @@ class HrPayslip(models.Model):
                     ('check_out', '<=', datetime.combine(date_to, time.max)),
                 ])
             
-                full_days = 0.0
-                half_days = 0.0
-                attended_dates = set()
+                attendance_map = {}  # date → hours
             
                 for att in attendances:
                     if not att.check_in or not att.check_out:
@@ -306,12 +304,16 @@ class HrPayslip(models.Model):
                     if work_date not in working_days:
                         continue
             
-                    duration = (att.check_out - att.check_in).total_seconds() / 3600
-                    attended_dates.add(work_date)
+                    hours = (att.check_out - att.check_in).total_seconds() / 3600
+                    attendance_map[work_date] = max(attendance_map.get(work_date, 0), hours)
             
-                    if duration >= 7:
+                full_days = 0.0
+                half_days = 0.0
+            
+                for d, hrs in attendance_map.items():
+                    if hrs >= 7:
                         full_days += 1
-                    elif duration >= 3:
+                    elif hrs >= 3:
                         half_days += 0.5
             
                 # -------------------------------------------------------
@@ -325,23 +327,31 @@ class HrPayslip(models.Model):
                 out_day_count = len(out_days)
             
                 # -------------------------------------------------------
-                # 5️⃣ AUTO UNPAID DAYS (Absent)
+                # 5️⃣ AUTO UNPAID DAYS (ABSENT)
                 # -------------------------------------------------------
                 unpaid_auto_days = len([
                     d for d in working_days
-                    if d not in attended_dates
-                    and d not in leave_dates
+                    if d not in attendance_map
+                    and d not in leave_dates_paid
+                    and d not in leave_dates_unpaid
                     and d not in out_days
                 ])
             
                 # -------------------------------------------------------
-                # 6️⃣ FINAL COUNTS (SINGLE SOURCE OF TRUTH)
+                # 6️⃣ FINAL COUNTS (BALANCED)
                 # -------------------------------------------------------
                 paid_days = full_days + half_days + paid_leave_days
                 unpaid_days = unpaid_leave_days + unpaid_auto_days + out_day_count
             
                 payslip.paid_days = paid_days
                 payslip.unpaid_days = unpaid_days
+            
+                # SAFETY CHECK
+                if round(paid_days + unpaid_days, 2) != round(expected_working_days, 2):
+                    _logger.warning(
+                        "Payroll mismatch: Paid(%s) + Unpaid(%s) != Working(%s)",
+                        paid_days, unpaid_days, expected_working_days
+                    )
             
                 # -------------------------------------------------------
                 # 7️⃣ AMOUNT CALCULATION
@@ -352,7 +362,7 @@ class HrPayslip(models.Model):
                 payslip.unpaid_amount = unpaid_days * per_day_cost
             
                 # -------------------------------------------------------
-                # 8️⃣ WORKED DAYS LINES (UI DISPLAY)
+                # 8️⃣ WORKED DAYS LINES (UI)
                 # -------------------------------------------------------
                 worked_lines = []
             
@@ -371,7 +381,7 @@ class HrPayslip(models.Model):
                         'code': 'HALF',
                         'number_of_days': half_days,
                         'number_of_hours': half_days * 4,
-                        'work_entry_type_id': _get_or_create('HALF', 'Half Day').id,
+                        'work_entry_type_id': _get_or_create('HALF', 'Half Day Attendance').id,
                     })
             
                 if unpaid_days:
@@ -384,6 +394,7 @@ class HrPayslip(models.Model):
                     })
             
                 payslip.worked_days_line_ids = [(0, 0, vals) for vals in worked_lines]
+
 
 
         return super(HrPayslip, self).compute_sheet()
