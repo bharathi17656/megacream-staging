@@ -389,7 +389,7 @@ class HrPayslip(models.Model):
                 
                 # FIX: Remove out_day_count from total_unpaid_days
                 total_unpaid_days = unpaid_leave_days + unpaid_auto_days + lop_days
-                payslip.unpaid_days = total_unpaid_days
+                payslip.unpaid_days = expected_working_days
                 
                 # total_unpaid_days = unpaid_leave_days + unpaid_auto_days + lop_days + out_day_count
                 # payslip.unpaid_days = total_unpaid_days
