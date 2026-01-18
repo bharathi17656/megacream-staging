@@ -91,18 +91,18 @@ class HrLeave(models.Model):
 
 
 
-    def action_validate(self,check_state):
+    def action_approve(self,check_state):
         self.ensure_one()
         user = self.env.user
         
         if not user.has_group('adevx_hr_leave_rule.group_leave_super_admin') :
             if user.has_group('adevx_hr_leave_rule.group_leave_md') and self.approval_level in ['md']:
                 self.is_leave_md_approved = True
-                return super(HrLeave, self).action_validate(check_state)
+                return super(HrLeave, self).action_approve(check_state)
                 
             if user.has_group('adevx_hr_leave_rule.group_leave_manager') and self.approval_level in ['manager']:
                 self.is_leave_manager_approved = True
-                return super(HrLeave, self).action_validate(check_state)
+                return super(HrLeave, self).action_approve(check_state)
                 
             if user.has_group('adevx_hr_leave_rule.group_leave_manager') and self.approval_level in ['hr']:
                 if not self.is_leave_manager_approved :
@@ -143,9 +143,9 @@ class HrLeave(models.Model):
                     
             if self.approval_level in ['hr'] :
                 if self.is_leave_hr_approved and self.is_leave_manager_approved :
-                    return super(HrLeave, self).action_validate(check_state)
+                    return super(HrLeave, self).action_approve(check_state)
         else:
-             return super(HrLeave, self).action_validate(check_state)
+             return super(HrLeave, self).action_approve(check_state)
 
 
     def action_refuse(self):
