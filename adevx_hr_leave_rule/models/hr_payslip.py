@@ -1,6 +1,6 @@
 # models/hr_payslip.py
 from odoo import models, fields, api
-from datetime import timedelta, time
+from datetime import timedelta, time , datetime
 import math
 import calendar
 
