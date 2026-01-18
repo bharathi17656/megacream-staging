@@ -8,5 +8,11 @@ class HrLeaveType(models.Model):
     allocation_unit = fields.Selection(string="Before Unit", selection=[
         ('hour', 'Hours'), ('day', 'Days')], required=True)
     time_off_request_before = fields.Integer(string="Time Off Request Must Be Before")
+    short_code = fields.Char(
+        string="Short Code",
+        size=3,
+        help="Short identifier for the leave type (e.g. CL, SL, EL)"
+    )
+    
 
 
