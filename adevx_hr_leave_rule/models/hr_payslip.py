@@ -201,16 +201,25 @@ class HrPayslip(models.Model):
             
                 counted_days = total_present + paid_leave_days + unpaid_days + out_days
             
-                # Final unpaid calculation
-                total_unpaid_days = unpaid_days + out_days
-                payslip.unpaid_days = total_unpaid_days
-            
-                # Payroll calculation
+                # 🔑 SINGLE SOURCE OF TRUTH → worked_days_line_ids
+                paid_days = 0.0
+                unpaid_days = 0.0
+                
+                for line in worked_lines:
+                    code = line.work_entry_type_id.code.upper()
+                
+                    if code in ('WORK100', 'HALF', 'CASUAL', 'SICK', 'EARNED', 'PUBHOL'):
+                        paid_days += line.number_of_days
+                    elif code in ('LEAVE90', 'OUT'):
+                        unpaid_days += line.number_of_days
+                
+                payslip.paid_days = paid_days
+                payslip.unpaid_days = unpaid_days
+                
                 per_day_cost = contract.wage / total_working_days if total_working_days else 0
-            
-                payslip.unpaid_amount = total_unpaid_days * per_day_cost
-                payslip.paid_days = full_days + half_days + paid_leave_days
-                payslip.paid_amount = payslip.paid_days * per_day_cost
+                payslip.paid_amount = paid_days * per_day_cost
+                payslip.unpaid_amount = unpaid_days * per_day_cost
+
 
 
             
@@ -479,10 +488,12 @@ class HrPayslip(models.Model):
                         unpaid_total += line['amount']
                         
                 payslip.paid_days = full_days + half_days + paid_leave_days
-                payslip.paid_amount = per_day_cost * payslip.paid_days
+                payslip.paid_amount = contract.wage - (payslip.unpaid_days * per_day_cost)
+
                 
-                total_unpaid_days = unpaid_leave_days + unpaid_auto_days + lop_days + out_day_count
+                total_unpaid_days = unpaid_leave_days + unpaid_auto_days + lop_days
                 payslip.unpaid_days = total_unpaid_days
+
                 # payslip.paid_amount = (contract.wage or 0.0) - unpaid_total
                 # payslip.paid_days = expected_working_days - total_unpaid_days
 
