@@ -38,197 +38,200 @@ class HrPayslip(models.Model):
                 continue
 
          
-            # CASE 1: If work entry source IS calendar → DO NOT rebuild lines
-          
+            # -------------------------------------------------------------------
+            # CASE 1: work_entry_source == 'calendar'
+            # -------------------------------------------------------------------
+            
             if contract.work_entry_source == 'calendar':
-
-                worked_lines = payslip.worked_days_line_ids
-                input_lines = payslip.input_line_ids
-
-
+            
+                calendar = contract.resource_calendar_id
                 date_from = payslip.date_from
                 date_to = payslip.date_to
             
-                # Build all dates in range
-                start_dt = fields.Date.from_string(date_from)
-                end_dt = fields.Date.from_string(date_to)
-                all_days = []
-                current_day = start_dt
-                while current_day <= end_dt:
-                    all_days.append(current_day)
-                    current_day += timedelta(days=1)
-
-
-                # Find all Saturdays
-                saturdays = [d for d in all_days if d.weekday() == 5]
+                payslip.worked_days_line_ids.unlink()
             
-                # Identify unwanted Saturdays: 2nd, 4th, and possible 5th
-                unwanted_saturdays = []
-                if len(saturdays) >= 2:
-                    unwanted_saturdays.append(saturdays[1])  # 2nd Saturday
-                if len(saturdays) >= 4:
-                    unwanted_saturdays.append(saturdays[3])  # 4th Saturday
-                if len(saturdays) >= 6:
-                    unwanted_saturdays.append(saturdays[5])  
-                if len(saturdays) >= 8:
-                    unwanted_saturdays.append(saturdays[7])  
-
-                work_entries = self.env['hr.work.entry'].search([
-                    ('employee_id', '=', payslip.employee_id.id),
-                    ('date', '>=', date_from),
-                    ('date', '<=', date_to),
-                ])
+                # -------------------------------------------------------
+                # 1️⃣ WORKING DAYS FROM RESOURCE CALENDAR
+                # -------------------------------------------------------
+                def _is_working_day(cal, day):
+                    start = datetime.combine(day, time.min)
+                    end = datetime.combine(day, time.max)
+                    return cal.get_work_hours_count(start, end) > 0
             
-                for entry in work_entries:
-                    entry_date = fields.Date.from_string(entry.date)
-                    if entry_date in unwanted_saturdays:
-                        entry.unlink()
-                        
-                work_entries = self.env['hr.work.entry'].search([
-                    ('employee_id', '=', payslip.employee_id.id),
-                    ('date', '>=', date_from),
-                    ('date', '<=', date_to),
-                ])
-                
-                for entry in work_entries :
-                    if entry.work_entry_type_id.code == 'OVERTIME':
-                        entry.unlink()
-
-                # -----------------------------------------------------------
-                # REFRESH worked_days_line_ids after removing Saturday entries
-                # -----------------------------------------------------------
-                payslip.worked_days_line_ids.unlink()  # Clear existing lines
-                
-                new_work_entries = self.env['hr.work.entry'].search([
-                    ('employee_id', '=', payslip.employee_id.id),
-                    ('date', '>=', date_from),
-                    ('date', '<=', date_to)
-                ])
-                
-                # Group entries by work entry type
-                grouped = {}
-                
-                for entry in new_work_entries:
-                    code = entry.work_entry_type_id.code
-                    if code not in grouped:
-                        grouped[code] = {
-                            'name': entry.work_entry_type_id.name,
-                            'sequence': 1,
-                            'code': code,
-                            'number_of_days': 0,
-                            'number_of_hours': 0,
-                            'version_id': contract.id,
-                            'work_entry_type_id': entry.work_entry_type_id.id,
-                        }
-                
-                    # Increment grouped values
-                    grouped[code]['number_of_days'] += 1
-                    grouped[code]['number_of_hours'] += 8  # Default 8 hours (change if needed)
-                
-                # Insert grouped values back in payslip
-                payslip.worked_days_line_ids = [(0, 0, vals) for vals in grouped.values()]
-                
-                # 🔁 IMPORTANT: use the NEW records, not the deleted ones
-                worked_lines = payslip.worked_days_line_ids
-
-
-                # Work entry types
-                work_type_normal = _get_or_create('WORK100', 'Attendance')
-                work_type_half = _get_or_create('HALF', 'Half Day Attendance')
-                work_type_unpaid = _get_or_create('LEAVE90', 'Unpaid (LOP)')
-                work_type_casual = _get_or_create('CASUAL', 'Casual Leave (CL)')
-                work_type_sick = _get_or_create('SICK', 'Sick Leave (SL)')
-                work_type_earned = _get_or_create('EARNED', 'Earned Leave')
-                work_type_public = _get_or_create('PUBHOL', 'Public Holiday')
-                work_type_out = _get_or_create('OUT', 'Out of Contract')
-
-   
+                working_days = []
+                cur = date_from
+                while cur <= date_to:
+                    if _is_working_day(calendar, cur):
+                        working_days.append(cur)
+                    cur += timedelta(days=1)
             
-                # Identify alt Saturdays (2nd & 4th)
-                saturdays = [d for d in all_days if d.weekday() == 5]
-                saturday_offs = []
-                if len(saturdays) >= 2:
-                    saturday_offs.append(saturdays[1])
-                if len(saturdays) >= 4:
-                    saturday_offs.append(saturdays[3])
-            
-                # Working days Mon–Sat except 2nd/4th Sat
-                working_days = [d for d in all_days if (d.weekday() in (0,1,2,3,4,5) and d not in saturday_offs)]
                 expected_working_days = len(working_days)
-                total_working_days = expected_working_days
                 payslip.total_working_days_in_month = expected_working_days
-                
             
-             
+                # -------------------------------------------------------
+                # 2️⃣ WORK ENTRIES (DAY-WISE MAP)
+                # -------------------------------------------------------
+                work_entries = self.env['hr.work.entry'].search([
+                    ('employee_id', '=', employee.id),
+                    ('date', '>=', date_from),
+                    ('date', '<=', date_to),
+                ])
             
-                full_days = 0
-                half_days = 0
-                paid_leave_days = 0
-                unpaid_days = 0
-                out_days = 0
+                attendance_days = set()
+                half_days = set()
+                casual_days = set()
+                sick_days = set()
+                unpaid_leave_days = set()
             
-                for line in worked_lines:
+                for we in work_entries:
+                    d = we.date
             
-                    code = line.work_entry_type_id.code.upper() if line.work_entry_type_id else line.code.upper()
-                    days = line.number_of_days or 0
+                    if d not in working_days:
+                        continue
             
-                    # Attendance full day
+                    # ❌ Ignore outside contract
+                    if contract.date_start and d < contract.date_start:
+                        continue
+                    if contract.date_end and d > contract.date_end:
+                        continue
+            
+                    code = we.work_entry_type_id.code.upper()
+            
                     if code in ('WORK100', 'ATTENDANCE'):
-                        full_days += days
+                        attendance_days.add(d)
             
-                    # Half day
                     elif code in ('HALF', 'HALFDAY'):
-                        half_days += 0.5
+                        half_days.add(d)
             
-                    # Paid leave (CL, SL, Earned, Public Holiday)
-                    elif code in ('CASUAL', 'SICK', 'EARNED', 'PUBHOL', 'PAID', 'PL'):
-                        paid_leave_days += days
+                    elif code == 'CASUAL':
+                        casual_days.add(d)
             
-                    # Unpaid / LOP
+                    elif code == 'SICK':
+                        sick_days.add(d)
+            
                     elif code in ('LEAVE90', 'UNPAID', 'LOP'):
-                        unpaid_days += days
+                        unpaid_leave_days.add(d)
             
-                    # Out-of-contract
-                    elif code in ('OUT',):
-                        out_days += days
-                        
-                for line in input_lines:
-                    code = line.input_type_id.code.upper() if line.input_type_id else line.code.upper()
-                    days = line.amount or 0
-
-                    if code in ('LOP_RP'):
-                        unpaid_days += days
+                # -------------------------------------------------------
+                # 3️⃣ OUT OF CONTRACT DAYS
+                # -------------------------------------------------------
+                out_days = {
+                    d for d in working_days
+                    if (contract.date_start and d < contract.date_start)
+                    or (contract.date_end and d > contract.date_end)
+                }
             
+                # -------------------------------------------------------
+                # 4️⃣ AUTO UNPAID (ABSENT DAYS)
+                # -------------------------------------------------------
+                unpaid_auto_days = set()
             
-                # Count total paid
-                total_present = full_days + half_days   # half_days already numeric (0.5)
+                for d in working_days:
+                    if d in out_days:
+                        continue
+                    if d in attendance_days or d in half_days:
+                        continue
+                    if d in casual_days or d in sick_days or d in unpaid_leave_days:
+                        continue
+                    unpaid_auto_days.add(d)
             
-                counted_days = total_present + paid_leave_days + unpaid_days + out_days
+                # -------------------------------------------------------
+                # 5️⃣ FINAL COUNTS (BALANCED)
+                # -------------------------------------------------------
+                paid_days = (
+                    len(attendance_days)
+                    + (len(half_days) * 0.5)
+                    + len(casual_days)
+                    + len(sick_days)
+                )
             
-                # 🔑 SINGLE SOURCE OF TRUTH → worked_days_line_ids
-                paid_days = 0.0
-                unpaid_days = 0.0
-                
-                for line in worked_lines:
-                    code = line.work_entry_type_id.code.upper()
-                
-                    if code in ('WORK100', 'HALF', 'CASUAL', 'SICK', 'EARNED', 'PUBHOL'):
-                        paid_days += line.number_of_days
-                    elif code in ('LEAVE90', 'OUT'):
-                        unpaid_days += line.number_of_days
-                
+                unpaid_days = (
+                    len(unpaid_leave_days)
+                    + len(unpaid_auto_days)
+                )
+            
+                out_days_total = len(out_days)
+            
                 payslip.paid_days = paid_days
                 payslip.unpaid_days = unpaid_days
-                
-                per_day_cost = contract.wage / total_working_days if total_working_days else 0
+            
+                # SAFETY CHECK
+                if round(paid_days + unpaid_days + out_days_total, 2) != round(expected_working_days, 2):
+                    _logger.warning(
+                        "Payroll mismatch: Paid(%s) + Unpaid(%s) + Out(%s) != Working(%s)",
+                        paid_days, unpaid_days, out_days_total, expected_working_days
+                    )
+            
+                # -------------------------------------------------------
+                # 6️⃣ AMOUNT CALCULATION
+                # -------------------------------------------------------
+                per_day_cost = contract.wage / expected_working_days if expected_working_days else 0
+            
                 payslip.paid_amount = paid_days * per_day_cost
-                payslip.unpaid_amount = unpaid_days * per_day_cost
-
-
-
+                payslip.unpaid_amount = (unpaid_days + out_days_total) * per_day_cost
+            
+                # -------------------------------------------------------
+                # 7️⃣ WORKED DAYS LINES (UI)
+                # -------------------------------------------------------
+                worked_lines = []
+            
+                if attendance_days:
+                    worked_lines.append({
+                        'name': 'Attendance',
+                        'code': 'WORK100',
+                        'number_of_days': len(attendance_days),
+                        'number_of_hours': len(attendance_days) * 8,
+                        'work_entry_type_id': _get_or_create('WORK100', 'Attendance').id,
+                    })
+            
+                if half_days:
+                    worked_lines.append({
+                        'name': 'Half Day Attendance',
+                        'code': 'HALF',
+                        'number_of_days': len(half_days) * 0.5,
+                        'number_of_hours': len(half_days) * 4,
+                        'work_entry_type_id': _get_or_create('HALF', 'Half Day Attendance').id,
+                    })
+            
+                if casual_days:
+                    worked_lines.append({
+                        'name': 'Casual Leave',
+                        'code': 'CASUAL',
+                        'number_of_days': len(casual_days),
+                        'number_of_hours': len(casual_days) * 8,
+                        'work_entry_type_id': _get_or_create('CASUAL', 'Casual Leave').id,
+                    })
+            
+                if sick_days:
+                    worked_lines.append({
+                        'name': 'Sick Leave',
+                        'code': 'SICK',
+                        'number_of_days': len(sick_days),
+                        'number_of_hours': len(sick_days) * 8,
+                        'work_entry_type_id': _get_or_create('SICK', 'Sick Leave').id,
+                    })
+            
+                if unpaid_days:
+                    worked_lines.append({
+                        'name': 'Unpaid / LOP',
+                        'code': 'LEAVE90',
+                        'number_of_days': unpaid_days,
+                        'number_of_hours': unpaid_days * 8,
+                        'work_entry_type_id': _get_or_create('LEAVE90', 'Unpaid').id,
+                    })
+            
+                if out_days_total:
+                    worked_lines.append({
+                        'name': 'Out of Contract',
+                        'code': 'OUT',
+                        'number_of_days': out_days_total,
+                        'number_of_hours': out_days_total * 8,
+                        'work_entry_type_id': _get_or_create('OUT', 'Out of Contract').id,
+                    })
+            
+                payslip.worked_days_line_ids = [(0, 0, vals) for vals in worked_lines]
             
                 continue
-
 
          
             # -------------------------------------------------------------------
