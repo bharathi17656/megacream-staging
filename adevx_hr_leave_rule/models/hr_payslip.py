@@ -259,7 +259,7 @@ class HrPayslip(models.Model):
                 ])
             
                 for entry in work_entries:
-                    entry_date = fields.Date.from_string(entry.date_start)
+                    entry_date = fields.Date.from_string(entry.date)
                     if entry_date in unwanted_saturdays:
                         entry.unlink()
 
