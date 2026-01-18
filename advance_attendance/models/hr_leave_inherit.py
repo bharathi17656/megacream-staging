@@ -205,8 +205,8 @@ class HrLeave(models.Model):
 
 
 
-    def action_validate(self, check_state=False):
-        res = super(HrLeave, self).action_validate(check_state=check_state)
+    def action_approve(self, check_state=False):
+        res = super(HrLeave, self).action_approve(check_state=check_state)
 
         
     
