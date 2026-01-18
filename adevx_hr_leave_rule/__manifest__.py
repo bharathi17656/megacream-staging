@@ -11,11 +11,11 @@
         # Security
         "security/leave_access_group.xml",
         'security/ir.model.access.csv',
-        # views
-        'views/hr_attendance_approval_views.xml',
-        "views/hr_leave_rule.xml",
-        "views/hr_leave_type.xml",
-        "views/hr_leave_allocation.xml",
+        
+        # 'views/hr_attendance_approval_views.xml',
+        # "views/hr_leave_rule.xml",
+        # "views/hr_leave_type.xml",
+        # "views/hr_leave_allocation.xml",
     ],
     'installable': True,
     'application': True,
