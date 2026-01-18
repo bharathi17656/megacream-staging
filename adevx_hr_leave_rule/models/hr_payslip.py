@@ -71,8 +71,8 @@ class HrPayslip(models.Model):
 
                 work_entries = self.env['hr.work.entry'].search([
                     ('employee_id', '=', payslip.employee_id.id),
-                    ('date_start', '>=', date_from),
-                    ('date_stop', '<=', date_to),
+                    ('date', '>=', date_from),
+                    ('date', '<=', date_to),
                 ])
             
                 for entry in work_entries:
@@ -82,8 +82,8 @@ class HrPayslip(models.Model):
                         
                 work_entries = self.env['hr.work.entry'].search([
                     ('employee_id', '=', payslip.employee_id.id),
-                    ('date_start', '>=', date_from),
-                    ('date_stop', '<=', date_to),
+                    ('date', '>=', date_from),
+                    ('date', '<=', date_to),
                 ])
                 
                 for entry in work_entries :
@@ -97,8 +97,8 @@ class HrPayslip(models.Model):
                 
                 new_work_entries = self.env['hr.work.entry'].search([
                     ('employee_id', '=', payslip.employee_id.id),
-                    ('date_start', '>=', date_from),
-                    ('date_stop', '<=', date_to)
+                    ('date', '>=', date_from),
+                    ('date', '<=', date_to)
                 ])
                 
                 # Group entries by work entry type
@@ -254,8 +254,8 @@ class HrPayslip(models.Model):
 
                 work_entries = self.env['hr.work.entry'].search([
                     ('employee_id', '=', payslip.employee_id.id),
-                    ('date_start', '>=', date_from),
-                    ('date_stop', '<=', date_to),
+                    ('date', '>=', date_from),
+                    ('date', '<=', date_to),
                 ])
             
                 for entry in work_entries:
