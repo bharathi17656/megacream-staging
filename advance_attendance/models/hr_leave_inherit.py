@@ -205,109 +205,109 @@ class HrLeave(models.Model):
 
 
 
-    # def action_approve(self, check_state=False):
-    #     res = super(HrLeave, self).action_approve(check_state=check_state)
+    def action_approve(self, check_state=False):
+        res = super().action_approve(check_state=check_state)
 
         
     
-    #     for leave in self:
+        for leave in self:
             
-    #         # === 1️⃣ If Paid Leave selected → NO split logic ===
-    #         if leave.paid_leave:
-    #             continue
+            # === 1️⃣ If Paid Leave selected → NO split logic ===
+            if leave.paid_leave:
+                continue
     
-    #         leave_type = leave.holiday_status_id
+            leave_type = leave.holiday_status_id
     
-    #         # If already CL, SL, or LOP → skip
-    #         if leave_type.short_code in ['CL', 'SL', 'LOP']:
-    #             continue
+            # If already CL, SL, or LOP → skip
+            if leave_type.short_code in ['CL', 'SL', 'LOP']:
+                continue
     
-    #         employee = leave.employee_id
-    #         requested_days = int(leave.number_of_days)
-    #         start_date = leave.request_date_from
+            employee = leave.employee_id
+            requested_days = int(leave.number_of_days)
+            start_date = leave.request_date_from
     
 
-    #         # 🔹 Get CL / SL balance just for this request window
-    #         cl_balance, sl_balance = self._get_cs_balances_for_request(
-    #             employee=employee,
-    #             start_date=start_date,
-    #             requested_days=requested_days,
-    #         )
-    #         _logger.warning("balance para details -------------------------- %s , %s , %s",employee,start_date,requested_days)
+            # 🔹 Get CL / SL balance just for this request window
+            cl_balance, sl_balance = self._get_cs_balances_for_request(
+                employee=employee,
+                start_date=start_date,
+                requested_days=requested_days,
+            )
+            _logger.warning("balance para details -------------------------- %s , %s , %s",employee,start_date,requested_days)
           
-    #         _logger.warning("balance details -------------------------- %s , %s",cl_balance,sl_balance)
+            _logger.warning("balance details -------------------------- %s , %s",cl_balance,sl_balance)
             
-    #         remaining = requested_days
-    #         daily_dates = [start_date + timedelta(days=i) for i in range(remaining)]
-    #         allocations = []
+            remaining = requested_days
+            daily_dates = [start_date + timedelta(days=i) for i in range(remaining)]
+            allocations = []
     
-    #         # CL Split
-    #         if cl_balance > 0 and remaining > 0:
-    #             use_cl = min(cl_balance, remaining)
-    #             cl_type = self.env['hr.leave.type'].search([('short_code', '=', 'CL')], limit=1)
-    #             allocations.append((cl_type.id, daily_dates[0], daily_dates[use_cl-1], use_cl))
-    #             remaining -= use_cl
-    #             daily_dates = daily_dates[use_cl:]
+            # CL Split
+            if cl_balance > 0 and remaining > 0:
+                use_cl = min(cl_balance, remaining)
+                cl_type = self.env['hr.leave.type'].search([('short_code', '=', 'CL')], limit=1)
+                allocations.append((cl_type.id, daily_dates[0], daily_dates[use_cl-1], use_cl))
+                remaining -= use_cl
+                daily_dates = daily_dates[use_cl:]
     
-    #         # SL Split
-    #         if sl_balance > 0 and remaining > 0:
-    #             use_sl = min(sl_balance, remaining)
-    #             sl_type = self.env['hr.leave.type'].search([('short_code', '=', 'SL')], limit=1)
-    #             allocations.append((sl_type.id, daily_dates[0], daily_dates[use_sl-1], use_sl))
-    #             remaining -= use_sl
-    #             daily_dates = daily_dates[use_sl:]
+            # SL Split
+            if sl_balance > 0 and remaining > 0:
+                use_sl = min(sl_balance, remaining)
+                sl_type = self.env['hr.leave.type'].search([('short_code', '=', 'SL')], limit=1)
+                allocations.append((sl_type.id, daily_dates[0], daily_dates[use_sl-1], use_sl))
+                remaining -= use_sl
+                daily_dates = daily_dates[use_sl:]
     
-    #         # Remaining → LOP
-    #         if remaining > 0:
-    #             lop_type = self.env['hr.leave.type'].search([('short_code', '=', 'LOP')], limit=1)
-    #             allocations.append((lop_type.id, daily_dates[0], daily_dates[remaining-1], remaining))
+            # Remaining → LOP
+            if remaining > 0:
+                lop_type = self.env['hr.leave.type'].search([('short_code', '=', 'LOP')], limit=1)
+                allocations.append((lop_type.id, daily_dates[0], daily_dates[remaining-1], remaining))
     
-    #         # === 2️⃣ Mark Original Leave as Auto-Refused ===
-    #         leave.auto_refused = True
-    #         leave.action_refuse()
+            # === 2️⃣ Mark Original Leave as Auto-Refused ===
+            leave.auto_refused = True
+            leave.action_refuse()
     
-    #         # === 3️⃣ Create New Split Leaves and Copy Special Flag ===
-    #         new_records = self.env['hr.leave']
+            # === 3️⃣ Create New Split Leaves and Copy Special Flag ===
+            new_records = self.env['hr.leave']
     
-    #         transfer_text = "---System Generated Leave---\n"
-    #         transfer_text += f"Original Requested: {requested_days} Day(s)\n"
-    #         transfer_text += f"Processed on: {fields.Date.today()}\n\n"
-    #         transfer_text += "Transferred Breakdown:\n"
+            transfer_text = "---System Generated Leave---\n"
+            transfer_text += f"Original Requested: {requested_days} Day(s)\n"
+            transfer_text += f"Processed on: {fields.Date.today()}\n\n"
+            transfer_text += "Transferred Breakdown:\n"
             
-    #         for lt_id, d_from, d_to, days in allocations:
-    #             lt_name = self.env['hr.leave.type'].browse(lt_id).name
-    #             transfer_text += f" - {days} Day(s) → {lt_name} ({d_from} to {d_to})\n"
+            for lt_id, d_from, d_to, days in allocations:
+                lt_name = self.env['hr.leave.type'].browse(lt_id).name
+                transfer_text += f" - {days} Day(s) → {lt_name} ({d_from} to {d_to})\n"
     
     
-    #         for lt_id, d_from, d_to, days in allocations:
-    #             new_leave = self.env['hr.leave'].with_context(
-    #                 leave_fast_create=True, 
-    #                 skip_leave_validity=True, 
-    #                 leave_skip_state_check=True
-    #             ).create({
-    #                 'employee_id': employee.id,
-    #                 'holiday_status_id': lt_id,
-    #                 'request_date_from': d_from,
-    #                 'request_date_to': d_to,
-    #                 'number_of_days': days,
-    #                 'auto_created':True,
-    #                 'state': 'validate',
-    #                 'is_special_leave': leave.is_special_leave, 
-    #                 'name':leave.name,
-    #                 'leave_Transfer_from': f"Requested {leave.holiday_status_id.name} from: {employee.name}\n\n{transfer_text}"
-    #             })
-    #             new_records += new_leave
+            for lt_id, d_from, d_to, days in allocations:
+                new_leave = self.env['hr.leave'].with_context(
+                    leave_fast_create=True, 
+                    skip_leave_validity=True, 
+                    leave_skip_state_check=True
+                ).create({
+                    'employee_id': employee.id,
+                    'holiday_status_id': lt_id,
+                    'request_date_from': d_from,
+                    'request_date_to': d_to,
+                    'number_of_days': days,
+                    'auto_created':True,
+                    'state': 'validate',
+                    'is_special_leave': leave.is_special_leave, 
+                    'name':leave.name,
+                    'leave_Transfer_from': f"Requested {leave.holiday_status_id.name} from: {employee.name}\n\n{transfer_text}"
+                })
+                new_records += new_leave
     
-    #             # Set reason if CL
-    #             leave_type_short = self.env['hr.leave.type'].browse(lt_id).short_code
-    #             if leave_type_short == 'CL':
-    #                 new_leave.write({'leave_reason': 'other'})
+                # Set reason if CL
+                leave_type_short = self.env['hr.leave.type'].browse(lt_id).short_code
+                if leave_type_short == 'CL':
+                    new_leave.write({'leave_reason': 'other'})
     
     
-    #         # === 4️⃣ Link transferred records to original leave ===
-    #         leave.transfer_leave_ids_str = ",".join(str(r.id) for r in new_records)
+            # === 4️⃣ Link transferred records to original leave ===
+            leave.transfer_leave_ids_str = ",".join(str(r.id) for r in new_records)
     
-    #     return res
+        return res
 
    
 
