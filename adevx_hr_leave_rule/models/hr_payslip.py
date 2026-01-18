@@ -174,7 +174,7 @@ class HrPayslip(models.Model):
             
                     # Half day
                     elif code in ('HALF', 'HALFDAY'):
-                        half_days += days
+                        half_days += 0.5
             
                     # Paid leave (CL, SL, Earned, Public Holiday)
                     elif code in ('CASUAL', 'SICK', 'EARNED', 'PUBHOL', 'PAID', 'PL'):
@@ -202,15 +202,17 @@ class HrPayslip(models.Model):
                 counted_days = total_present + paid_leave_days + unpaid_days + out_days
             
                 # Final unpaid calculation
-                total_unpaid_days = unpaid_days
+                total_unpaid_days = unpaid_days + out_days
                 payslip.unpaid_days = total_unpaid_days
             
                 # Payroll calculation
                 per_day_cost = contract.wage / total_working_days if total_working_days else 0
             
                 payslip.unpaid_amount = total_unpaid_days * per_day_cost
-                payslip.paid_amount = contract.wage - payslip.unpaid_amount
-                payslip.paid_days = total_working_days - total_unpaid_days
+                payslip.paid_days = full_days + half_days + paid_leave_days
+                payslip.paid_amount = payslip.paid_days * per_day_cost
+
+
             
                 continue
 
@@ -342,12 +344,13 @@ class HrPayslip(models.Model):
                         if duration >= sat_hours_required - 1:
                             full_days += 1
                         elif duration >= 3:
-                            half_days += 1
+                            half_days += 0.5
+
                     else:
                         if duration >= 7:
                             full_days += 1
                         elif duration >= 3:
-                            half_days += 1
+                            half_days += 0.5
     
                 # Out of Contract
                 contract_start = contract.date_start
@@ -365,7 +368,8 @@ class HrPayslip(models.Model):
                 ]
                 unpaid_auto_days = len(unpaid_dates)
     
-                total_present = full_days + (half_days * 0.5)
+                total_present = full_days + half_days
+
                 total_leaves = paid_leave_days + unpaid_leave_days
                 # counted_days = total_present + total_leaves + unpaid_auto_days + out_day_count
                 # lop_days = max(expected_working_days - counted_days, 0)
@@ -473,9 +477,13 @@ class HrPayslip(models.Model):
                 for line in worked_lines:
                     if line['code'] in ('OUT', 'LEAVE90'):
                         unpaid_total += line['amount']
-    
-                payslip.unpaid_amount = unpaid_total
-                payslip.paid_amount = (contract.wage or 0.0) - unpaid_total
-                payslip.paid_days = expected_working_days - total_unpaid_days
+                        
+                payslip.paid_days = full_days + half_days + paid_leave_days
+                payslip.paid_amount = per_day_cost * payslip.paid_days
+                
+                total_unpaid_days = unpaid_leave_days + unpaid_auto_days + lop_days + out_day_count
+                payslip.unpaid_days = total_unpaid_days
+                # payslip.paid_amount = (contract.wage or 0.0) - unpaid_total
+                # payslip.paid_days = expected_working_days - total_unpaid_days
 
         return super(HrPayslip, self).compute_sheet()
