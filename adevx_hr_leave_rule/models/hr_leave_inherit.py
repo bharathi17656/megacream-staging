@@ -91,61 +91,61 @@ class HrLeave(models.Model):
 
 
 
-    # def action_approve(self,check_state):
-    #     self.ensure_one()
-    #     user = self.env.user
+    def action_approve(self,check_state=True):
+        self.ensure_one()
+        user = self.env.user
         
-    #     if not user.has_group('adevx_hr_leave_rule.group_leave_super_admin') :
-    #         if user.has_group('adevx_hr_leave_rule.group_leave_md') and self.approval_level in ['md']:
-    #             self.is_leave_md_approved = True
-    #             return super().action_approve(check_state)
+        if not user.has_group('adevx_hr_leave_rule.group_leave_super_admin') :
+            if user.has_group('adevx_hr_leave_rule.group_leave_md') and self.approval_level in ['md']:
+                self.is_leave_md_approved = True
+                return super().action_approve(check_state)
                 
-    #         if user.has_group('adevx_hr_leave_rule.group_leave_manager') and self.approval_level in ['manager']:
-    #             self.is_leave_manager_approved = True
-    #             return super().action_approve(check_state)
+            if user.has_group('adevx_hr_leave_rule.group_leave_manager') and self.approval_level in ['manager']:
+                self.is_leave_manager_approved = True
+                return super().action_approve(check_state)
                 
-    #         if user.has_group('adevx_hr_leave_rule.group_leave_manager') and self.approval_level in ['hr']:
-    #             if not self.is_leave_manager_approved :
-    #                 self.is_leave_manager_approved = True
-    #                 if not self.is_leave_hr_approved:
-    #                     self.env['bus.bus']._sendone(
-    #                             self.env.user.partner_id,
-    #                             'simple_notification',
-    #                             {
-    #                                 'type': 'warning',
-    #                                 'title': "Status: Approved",
-    #                                 'message': _("This request has received Project Manager approval and is pending Resource Manager approval'."),
-    #                             }
-    #                         )
+            if user.has_group('adevx_hr_leave_rule.group_leave_manager') and self.approval_level in ['hr']:
+                if not self.is_leave_manager_approved :
+                    self.is_leave_manager_approved = True
+                    if not self.is_leave_hr_approved:
+                        self.env['bus.bus']._sendone(
+                                self.env.user.partner_id,
+                                'simple_notification',
+                                {
+                                    'type': 'warning',
+                                    'title': "Status: Approved",
+                                    'message': _("This request has received Project Manager approval and is pending Resource Manager approval'."),
+                                }
+                            )
                   
                     
-    #             elif not self.is_leave_hr_approved :
-    #                 raise UserError("This request has already received Project Manager approval and is pending Resource Manager approval.")
+                elif not self.is_leave_hr_approved :
+                    raise UserError("This request has already received Project Manager approval and is pending Resource Manager approval.")
     
-    #         if user.has_group('adevx_hr_leave_rule.group_leave_hr') and self.approval_level in ['hr']:
-    #             if not self.is_leave_hr_approved :
-    #                 self.is_leave_hr_approved = True
-    #                 if not self.is_leave_manager_approved :
-    #                     self.env['bus.bus']._sendone(
-    #                             self.env.user.partner_id,
-    #                             'simple_notification',
-    #                             {
-    #                                 'type': 'warning',
-    #                                 'title': "Status: Approved",
-    #                                 'message': _("This request has received Resource Manager approval and is pending Project Resource approval'."),
-    #                             }
-    #                         )
+            if user.has_group('adevx_hr_leave_rule.group_leave_hr') and self.approval_level in ['hr']:
+                if not self.is_leave_hr_approved :
+                    self.is_leave_hr_approved = True
+                    if not self.is_leave_manager_approved :
+                        self.env['bus.bus']._sendone(
+                                self.env.user.partner_id,
+                                'simple_notification',
+                                {
+                                    'type': 'warning',
+                                    'title': "Status: Approved",
+                                    'message': _("This request has received Resource Manager approval and is pending Project Resource approval'."),
+                                }
+                            )
                     
                     
-    #             elif not self.is_leave_manager_approved :
-    #                 raise UserError("This request has already received Resource Manager approval and is pending Project Manager approval.")
+                elif not self.is_leave_manager_approved :
+                    raise UserError("This request has already received Resource Manager approval and is pending Project Manager approval.")
                     
                     
-    #         if self.approval_level in ['hr'] :
-    #             if self.is_leave_hr_approved and self.is_leave_manager_approved :
-    #                 return super().action_approve(check_state)
-    #     else:
-    #          return super().action_approve(check_state)
+            if self.approval_level in ['hr'] :
+                if self.is_leave_hr_approved and self.is_leave_manager_approved :
+                    return super().action_approve(check_state)
+        else:
+             return super().action_approve(check_state)
 
 
     def action_refuse(self):
