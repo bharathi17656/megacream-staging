@@ -1,6 +1,7 @@
 from datetime import timedelta, date 
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError, ValidationError
+import math
 
 
 class HrLeave(models.Model):
@@ -134,5 +135,35 @@ class HrLeave(models.Model):
         
 
             
-            
+
+
+
+class ResourceCalendarAttendance(models.Model):
+    _inherit = 'resource.calendar.attendance'
+
+    @api.model
+    def get_week_type(self, date):
+        """
+        Month-based odd/even week logic
+        Resets every month
+        Returns:
+            0 -> First week
+            1 -> Second week
+        """
+        if not date:
+            return 0
+
+        # First day of the month
+        first_day = date.replace(day=1)
+
+        # Number of days since month start (0-based)
+        days_diff = (date - first_day).days
+
+        # Month-relative week number (1-based)
+        week_number = (days_diff // 7) + 1
+
+        # Convert to Odoo week_type
+        # Odd week  -> 0 (First)
+        # Even week -> 1 (Second)
+        return 0 if week_number % 2 == 1 else 1
  
