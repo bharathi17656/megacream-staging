@@ -411,7 +411,7 @@ class HrPayslip(models.Model):
                         'name': 'Half Day Attendance',
                         'sequence': 2,
                         'code': 'HALF',
-                        'number_of_days': half_days * 0.5,
+                        'number_of_days': half_days,
                         'number_of_hours': half_days * 4,
                         'version_id': contract.id,
                         'work_entry_type_id': work_type_half.id,
