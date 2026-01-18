@@ -327,7 +327,7 @@ class HrPayslip(models.Model):
                     d for d in working_days
                     if (contract.date_start and d < contract.date_start)
                     or (contract.date_end and d > contract.date_end)
-                ]
+                ] 
                 out_day_count = len(out_days)
             
                 # -------------------------------------------------------
