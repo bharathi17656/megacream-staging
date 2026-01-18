@@ -7,6 +7,29 @@ import math
 class HrLeave(models.Model):
     _inherit = 'hr.leave'
 
+
+    leave_balance_details = fields.Text(string="Leave Balance Details", readonly=True)
+    leave_Transfer_from = fields.Text(string="Leave Tranferred Details", readonly=True)
+    
+    is_special_leave = fields.Boolean(string="Special Leave")
+
+
+    auto_refused = fields.Boolean("Auto Refused", default=False)
+    auto_created = fields.Boolean("Auto Created", default=False)
+    transfer_leave_ids_str = fields.Char(string="Transferred Leave IDs")
+    paid_leave = fields.Boolean("Paid Leave")
+
+    leave_reason = fields.Selection([
+        ('personal', 'Personal work'),
+        ('family', 'Family commitment'),
+        ('travel', 'Travel or out-of-town errand'),
+        ('home_repair', 'Home maintenance or repair'),
+        ('official_doc', 'Official documentation work'),
+        ('child_related', 'Child-related reasons'),
+        ('mental_health', 'Mental health / personal recharge'),
+        ('other', 'Other reason'),
+    ], string="Reason for Leave / Break")
+
     is_leave_manager_approved = fields.Boolean("Manager Approved", default=False)
     is_leave_hr_approved = fields.Boolean("HR Approved", default=False)
     is_leave_md_approved = fields.Boolean("MD Approved", default=False)
