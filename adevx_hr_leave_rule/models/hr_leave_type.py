@@ -4,8 +4,8 @@ from odoo import api, fields, models
 class HrLeaveType(models.Model):
     _inherit = 'hr.leave.type'
 
-    maximum_allocation = fields.Float(string="Maximum Allocation")
-    allocation_unit = fields.Selection(string="Allocation Unit", selection=[
+    max_request_as_per = fields.Integer(string="Max Request In Per Request")
+    allocation_unit = fields.Selection(string="Before Unit", selection=[
         ('hour', 'Hours'), ('day', 'Days')], required=True)
-    time_off_request_before = fields.Float(string="Time Off Request Must Be Before")
+    time_off_request_before = fields.Integer(string="Time Off Request Must Be Before")
 
