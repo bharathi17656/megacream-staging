@@ -2,6 +2,25 @@
 <odoo>
     <data>
 
+
+    <!-- Inherit hr.leave form to show Advanced Approvals (container model) -->
+    <record id="hr_leave_view_form_inherit_advanced" model="ir.ui.view">
+        <field name="name">hr.leave.view.form.inherit.advanced</field>
+        <field name="model">hr.leave</field>
+        <field name="inherit_id" ref="hr_holidays.hr_leave_view_form"/>
+        <field name="arch" type="xml">
+         
+
+             <xpath expr="//field[@name='holiday_status_id']" position="after">
+                    <field name="leave_reason" string="Reason for Leave" required="holiday_status_id in [6]" invisible="holiday_status_id not in [6]" />
+                    <field name="is_special_leave" />
+            </xpath>
+                
+        </field>
+    </record>
+
+
+
     <record id="view_hr_leave_rule_before_config_tree" model="ir.ui.view">
         <field name="name">hr.leave.rule.before.config.tree</field>
         <field name="model">hr.leave.rule.before.config</field>
@@ -13,6 +32,9 @@
             </list>
         </field>
     </record>
+
+
+    
 
         
 
