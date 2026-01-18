@@ -492,7 +492,7 @@ class HrPayslip(models.Model):
 
                 
                 total_unpaid_days = unpaid_leave_days + unpaid_auto_days + lop_days
-                payslip.unpaid_days = total_unpaid_days
+                payslip.unpaid_days = expected_working_days
 
                 # payslip.paid_amount = (contract.wage or 0.0) - unpaid_total
                 # payslip.paid_days = expected_working_days - total_unpaid_days
