@@ -57,38 +57,39 @@ class EmployeeSalaryReport(models.Model):
 
     @api.depends('payslip_id')
     def _compute_from_payslip(self):
-        for rec in self:
-            # Reset all computed fields
-            for field in RULE_MAP.values():
-                rec[field] = 0.0
+        pass
+        # for rec in self:
+        #     # Reset all computed fields
+        #     for field in RULE_MAP.values():
+        #         rec[field] = 0.0
     
-            rec.monthly_ctc = 0.0
-            rec.yearly_ctc = 0.0
+        #     rec.monthly_ctc = 0.0
+        #     rec.yearly_ctc = 0.0
     
-            slip = rec.payslip_id
-            if not slip:
-                continue
+        #     slip = rec.payslip_id
+        #     if not slip:
+        #         continue
     
-            # Days
-            rec.total_days_in_month = slip.total_days_in_month or 0
-            rec.total_working_days_in_month = slip.total_working_days_in_month or 0
+        #     # Days
+        #     rec.total_days_in_month = slip.total_days_in_month or 0
+        #     rec.total_working_days_in_month = slip.total_working_days_in_month or 0
     
-            # Read payslip lines
-            for line in slip.line_ids:
-                code = line.code
-                if code in RULE_MAP:
-                    field_name = RULE_MAP[code]
-                    rec[field_name] += line.total
+        #     # Read payslip lines
+        #     for line in slip.line_ids:
+        #         code = line.code
+        #         if code in RULE_MAP:
+        #             field_name = RULE_MAP[code]
+        #             rec[field_name] += line.total
     
-            # Monthly CTC = Gross + Employer contributions
-            rec.monthly_ctc = (
-                rec.gross_salary
-                + rec.employer_pf
-                + rec.employer_esi
-                + rec.gratuity
-            )
+        #     # Monthly CTC = Gross + Employer contributions
+        #     rec.monthly_ctc = (
+        #         rec.gross_salary
+        #         + rec.employer_pf
+        #         + rec.employer_esi
+        #         + rec.gratuity
+        #     )
     
-            rec.yearly_ctc = rec.monthly_ctc * 12
+        #     rec.yearly_ctc = rec.monthly_ctc * 12
 
 
     @api.depends('date_from')
