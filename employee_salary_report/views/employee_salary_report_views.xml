@@ -104,7 +104,7 @@
                     name="this_month"
                     domain="[('date_from','>=', context_today().replace(day=1))]"/>
 
-            <group expand="0" string="Group By">
+            <group>
                 <filter string="Employee" context="{'group_by':'employee_id'}"/>
                 <filter string="Month" context="{'group_by':'month_name'}"/>
                 <filter string="Contract" context="{'group_by':'contract_id'}"/>
