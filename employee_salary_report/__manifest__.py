@@ -11,6 +11,7 @@
      # 'views/employee_salary_report_views.xml',
       # 'views/hr_version_view_inherit.xml'
  ]
-'installable': True, 
-'application': False, 
-'license': 'LGPL-3'}
+'installable': True,
+'application': False,
+} 
+
