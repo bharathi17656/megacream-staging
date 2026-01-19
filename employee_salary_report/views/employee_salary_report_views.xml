@@ -100,9 +100,7 @@
             <field name="contract_id"/>
             <field name="payslip_id"/>
 
-            <filter string="This Month"
-                    name="this_month"
-                    domain="[('date_from','>=', context_today().replace(day=1))]"/>
+         
 
             <group>
                 <filter string="Employee" context="{'group_by':'employee_id'}"/>
