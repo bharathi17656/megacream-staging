@@ -89,7 +89,8 @@
         </form>
     </field>
 </record>
-
+    
+<!-- 
  <record id="view_employee_salary_report_search" model="ir.ui.view">
     <field name="name">employee.salary.report.search</field>
     <field name="model">employee.salary.report</field>
@@ -109,7 +110,7 @@
             </group>
         </search>
     </field>
-</record>
+</record> -->
 
 
  <record id="action_employee_salary_report" model="ir.actions.act_window">
