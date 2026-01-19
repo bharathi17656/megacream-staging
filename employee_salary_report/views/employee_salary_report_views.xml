@@ -13,7 +13,7 @@
             <field name="hra"/>
             <field name="spl_allowance"/>
             <field name="employee_pf"/>
-            <!-- <field name="prof_tax"/> -->
+            <field name="professional_tax"/>
             <field name="net_salary"/>
             <field name="ctc"/>
         </list>
@@ -63,7 +63,7 @@
                     <!-- Deductions -->
                     <group string="Deductions">
                         <field name="employee_pf"/>
-                        <field name="prof_tax"/>
+                        <field name="professional_tax"/>
                         <field name="insurance"/>
                         <field name="other_deduction"/>
                     </group>
