@@ -49,10 +49,6 @@ class EmployeeSalaryReport(models.Model):
     monthly_ctc = fields.Float(string="Monthly CTC", compute='_compute_from_payslip', store=True)
     yearly_ctc = fields.Float(string="Yearly CTC", compute='_compute_from_payslip', store=True)
 
-    _sql_constraints = [
-        ('unique_payslip', 'unique(payslip_id)', 'Salary report already created!')
-    ]
-
 
 
     @api.depends('payslip_id')
