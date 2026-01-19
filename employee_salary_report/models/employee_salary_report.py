@@ -91,10 +91,11 @@ class EmployeeSalaryReport(models.Model):
     @api.depends('date_from')
     def _compute_month_name(self):
         for rec in self:
-            rec.month_name = (
-                fields.Date.to_date(rec.date_from).strftime("%B %Y")
-                if rec.date_from else False
-            )
+            pass
+            # rec.month_name = (
+            #     fields.Date.to_date(rec.date_from).strftime("%B %Y")
+            #     if rec.date_from else False
+            # )
 
 
 
