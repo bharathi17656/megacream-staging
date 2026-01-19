@@ -15,7 +15,7 @@
             <field name="employee_pf"/>
             <field name="professional_tax"/>
             <field name="net_salary"/>
-            <field name="ctc"/>
+           
         </list>
     </field>
 </record>
@@ -79,7 +79,7 @@
 
                     <group string="Summary">
                         <field name="net_salary"/>
-                        <field name="ctc"/>
+                       
                         <field name="monthly_ctc"/>
                         <field name="yearly_ctc"/>
                     </group>
