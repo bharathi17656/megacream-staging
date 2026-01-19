@@ -64,7 +64,7 @@
                     <group string="Deductions">
                         <field name="employee_pf"/>
                         <field name="professional_tax"/>
-                        <field name="insurance"/>
+                        <!-- <field name="insurance"/> -->
                         <field name="other_deduction"/>
                     </group>
                 </group>
