@@ -7,7 +7,7 @@
  'category': 'Human Resources/Payroll', 
  'depends': ['hr', 'hr_payroll'], 
  'data': [
-    'security/ir.model.access.csv', 
+    # 'security/ir.model.access.csv', 
      # 'views/employee_salary_report_views.xml',
       # 'views/hr_version_view_inherit.xml'
  ]
