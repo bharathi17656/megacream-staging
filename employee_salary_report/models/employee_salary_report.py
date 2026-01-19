@@ -1,3 +1,7 @@
+from odoo import api, fields, models
+
+
+
 class EmployeeSalaryReport(models.Model):
     _name = 'employee.salary.report'
     _description = 'Employee Salary Report'
