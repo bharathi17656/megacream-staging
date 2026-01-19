@@ -16,7 +16,7 @@
             <field name="professional_tax"/>
             <field name="net_salary"/>
            
-        </list>
+        </list> 
     </field>
 </record>
 
