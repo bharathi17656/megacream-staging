@@ -7,9 +7,8 @@ RULE_MAP = {
     'HRA': 'hra',
     'CONVEYANCE': 'conveyance',
     'SPL': 'spl_allowance',
-    'SPECIAL': 'spl_allowance',
-    'BONUS': 'bonus',
-    'LEAVE_ENCASH': 'leave_encashment',
+    'P_BONUS': 'bonus',
+    'LTA': 'leave_encashment',
 
     # ===== GROSS / NET =====
     'GROSS': 'gross_salary',
@@ -17,14 +16,13 @@ RULE_MAP = {
 
     # ===== EMPLOYEE DEDUCTIONS =====
     'PF': 'employee_pf',
-    'EPF': 'employee_pf',
     'ESI': 'employee_esi',
     'PROF_TAX': 'professional_tax',
-    'PT': 'professional_tax',
+    'TDS': 'professional_tax',
     'OTHER_DED': 'other_deduction',
 
     # ===== EMPLOYER CONTRIBUTIONS =====
-    'EMP_PF': 'employer_pf',
+    'PFE': 'employer_pf',
     'EMP_ESI': 'employer_esi',
     'GRATUITY': 'gratuity',
 }
