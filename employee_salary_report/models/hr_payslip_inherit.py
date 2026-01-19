@@ -1,33 +1,38 @@
-from odoo import models ,fields , api , _
+from odoo import models, fields, api, _
 
 class HrPayslip(models.Model):
     _inherit = 'hr.payslip'
 
     pay_period = fields.Char(string="Pay Period", store=True)
 
+    # ----------------------------------------------------
+    # Payslip Name + Pay Period
+    # ----------------------------------------------------
     @api.depends('employee_id.legal_name', 'employee_id.lang', 'struct_id', 'date_from', 'date_to')
     def _compute_name(self):
+        super()._compute_name()  # ✅ IMPORTANT
+
         formated_date_cache = {}
         for slip in self.filtered(lambda p: p.employee_id and p.date_from and p.date_to):
-            lang = slip.employee_id.lang or self.env.user.lang
-            context = {'lang': lang}
-            payslip_name = slip.struct_id.payslip_name or _('Salary Slip')
-            del context
-
             slip.pay_period = slip._get_period_name(formated_date_cache)
+            slip.name = _('Payslip for the month of - %s') % slip.pay_period
 
-            slip.name = 'Payslip for the month of - %(dates)s' % {
-                'dates': slip._get_period_name(formated_date_cache),
-            }
-            
-
+    # ----------------------------------------------------
+    # Create Salary Report when Payslip is PAID
+    # ----------------------------------------------------
     def action_payslip_paid(self):
         res = super().action_payslip_paid()
+
+        SalaryReport = self.env['employee.salary.report']
+
         for slip in self:
-           contract = slip.version_id or False
-           self.env['employee.salary.report'].create({
+            # 🔒 Prevent duplicate creation
+            if SalaryReport.search([('payslip_id', '=', slip.id)], limit=1):
+                continue
+
+            SalaryReport.create({
                 'employee_id': slip.employee_id.id,
-                'contract_id': slip.contract_id.id,
+                'contract_id': slip.version_id.id if slip.version_id else False,
                 'payslip_id': slip.id,
                 'date_from': slip.date_from,
                 'date_to': slip.date_to,
@@ -35,16 +40,15 @@ class HrPayslip(models.Model):
 
         return res
 
+    # ----------------------------------------------------
+    # Cleanup Salary Report on Payslip Delete
+    # ----------------------------------------------------
     def unlink(self):
-        # remove related reports before deleting payslips
-        reports = self.env['employee.salary.report'].search([('payslip_id', 'in', self.ids)])
-        if reports:
-            reports.unlink()
+        self.env['employee.salary.report'].search([
+            ('payslip_id', 'in', self.ids)
+        ]).unlink()
+
         return super().unlink()
-
-
-
-
 
 
 # class HrVersion(models.Model):
