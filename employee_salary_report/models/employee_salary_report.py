@@ -1,5 +1,33 @@
 from odoo import api, fields, models
 
+RULE_MAP = {
+    # ===== EARNINGS =====
+    'BASIC': 'basic_da',
+    'BASIC_DA': 'basic_da',
+    'HRA': 'hra',
+    'CONVEYANCE': 'conveyance',
+    'SPL': 'spl_allowance',
+    'SPECIAL': 'spl_allowance',
+    'BONUS': 'bonus',
+    'LEAVE_ENCASH': 'leave_encashment',
+
+    # ===== GROSS / NET =====
+    'GROSS': 'gross_salary',
+    'NET': 'net_salary',
+
+    # ===== EMPLOYEE DEDUCTIONS =====
+    'PF': 'employee_pf',
+    'EPF': 'employee_pf',
+    'ESI': 'employee_esi',
+    'PROF_TAX': 'professional_tax',
+    'PT': 'professional_tax',
+    'OTHER_DED': 'other_deduction',
+
+    # ===== EMPLOYER CONTRIBUTIONS =====
+    'EMP_PF': 'employer_pf',
+    'EMP_ESI': 'employer_esi',
+    'GRATUITY': 'gratuity',
+}
 
 
 class EmployeeSalaryReport(models.Model):
