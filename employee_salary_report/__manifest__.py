@@ -10,7 +10,7 @@ Includes:
 - HRA
 - Allowances
 - PF / ESI
-- Deductions
+- Deductions 
 - Net Salary
 - CTC
 """,
