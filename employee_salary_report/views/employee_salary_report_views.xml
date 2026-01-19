@@ -57,7 +57,7 @@
                         <field name="spl_allowance"/>
                         <field name="conveyance"/>
                         <field name="bonus"/>
-                        <field name="encashment_leave"/>
+                        <field name="leave_encashment"/>
                     </group>
 
                     <!-- Deductions -->
