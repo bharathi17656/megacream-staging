@@ -1,6 +1,6 @@
 <odoo>
     <!-- Tree / List view with default group by month_name -->
-   <record id="view_employee_salary_report_tree" model="ir.ui.view">
+   <record id="view_employee_salary_report_tree" model="ir.ui.view"> 
     <field name="name">employee.salary.report.tree</field>
     <field name="model">employee.salary.report</field>
     <field name="arch" type="xml">
