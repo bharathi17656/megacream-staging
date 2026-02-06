@@ -51,6 +51,45 @@ class BiotimeService(models.Model):
     
             url = payload.get("next")
 
+    def _safe_paginated_get_line(self, start_url, username, password, max_pages=30):
+        url = start_url
+        seen_urls = set()
+        page = 0
+    
+        while url:
+            if url in seen_urls:
+                _logger.warning(
+                    "Biotime pagination stopped (repeated URL): %s", url
+                )
+                break
+    
+            if page >= max_pages:
+                _logger.warning(
+                    "Biotime pagination stopped (max pages %s reached)", max_pages
+                )
+                break
+    
+            seen_urls.add(url)
+            page += 1
+    
+            _logger.info("Fetching Biotime page %s: %s", page, url)
+    
+            res = requests.get(url, auth=(username, password), timeout=30)
+            res.raise_for_status()
+    
+            payload = res.json()
+            yield payload
+    
+            next_url = payload.get("next")
+    
+            # Normalize relative URL
+            if next_url and next_url.startswith("/"):
+                base = start_url.split("/iclock/api")[0]
+                next_url = base + next_url
+    
+            url = next_url
+
+
     
     def sync_terminals(self):
         base_url, username, password = self._get_config()
@@ -395,7 +434,7 @@ class BiotimeService(models.Model):
     
         ist = pytz.timezone("Asia/Kolkata")
     
-        for payload in self._safe_paginated_get(start_url, username, password):
+        for payload in self._safe_paginated_get_line(start_url, username, password):
             data = payload.get("data", [])
     
             _logger.info(
@@ -478,6 +517,7 @@ class BiotimeService(models.Model):
                 })
     
             # ---------------------------------
+
 
 
 
