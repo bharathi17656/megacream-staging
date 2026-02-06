@@ -295,17 +295,21 @@ class BiotimeService(models.Model):
         Employee = self.env['hr.employee']
     
         grouped = {}
+        processed_tx_ids = set()  # 🔑 IMPORTANT
     
         for payload in self._safe_paginated_get(start_url, username, password):
             data = payload.get("data", [])
+    
             _logger.info("Biotime transactions page fetched: %s records", len(data))
     
             for tx in data:
                 tx_id = tx.get("id")
-                if not tx_id:
+                if not tx_id or tx_id in processed_tx_ids:
                     continue
     
-                # ⛔ Skip if already imported (VERY IMPORTANT)
+                processed_tx_ids.add(tx_id)
+    
+                # ⛔ Already exists in DB
                 if HrAttendanceLine.search(
                     [('biotime_transaction_id', '=', tx_id)],
                     limit=1
@@ -317,7 +321,7 @@ class BiotimeService(models.Model):
                     continue
     
                 employee = Employee.search(
-                    [('x_studio_emp_id', '=', emp_code)],
+                    [('biotime_emp_code', '=', emp_code)],
                     limit=1
                 )
                 if not employee:
@@ -340,22 +344,23 @@ class BiotimeService(models.Model):
             if attendance:
                 attendance.write({'check_out': punches[-1]["punch_time"]})
             else:
-                attendance = HrAttendance.create({
-                    'employee_id': employee_id,
-                    'check_in': punches[0]["punch_time"],
-                    'check_out': punches[-1]["punch_time"],
-                })
-    
-            for tx in punches:
-                HrAttendanceLine.create({
-                    'attendance_id': attendance.id,
-                    'employee_id': employee_id,
-                    'punch_time': tx["punch_time"],
-                    'punch_state': tx["punch_state"],
-                    'terminal_sn': tx["terminal_sn"],
-                    'terminal_alias': tx["terminal_alias"],
-                    'biotime_transaction_id': tx["id"],
-                })
+            attendance = HrAttendance.create({
+                'employee_id': employee_id,
+                'check_in': punches[0]["punch_time"],
+                'check_out': punches[-1]["punch_time"],
+            })
+
+        for tx in punches:
+            HrAttendanceLine.create({
+                'attendance_id': attendance.id,
+                'employee_id': employee_id,
+                'punch_time': tx["punch_time"],
+                'punch_state': tx["punch_state"],
+                'terminal_sn': tx["terminal_sn"],
+                'terminal_alias': tx["terminal_alias"],
+                'biotime_transaction_id': tx["id"],
+            })
+
 
 
 
