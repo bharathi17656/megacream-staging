@@ -20,7 +20,7 @@ class BiotimeService(models.Model):
 
         if not base_url or not username or not password:
             raise UserError("Biotime credentials missing")
-        _logger.warning("This is ______________________________ username %s password %s link %s",username,password,base_url)
+        # _logger.warning("This is ______________________________ username %s password %s link %s",username,password,base_url)
         return base_url, username, password
 
     # ------------------------------------------------
@@ -35,13 +35,13 @@ class BiotimeService(models.Model):
         while url and url not in seen_urls and pages < max_pages:
             seen_urls.add(url)
             pages += 1
-            _logger.warning("This is ______________________________pages %s",pages)
+            # _logger.warning("This is ______________________________pages %s",pages)
     
             res = requests.get(url, auth=(username, password), timeout=30)
             res.raise_for_status()
     
             payload = res.json()
-            _logger.warning("This is ______________________________ payload details %s",payload)
+            # _logger.warning("This is ______________________________ payload details %s",payload)
             yield payload
     
             url = payload.get("next")
@@ -320,7 +320,7 @@ class BiotimeService(models.Model):
                     continue
     
                 employee = Employee.search(
-                    [('biotime_emp_code', '=', emp_code)],
+                    [('x_studio_emp_id', '=', emp_code)],
                     limit=1
                 )
                 if not employee:
@@ -359,3 +359,4 @@ class BiotimeService(models.Model):
                     'terminal_alias': tx["terminal_alias"],
                     'biotime_transaction_id': tx["id"],
                 })
+
