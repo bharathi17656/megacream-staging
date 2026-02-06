@@ -679,25 +679,40 @@ class BiotimeService(models.Model):
         query = parse_qs(parsed.query)
         query["page"] = [str(start_page)]
     
-        url = parsed._replace(query=urlencode(query, doseq=True)).geturl()
+        url = parsed._replace(
+            query=urlencode(query, doseq=True)
+        ).geturl()
     
         seen_urls = set()
-        page = start_page
+        page_count = 0   # 🔥 REAL limiter, not page number
     
         while url:
             if url in seen_urls:
-                _logger.warning("Biotime pagination stopped (repeated URL): %s", url)
+                _logger.warning(
+                    "Biotime pagination stopped (repeated URL): %s", url
+                )
                 break
     
-            if  page > max_pages  :
-                _logger.warning("Biotime pagination stopped (max pages %s reached)", max_pages)
+            if page_count >= max_pages:
+                _logger.warning(
+                    "Biotime pagination stopped (max pages %s reached)",
+                    max_pages
+                )
                 break
     
             seen_urls.add(url)
     
-            _logger.info("Fetching Biotime page %s: %s", page, url)
+            _logger.info(
+                "Fetching Biotime page #%s: %s",
+                page_count,
+                url
+            )
     
-            res = requests.get(url, auth=(username, password), timeout=30)
+            res = requests.get(
+                url,
+                auth=(username, password),
+                timeout=30
+            )
             res.raise_for_status()
     
             payload = res.json()
@@ -712,7 +727,8 @@ class BiotimeService(models.Model):
                 next_url = base + next_url
     
             url = next_url
-            page += 1
+            page_count += 1
+
 
     # def _safe_paginated_get_line_new(self,start_url,username,password,start_page=0,stop_page=100):
     #     parsed = urlparse(start_url)
@@ -972,6 +988,7 @@ class BiotimeService(models.Model):
                     'terminal_alias': tx.get("terminal_alias"),
                     'biotime_transaction_id': tx["id"],
                 })
+
 
 
 
