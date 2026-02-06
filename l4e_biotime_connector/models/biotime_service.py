@@ -170,7 +170,7 @@ class BiotimeService(models.Model):
                 emp_code = b["employee"].split()[0]
     
                 employee = Employee.search(
-                    [('biotime_emp_code', '=', emp_code)],
+                    [('x_studio_emp_id', '=', emp_code)],
                     limit=1
                 )
     
@@ -315,7 +315,7 @@ class BiotimeService(models.Model):
                     continue
     
                 employee = Employee.search(
-                    [('biotime_emp_code', '=', emp_code)],
+                    [('x_studio_emp_id', '=', emp_code)],
                     limit=1
                 )
                 if not employee:
@@ -354,6 +354,7 @@ class BiotimeService(models.Model):
                     'terminal_alias': tx["terminal_alias"],
                     'biotime_transaction_id': tx["id"],
                 })
+
 
 
 
