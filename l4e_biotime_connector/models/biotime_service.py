@@ -689,7 +689,7 @@ class BiotimeService(models.Model):
                 _logger.warning("Biotime pagination stopped (repeated URL): %s", url)
                 break
     
-            if page > max_pages:
+            if max_pages > page  :
                 _logger.warning("Biotime pagination stopped (max pages %s reached)", max_pages)
                 break
     
@@ -935,6 +935,7 @@ class BiotimeService(models.Model):
                     'terminal_alias': tx.get("terminal_alias"),
                     'biotime_transaction_id': tx["id"],
                 })
+
 
 
 
