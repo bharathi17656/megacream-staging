@@ -2,6 +2,11 @@ import requests
 from odoo import models, fields
 from odoo.exceptions import UserError
 import logging
+
+from datetime import datetime
+import pytz
+
+
 _logger = logging.getLogger(__name__)
 
 
@@ -326,7 +331,23 @@ class BiotimeService(models.Model):
                 if not employee:
                     continue
     
-                punch_time = fields.Datetime.from_string(tx["punch_time"])
+                # punch_time = fields.Datetime.from_string(tx["punch_time"])
+                # Biotime sends IST
+                ist = pytz.timezone("Asia/Kolkata")
+                
+                local_dt = datetime.strptime(
+                    tx["punch_time"],
+                    "%Y-%m-%d %H:%M:%S"
+                )
+                
+                # Attach IST timezone
+                ist_dt = ist.localize(local_dt)
+                
+                # Convert to UTC
+                punch_time_utc = ist_dt.astimezone(pytz.UTC)
+                
+                # Convert to Odoo-compatible string
+                punch_time = fields.Datetime.to_string(punch_time_utc)
                 date = punch_time.date()
     
                 grouped.setdefault((employee.id, date), []).append(tx)
@@ -359,4 +380,5 @@ class BiotimeService(models.Model):
                     'terminal_alias': tx["terminal_alias"],
                     'biotime_transaction_id': tx["id"],
                 })
+
 
