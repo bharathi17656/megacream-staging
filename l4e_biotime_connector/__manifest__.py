@@ -6,17 +6,18 @@
     "depends": ["hr"],
     "data": [
          "security/ir.model.access.csv", 
-        # "views/biotime_menu.xml",
+        "views/biotime_menu.xml",
         "views/biotime_terminal_view.xml",
         "views/biotime_biodata_view.xml",
         
-        # "views/hr_attendance_line_view.xml",
+        "views/hr_attendance_line_view.xml",
 
     ], 
     "installable": True,
     'application': True,
     'license': 'LGPL-3',
 }
+
 
 
 
