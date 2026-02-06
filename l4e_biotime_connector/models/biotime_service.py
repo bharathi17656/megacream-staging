@@ -672,8 +672,8 @@ class BiotimeService(models.Model):
         start_url,
         username,
         password,
-        start_page=100,
-        max_pages=200,
+        start_page=200,
+        max_pages=100,
     ):
         parsed = urlparse(start_url)
         query = parse_qs(parsed.query)
@@ -712,7 +712,7 @@ class BiotimeService(models.Model):
                 next_url = base + next_url
     
             url = next_url
-            page += 1
+            page -= 1
 
 
 
@@ -775,8 +775,8 @@ class BiotimeService(models.Model):
             start_url,
             username,
             password,
-            start_page=100,
-            max_pages=200,
+            start_page=200,
+            max_pages=100,
         ):
             data = payload.get("data", [])
     
@@ -935,6 +935,7 @@ class BiotimeService(models.Model):
                     'terminal_alias': tx.get("terminal_alias"),
                     'biotime_transaction_id': tx["id"],
                 })
+
 
 
 
