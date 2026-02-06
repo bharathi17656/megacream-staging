@@ -23,7 +23,7 @@ class HrAttendanceLine(models.Model):
     terminal_sn = fields.Char()
     terminal_alias = fields.Char()
 
-    biotime_transaction_id = fields.BigInteger(index=True)
+    biotime_transaction_id = fields.Integer(index=True)
 
     _sql_constraints = [
         (
@@ -32,3 +32,4 @@ class HrAttendanceLine(models.Model):
             "Duplicate Biotime transaction"
         )
     ]
+
