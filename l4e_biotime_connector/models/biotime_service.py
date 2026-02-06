@@ -51,43 +51,6 @@ class BiotimeService(models.Model):
     
             url = payload.get("next")
 
-    def _safe_paginated_get_line(self, start_url, username, password, max_pages=30):
-        url = start_url
-        seen_urls = set()
-        page = 0
-    
-        while url:
-            if url in seen_urls:
-                _logger.warning(
-                    "Biotime pagination stopped (repeated URL): %s", url
-                )
-                break
-    
-            if page >= max_pages:
-                _logger.warning(
-                    "Biotime pagination stopped (max pages %s reached)", max_pages
-                )
-                break
-    
-            seen_urls.add(url)
-            page += 1
-    
-            _logger.info("Fetching Biotime page %s: %s", page, url)
-    
-            res = requests.get(url, auth=(username, password), timeout=30)
-            res.raise_for_status()
-    
-            payload = res.json()
-            yield payload
-    
-            next_url = payload.get("next")
-    
-            # Normalize relative URL
-            if next_url and next_url.startswith("/"):
-                base = start_url.split("/iclock/api")[0]
-                next_url = base + next_url
-    
-            url = next_url
 
 
     
@@ -421,6 +384,46 @@ class BiotimeService(models.Model):
     #             })
 
 
+    def _safe_paginated_get_line(self, start_url, username, password, max_pages=30):
+        url = start_url
+        seen_urls = set()
+        page = 0
+    
+        while url:
+            if url in seen_urls:
+                _logger.warning(
+                    "Biotime pagination stopped (repeated URL): %s", url
+                )
+                break
+    
+            if page >= max_pages:
+                _logger.warning(
+                    "Biotime pagination stopped (max pages %s reached)", max_pages
+                )
+                break
+    
+            seen_urls.add(url)
+            page += 1
+    
+            _logger.info("Fetching Biotime page %s: %s", page, url)
+    
+            res = requests.get(url, auth=(username, password), timeout=30)
+            res.raise_for_status()
+    
+            payload = res.json()
+            yield payload
+    
+            next_url = payload.get("next")
+    
+            # Normalize relative URL
+            if next_url and next_url.startswith("/"):
+                base = start_url.split("/iclock/api")[0]
+                next_url = base + next_url
+    
+            url = next_url
+
+
+
     def sync_attendance(self):
         base_url, username, password = self._get_config()
         start_url = f"{base_url}/iclock/api/transactions/"
@@ -497,28 +500,54 @@ class BiotimeService(models.Model):
         # CREATE / UPDATE ATTENDANCE
         # ---------------------------------
         for (employee_id, date), punches in grouped.items():
+            # Sort by actual UTC time
             punches.sort(key=lambda x: x["_punch_time_utc"])
-    
+        
+            check_in = punches[0]["_punch_time_utc"]
+            check_out = punches[-1]["_punch_time_utc"]
+        
+            # ⛔ ABSOLUTE SAFETY (Odoo core constraint)
+            if check_out < check_in:
+                _logger.warning(
+                    "Skipping invalid attendance (night-shift split needed): emp=%s date=%s",
+                    employee_id, date
+                )
+                continue
+        
             attendance = HrAttendance.search([
                 ('employee_id', '=', employee_id),
                 ('check_in', '>=', f"{date} 00:00:00"),
                 ('check_in', '<=', f"{date} 23:59:59"),
             ], limit=1)
-    
+        
             if attendance:
                 attendance.write({
-                    'check_out': punches[-1]["_punch_time_utc"]
+                    'check_out': check_out
                 })
             else:
                 attendance = HrAttendance.create({
                     'employee_id': employee_id,
-                    'check_in': punches[0]["_punch_time_utc"],
-                    'check_out': punches[-1]["_punch_time_utc"],
+                    'check_in': check_in,
+                    'check_out': check_out,
                 })
-    
+        
             # ---------------------------------
-
-
-
-
-
+            # ✅ ALWAYS CREATE ATTENDANCE LINES
+            # ---------------------------------
+            for tx in punches:
+                # Double safety: prevent duplicate lines
+                if HrAttendanceLine.search(
+                    [('biotime_transaction_id', '=', tx["id"])],
+                    limit=1
+                ):
+                    continue
+        
+                HrAttendanceLine.create({
+                    'attendance_id': attendance.id,
+                    'employee_id': employee_id,
+                    'punch_time': tx["_punch_time_utc"],
+                    'punch_state': tx.get("punch_state"),
+                    'terminal_sn': tx.get("terminal_sn"),
+                    'terminal_alias': tx.get("terminal_alias"),
+                    'biotime_transaction_id': tx["id"],
+                })
