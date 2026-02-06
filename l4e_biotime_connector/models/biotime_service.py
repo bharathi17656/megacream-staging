@@ -812,8 +812,8 @@ class BiotimeService(models.Model):
             start_url,
             username,
             password,
-            start_page=200,
-            stop_page=100,
+            start_page=100,
+            stop_page=0,
         ):
             data = payload.get("data", [])
     
