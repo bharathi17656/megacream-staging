@@ -34,12 +34,23 @@ class BiotimeService(models.Model):
         res.raise_for_status()
         _logger.warning("This is ______________________________ record terminal %s",res)
 
-        Terminal = self.env['biotime.terminal']
+        _logger.warning(
+            "Biotime terminal API response: status=%s, count=%s",
+            res.status_code,
+            len(res.json().get('data', []))
+        )
 
-        for t in res.json().get("data", []):
-            Terminal.search([
+        Terminal = self.env['biotime.terminal']
+        data = res.json().get('data', [])
+
+        for t in data:
+
+            terminal = Terminal.search([
                 ('biotime_id', '=', t['id'])
-            ], limit=1).write({
+            ], limit=1)
+            
+            vals = {
+                'biotime_id': t.get('id'),
                 'sn': t.get('sn'),
                 'ip_address': t.get('ip_address'),
                 'alias': t.get('alias'),
@@ -60,7 +71,12 @@ class BiotimeService(models.Model):
                 'is_attendance': t.get('is_attendance'),
                 'area_name': t.get('area_name'),
                 'company_uid': t.get('company'),
-            }) or Terminal.create({'biotime_id': t['id'], **t})
+            }
+            
+            if terminal:
+                terminal.write(vals)
+            else:
+                Terminal.create(vals)
 
     # ------------------------------------------------
     # FETCH BIODATA
@@ -171,4 +187,5 @@ class BiotimeService(models.Model):
                     'terminal_alias': tx['terminal_alias'],
                     'biotime_transaction_id': tx['id'],
                 })
+
 
