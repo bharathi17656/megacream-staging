@@ -1,0 +1,10 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+
+access_biotime_terminal_user,biotime.terminal user,model_biotime_terminal,base.group_user,1,0,0,0
+access_biotime_terminal_manager,biotime.terminal manager,model_biotime_terminal,hr.group_hr_manager,1,1,1,1
+
+access_biotime_biodata_user,biotime.biodata user,model_biotime_biodata,base.group_user,1,0,0,0
+access_biotime_biodata_manager,biotime.biodata manager,model_biotime_biodata,hr.group_hr_manager,1,1,1,1
+
+access_hr_attendance_line_user,hr.attendance.line user,model_hr_attendance_line,base.group_user,1,0,0,0
+access_hr_attendance_line_manager,hr.attendance.line manager,model_hr_attendance_line,hr.group_hr_manager,1,1,1,1
