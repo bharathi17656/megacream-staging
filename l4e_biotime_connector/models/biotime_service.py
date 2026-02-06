@@ -5,7 +5,7 @@ import logging
 
 from datetime import datetime
 import pytz
-
+from urllib.parse import urlencode, urlparse, parse_qs
 
 _logger = logging.getLogger(__name__)
 
@@ -423,6 +423,64 @@ class BiotimeService(models.Model):
             url = next_url
 
 
+   
+
+    def _safe_paginated_get_line_new(
+        self,
+        start_url,
+        username,
+        password,
+        start_page=100,
+        max_pages=200,
+    ):
+        # -------------------------------------------------
+        # Force starting page at API level
+        # -------------------------------------------------
+        parsed = urlparse(start_url)
+        query = parse_qs(parsed.query)
+        query["page"] = [str(start_page)]
+    
+        url = parsed._replace(query=urlencode(query, doseq=True)).geturl()
+    
+        seen_urls = set()
+        page = start_page
+    
+        while url:
+            if url in seen_urls:
+                _logger.warning(
+                    "Biotime pagination stopped (repeated URL): %s", url
+                )
+                break
+    
+            if page > max_pages:
+                _logger.warning(
+                    "Biotime pagination stopped (max pages %s reached)", max_pages
+                )
+                break
+    
+            seen_urls.add(url)
+    
+            _logger.info("Fetching Biotime page %s: %s", page, url)
+    
+            res = requests.get(url, auth=(username, password), timeout=30)
+            res.raise_for_status()
+    
+            payload = res.json()
+            yield payload
+    
+            next_url = payload.get("next")
+    
+            if not next_url:
+                break
+    
+            # Normalize relative URL
+            if next_url.startswith("/"):
+                base = start_url.split("/iclock/api")[0]
+                next_url = base + next_url
+    
+            url = next_url
+            page += 1
+
 
     def sync_attendance(self):
         base_url, username, password = self._get_config()
@@ -437,7 +495,9 @@ class BiotimeService(models.Model):
     
         ist = pytz.timezone("Asia/Kolkata")
     
-        for payload in self._safe_paginated_get_line(start_url, username, password):
+        # for payload in self._safe_paginated_get_line(start_url, username, password):
+        
+        for payload in self._safe_paginated_get_line_new(start_url, username, password,start_page=100,max_pages=200):
             data = payload.get("data", [])
     
             _logger.info(
@@ -551,6 +611,7 @@ class BiotimeService(models.Model):
                     'terminal_alias': tx.get("terminal_alias"),
                     'biotime_transaction_id': tx["id"],
                 })
+
 
 
 
