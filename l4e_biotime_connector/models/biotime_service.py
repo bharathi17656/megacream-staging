@@ -714,7 +714,7 @@ class BiotimeService(models.Model):
     #         url = next_url
     #         page -= 1
 
-    def _safe_paginated_get_line_new(self,start_url,username,password,start_page=200,stop_page=100):
+    def _safe_paginated_get_line_new(self,start_url,username,password,start_page=0,stop_page=100):
         parsed = urlparse(start_url)
         query = parse_qs(parsed.query)
         query["page"] = [str(start_page)]
@@ -724,7 +724,7 @@ class BiotimeService(models.Model):
         seen_urls = set()
         page = start_page
     
-        while url and page >= stop_page:
+        while url and page > stop_page:
             if url in seen_urls:
                 _logger.warning("Biotime pagination stopped (repeated URL): %s", url)
                 break
@@ -748,7 +748,7 @@ class BiotimeService(models.Model):
                 next_url = base + next_url
     
             url = next_url
-            page -= 1   # 👈 move backward
+            page += 1   # 👈 move backward
     
     
 
@@ -972,6 +972,7 @@ class BiotimeService(models.Model):
                     'terminal_alias': tx.get("terminal_alias"),
                     'biotime_transaction_id': tx["id"],
                 })
+
 
 
 
