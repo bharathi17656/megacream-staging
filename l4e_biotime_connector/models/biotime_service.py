@@ -212,7 +212,7 @@ class BiotimeService(models.Model):
     
     
 
-    def _safe_paginated_get_line_new(self,start_url,username,password,start_page=1,max_pages=100):
+    def _safe_paginated_get_line_new(self,start_url,username,password,start_page=1,max_pages=25):
         parsed = urlparse(start_url)
         query = parse_qs(parsed.query)
         query["page"] = [str(start_page)]
@@ -323,7 +323,7 @@ class BiotimeService(models.Model):
     
         ist = pytz.timezone("Asia/Kolkata")
     
-        for payload in self._safe_paginated_get_line_new(start_url,username,password,start_page=1,max_pages=170 ):
+        for payload in self._safe_paginated_get_line_new(start_url,username,password,start_page=1,max_pages=25 ):
             data = payload.get("data", [])
     
             _logger.info("Biotime transactions page fetched: %s records", len(data))
@@ -479,6 +479,7 @@ class BiotimeService(models.Model):
                     'terminal_alias': tx.get("terminal_alias"),
                     'biotime_transaction_id': tx["id"],
                 })
+
 
 
 
