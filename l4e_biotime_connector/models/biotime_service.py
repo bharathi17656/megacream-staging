@@ -876,7 +876,7 @@ class BiotimeService(models.Model):
 
     def sync_attendance(self):
         base_url, username, password = self._get_config()
-        start_url = f"{base_url}/iclock/api/transactions/?ordering=+-id"
+        start_url = f"{base_url}/iclock/api/transactions/?ordering=-id"
     
         HrAttendance = self.env['hr.attendance']
         HrAttendanceLine = self.env['hr.attendance.line']
@@ -1051,6 +1051,7 @@ class BiotimeService(models.Model):
                     'terminal_alias': tx.get("terminal_alias"),
                     'biotime_transaction_id': tx["id"],
                 })
+
 
 
 
