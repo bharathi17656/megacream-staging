@@ -285,7 +285,6 @@ class BiotimeService(models.Model):
     #                 'terminal_alias': tx.get('terminal_alias'),
     #                 'biotime_transaction_id': tx.get('id'),
     #             })
-
     def sync_attendance(self):
         base_url, username, password = self._get_config()
         start_url = f"{base_url}/iclock/api/transactions/"
@@ -344,26 +343,19 @@ class BiotimeService(models.Model):
             if attendance:
                 attendance.write({'check_out': punches[-1]["punch_time"]})
             else:
-            attendance = HrAttendance.create({
-                'employee_id': employee_id,
-                'check_in': punches[0]["punch_time"],
-                'check_out': punches[-1]["punch_time"],
-            })
-
-        for tx in punches:
-            HrAttendanceLine.create({
-                'attendance_id': attendance.id,
-                'employee_id': employee_id,
-                'punch_time': tx["punch_time"],
-                'punch_state': tx["punch_state"],
-                'terminal_sn': tx["terminal_sn"],
-                'terminal_alias': tx["terminal_alias"],
-                'biotime_transaction_id': tx["id"],
-            })
-
-
-
-
-
-
-
+                attendance = HrAttendance.create({
+                    'employee_id': employee_id,
+                    'check_in': punches[0]["punch_time"],
+                    'check_out': punches[-1]["punch_time"],
+                })
+    
+            for tx in punches:
+                HrAttendanceLine.create({
+                    'attendance_id': attendance.id,
+                    'employee_id': employee_id,
+                    'punch_time': tx["punch_time"],
+                    'punch_state': tx["punch_state"],
+                    'terminal_sn': tx["terminal_sn"],
+                    'terminal_alias': tx["terminal_alias"],
+                    'biotime_transaction_id': tx["id"],
+                })
