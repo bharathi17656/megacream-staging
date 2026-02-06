@@ -1,0 +1,60 @@
+<odoo>
+
+    <!-- ACTION -->
+    <record id="action_biotime_biodata" model="ir.actions.act_window">
+        <field name="name">Biotime Biodata</field>
+        <field name="res_model">biotime.biodata</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <!-- TREE -->
+    <record id="view_biotime_biodata_tree" model="ir.ui.view">
+        <field name="name">biotime.biodata.tree</field>
+        <field name="model">biotime.biodata</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="employee_name"/>
+                <field name="emp_code"/>
+                <field name="bio_type"/>
+                <field name="bio_no"/>
+                <field name="major_ver"/>
+                <field name="update_time"/>
+                <field name="employee_id"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- FORM -->
+    <record id="view_biotime_biodata_form" model="ir.ui.view">
+        <field name="name">biotime.biodata.form</field>
+        <field name="model">biotime.biodata</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="employee_name"/>
+                            <field name="emp_code"/>
+                            <field name="employee_id"/>
+                        </group>
+                        <group>
+                            <field name="bio_type"/>
+                            <field name="bio_no"/>
+                            <field name="bio_index"/>
+                            <field name="major_ver"/>
+                        </group>
+                    </group>
+
+                    <group string="Biometric Template">
+                        <field name="bio_tmp" widget="text"/>
+                    </group>
+
+                    <group>
+                        <field name="update_time"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+</odoo>
