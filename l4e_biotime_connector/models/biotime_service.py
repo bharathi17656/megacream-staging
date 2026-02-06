@@ -835,15 +835,19 @@ class BiotimeService(models.Model):
         
             check_in = punches[0]["_punch_time_utc"]
             check_out = punches[-1]["_punch_time_utc"]
-            
-            self._auto_close_old_attendance(employee, check_in)
+        
+            # 🔥 FIX: always use correct employee
+            employee_rec = Employee.browse(employee_id)
+        
+            # Auto-close old open attendance FIRST
+            self._auto_close_old_attendance(employee_rec, check_in)
         
             attendance = HrAttendance.search([
                 ('employee_id', '=', employee_id),
                 ('check_in', '>=', f"{date} 00:00:00"),
                 ('check_in', '<=', f"{date} 23:59:59"),
             ], limit=1)
-        
+
             # ----------------------------
             # ✅ SINGLE PUNCH DAY
             # ----------------------------
@@ -916,6 +920,7 @@ class BiotimeService(models.Model):
                     'terminal_alias': tx.get("terminal_alias"),
                     'biotime_transaction_id': tx["id"],
                 })
+
 
 
 
