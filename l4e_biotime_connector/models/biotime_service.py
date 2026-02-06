@@ -580,16 +580,52 @@ class BiotimeService(models.Model):
                 ('check_in', '<=', f"{date} 23:59:59"),
             ], limit=1)
         
+            # if attendance:
+            #     attendance.write({
+            #         'check_out': check_out
+            #     })
             if attendance:
+    # FINAL SAFETY CHECK (Odoo hard constraint)
+                if check_out <= attendance.check_in:
+                    _logger.warning(
+                        "Skipping invalid attendance update "
+                        "(check_out <= check_in): emp=%s attendance=%s "
+                        "check_in=%s check_out=%s",
+                        employee_id,
+                        attendance.id,
+                        attendance.check_in,
+                        check_out,
+                    )
+                    continue
+            
                 attendance.write({
                     'check_out': check_out
                 })
+
             else:
+                # attendance = HrAttendance.create({
+                #     'employee_id': employee_id,
+                #     'check_in': check_in,
+                #     'check_out': check_out,
+                # })
+                if check_out <= check_in:
+                    _logger.warning(
+                        "Skipping invalid attendance CREATE "
+                        "(check_out <= check_in): emp=%s date=%s "
+                        "check_in=%s check_out=%s",
+                        employee_id,
+                        date,
+                        check_in,
+                        check_out,
+                    )
+                    continue
+                
                 attendance = HrAttendance.create({
                     'employee_id': employee_id,
                     'check_in': check_in,
                     'check_out': check_out,
                 })
+
         
             # ---------------------------------
             # ✅ ALWAYS CREATE ATTENDANCE LINES
@@ -611,6 +647,7 @@ class BiotimeService(models.Model):
                     'terminal_alias': tx.get("terminal_alias"),
                     'biotime_transaction_id': tx["id"],
                 })
+
 
 
 
