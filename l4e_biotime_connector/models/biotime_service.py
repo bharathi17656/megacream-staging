@@ -32,7 +32,7 @@ class BiotimeService(models.Model):
     # FETCH TERMINALS
     # ------------------------------------------------
 
-    def _safe_paginated_get(self, start_url, username, password, max_pages=50):
+    def _safe_paginated_get(self, start_url, username, password, max_pages=1000):
         url = start_url
         seen_urls = set()
         pages = 0
@@ -384,7 +384,7 @@ class BiotimeService(models.Model):
     #             })
 
 
-    def _safe_paginated_get_line(self, start_url, username, password, max_pages=30):
+    def _safe_paginated_get_line(self, start_url, username, password, max_pages=1000):
         url = start_url
         seen_urls = set()
         page = 0
@@ -551,3 +551,4 @@ class BiotimeService(models.Model):
                     'terminal_alias': tx.get("terminal_alias"),
                     'biotime_transaction_id': tx["id"],
                 })
+
