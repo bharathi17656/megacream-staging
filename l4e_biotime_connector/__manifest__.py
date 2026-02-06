@@ -5,7 +5,7 @@
     "category": "HR",
     "depends": ["hr"],
     "data": [
-         "security/ir.model.access.csv",
+         "security/ir.model.access.csv", 
         # "views/biotime_menu.xml",
         "views/biotime_terminal_view.xml",
         "views/biotime_biodata_view.xml",
@@ -17,6 +17,7 @@
     'application': True,
     'license': 'LGPL-3',
 }
+
 
 
 
