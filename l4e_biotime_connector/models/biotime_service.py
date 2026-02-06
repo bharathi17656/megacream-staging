@@ -425,6 +425,240 @@ class BiotimeService(models.Model):
 
    
 
+    # def _safe_paginated_get_line_new(
+    #     self,
+    #     start_url,
+    #     username,
+    #     password,
+    #     start_page=100,
+    #     max_pages=200,
+    # ):
+    #     # -------------------------------------------------
+    #     # Force starting page at API level
+    #     # -------------------------------------------------
+    #     parsed = urlparse(start_url)
+    #     query = parse_qs(parsed.query)
+    #     query["page"] = [str(start_page)]
+    
+    #     url = parsed._replace(query=urlencode(query, doseq=True)).geturl()
+    
+    #     seen_urls = set()
+    #     page = start_page
+    
+    #     while url:
+    #         if url in seen_urls:
+    #             _logger.warning(
+    #                 "Biotime pagination stopped (repeated URL): %s", url
+    #             )
+    #             break
+    
+    #         if page > max_pages:
+    #             _logger.warning(
+    #                 "Biotime pagination stopped (max pages %s reached)", max_pages
+    #             )
+    #             break
+    
+    #         seen_urls.add(url)
+    
+    #         _logger.info("Fetching Biotime page %s: %s", page, url)
+    
+    #         res = requests.get(url, auth=(username, password), timeout=30)
+    #         res.raise_for_status()
+    
+    #         payload = res.json()
+    #         yield payload
+    
+    #         next_url = payload.get("next")
+    
+    #         if not next_url:
+    #             break
+    
+    #         # Normalize relative URL
+    #         if next_url.startswith("/"):
+    #             base = start_url.split("/iclock/api")[0]
+    #             next_url = base + next_url
+    
+    #         url = next_url
+    #         page += 1
+
+
+    # def sync_attendance(self):
+    #     base_url, username, password = self._get_config()
+    #     start_url = (f"{base_url}/iclock/api/transactions/?ordering=+-id")
+    
+    #     HrAttendance = self.env['hr.attendance']
+    #     HrAttendanceLine = self.env['hr.attendance.line']
+    #     Employee = self.env['hr.employee']
+    
+    #     grouped = {}
+    #     processed_tx_ids = set()  # prevents same-run duplicates
+    
+    #     ist = pytz.timezone("Asia/Kolkata")
+    
+    #     # for payload in self._safe_paginated_get_line(start_url, username, password):
+        
+    #     for payload in self._safe_paginated_get_line_new(start_url, username, password,start_page=100,max_pages=200):
+    #         data = payload.get("data", [])
+    
+    #         _logger.info(
+    #             "Biotime transactions page fetched: %s records",
+    #             len(data)
+    #         )
+    
+    #         for tx in data:
+    #             tx_id = tx.get("id")
+    #             if not tx_id or tx_id in processed_tx_ids:
+    #                 continue
+    
+    #             processed_tx_ids.add(tx_id)
+    
+    #             # Skip if already imported in DB
+    #             if HrAttendanceLine.search(
+    #                 [('biotime_transaction_id', '=', tx_id)],
+    #                 limit=1
+    #             ):
+    #                 continue
+    
+    #             emp_code = tx.get("emp_code")
+    #             if not emp_code:
+    #                 continue
+    
+    #             employee = Employee.search(
+    #                 [('x_studio_emp_id', '=', emp_code)],
+    #                 limit=1
+    #             )
+    #             if not employee:
+    #                 continue
+    
+    #             # -------------------------------
+    #             # TIMEZONE FIX (IST → UTC)
+    #             # -------------------------------
+    #             try:
+    #                 local_dt = datetime.strptime(
+    #                     tx["punch_time"],
+    #                     "%Y-%m-%d %H:%M:%S"
+    #                 )
+    #             except Exception:
+    #                 _logger.warning(
+    #                     "Invalid punch_time format: %s", tx.get("punch_time")
+    #                 )
+    #                 continue
+    
+    #             ist_dt = ist.localize(local_dt)
+    #             utc_dt = ist_dt.astimezone(pytz.UTC)
+    
+    #             # store converted values back into tx
+    #             tx["_punch_time_utc"] = fields.Datetime.to_string(utc_dt)
+    #             tx["_punch_date_ist"] = ist_dt.date()
+    
+    #             grouped.setdefault(
+    #                 (employee.id, tx["_punch_date_ist"]),
+    #                 []
+    #             ).append(tx)
+    
+    #     # ---------------------------------
+    #     # CREATE / UPDATE ATTENDANCE
+    #     # ---------------------------------
+    #     for (employee_id, date), punches in grouped.items():
+    #         # Sort by actual UTC time
+    #         punches.sort(key=lambda x: x["_punch_time_utc"])
+        
+    #         check_in = punches[0]["_punch_time_utc"]
+    #         check_out = punches[-1]["_punch_time_utc"]
+        
+    #         # ⛔ ABSOLUTE SAFETY (Odoo core constraint)
+    #         if check_out < check_in:
+    #             _logger.warning(
+    #                 "Skipping invalid attendance (night-shift split needed): emp=%s date=%s",
+    #                 employee_id, date
+    #             )
+    #             continue
+        
+    #         attendance = HrAttendance.search([
+    #             ('employee_id', '=', employee_id),
+    #             ('check_in', '>=', f"{date} 00:00:00"),
+    #             ('check_in', '<=', f"{date} 23:59:59"),
+    #         ], limit=1)
+        
+    #         # if attendance:
+    #         #     attendance.write({
+    #         #         'check_out': check_out
+    #         #     })
+    #         if attendance:
+    # # FINAL SAFETY CHECK (Odoo hard constraint)
+    #             if check_out <= attendance.check_in:
+    #                 _logger.warning(
+    #                     "Skipping invalid attendance update "
+    #                     "(check_out <= check_in): emp=%s attendance=%s "
+    #                     "check_in=%s check_out=%s",
+    #                     employee_id,
+    #                     attendance.id,
+    #                     attendance.check_in,
+    #                     check_out,
+    #                 )
+    #                 continue
+            
+    #             attendance.write({
+    #                 'check_out': check_out
+    #             })
+
+    #         else:
+    #             # attendance = HrAttendance.create({
+    #             #     'employee_id': employee_id,
+    #             #     'check_in': check_in,
+    #             #     'check_out': check_out,
+    #             # })
+    #             if check_out <= check_in:
+    #                 _logger.warning(
+    #                     "Skipping invalid attendance CREATE "
+    #                     "(check_out <= check_in): emp=%s date=%s "
+    #                     "check_in=%s check_out=%s",
+    #                     employee_id,
+    #                     date,
+    #                     check_in,
+    #                     check_out,
+    #                 )
+    #                 continue
+                
+    #             attendance = HrAttendance.create({
+    #                 'employee_id': employee_id,
+    #                 'check_in': check_in,
+    #                 'check_out': check_out,
+    #             })
+
+        
+    #         # ---------------------------------
+    #         # ✅ ALWAYS CREATE ATTENDANCE LINES
+    #         # ---------------------------------
+    #         for tx in punches:
+    #             # Double safety: prevent duplicate lines
+    #             if HrAttendanceLine.search(
+    #                 [('biotime_transaction_id', '=', tx["id"])],
+    #                 limit=1
+    #             ):
+    #                 continue
+        
+    #             HrAttendanceLine.create({
+    #                 'attendance_id': attendance.id,
+    #                 'employee_id': employee_id,
+    #                 'punch_time': tx["_punch_time_utc"],
+    #                 'punch_state': tx.get("punch_state"),
+    #                 'terminal_sn': tx.get("terminal_sn"),
+    #                 'terminal_alias': tx.get("terminal_alias"),
+    #                 'biotime_transaction_id': tx["id"],
+    #             })
+
+
+
+
+
+
+
+    
+    
+    
+    
+    
     def _safe_paginated_get_line_new(
         self,
         start_url,
@@ -433,9 +667,6 @@ class BiotimeService(models.Model):
         start_page=100,
         max_pages=200,
     ):
-        # -------------------------------------------------
-        # Force starting page at API level
-        # -------------------------------------------------
         parsed = urlparse(start_url)
         query = parse_qs(parsed.query)
         query["page"] = [str(start_page)]
@@ -447,15 +678,11 @@ class BiotimeService(models.Model):
     
         while url:
             if url in seen_urls:
-                _logger.warning(
-                    "Biotime pagination stopped (repeated URL): %s", url
-                )
+                _logger.warning("Biotime pagination stopped (repeated URL): %s", url)
                 break
     
             if page > max_pages:
-                _logger.warning(
-                    "Biotime pagination stopped (max pages %s reached)", max_pages
-                )
+                _logger.warning("Biotime pagination stopped (max pages %s reached)", max_pages)
                 break
     
             seen_urls.add(url)
@@ -469,41 +696,41 @@ class BiotimeService(models.Model):
             yield payload
     
             next_url = payload.get("next")
-    
             if not next_url:
                 break
     
-            # Normalize relative URL
             if next_url.startswith("/"):
                 base = start_url.split("/iclock/api")[0]
                 next_url = base + next_url
     
             url = next_url
             page += 1
+    
 
 
     def sync_attendance(self):
         base_url, username, password = self._get_config()
-        start_url = (f"{base_url}/iclock/api/transactions/?ordering=+-id")
+        start_url = f"{base_url}/iclock/api/transactions/?ordering=+-id"
     
         HrAttendance = self.env['hr.attendance']
         HrAttendanceLine = self.env['hr.attendance.line']
         Employee = self.env['hr.employee']
     
         grouped = {}
-        processed_tx_ids = set()  # prevents same-run duplicates
+        processed_tx_ids = set()
     
         ist = pytz.timezone("Asia/Kolkata")
     
-        # for payload in self._safe_paginated_get_line(start_url, username, password):
-        
-        for payload in self._safe_paginated_get_line_new(start_url, username, password,start_page=100,max_pages=200):
+        for payload in self._safe_paginated_get_line_new(
+            start_url,
+            username,
+            password,
+            start_page=100,
+            max_pages=200,
+        ):
             data = payload.get("data", [])
     
-            _logger.info(
-                "Biotime transactions page fetched: %s records",
-                len(data)
-            )
+            _logger.info("Biotime transactions page fetched: %s records", len(data))
     
             for tx in data:
                 tx_id = tx.get("id")
@@ -512,7 +739,7 @@ class BiotimeService(models.Model):
     
                 processed_tx_ids.add(tx_id)
     
-                # Skip if already imported in DB
+                # Prevent duplicates
                 if HrAttendanceLine.search(
                     [('biotime_transaction_id', '=', tx_id)],
                     limit=1
@@ -530,25 +757,18 @@ class BiotimeService(models.Model):
                 if not employee:
                     continue
     
-                # -------------------------------
-                # TIMEZONE FIX (IST → UTC)
-                # -------------------------------
                 try:
                     local_dt = datetime.strptime(
-                        tx["punch_time"],
-                        "%Y-%m-%d %H:%M:%S"
+                        tx["punch_time"], "%Y-%m-%d %H:%M:%S"
                     )
                 except Exception:
-                    _logger.warning(
-                        "Invalid punch_time format: %s", tx.get("punch_time")
-                    )
+                    _logger.warning("Invalid punch_time format: %s", tx.get("punch_time"))
                     continue
     
                 ist_dt = ist.localize(local_dt)
-                utc_dt = ist_dt.astimezone(pytz.UTC)
+                utc_dt = ist_dt.astimezone(pytz.UTC).replace(tzinfo=None)
     
-                # store converted values back into tx
-                tx["_punch_time_utc"] = fields.Datetime.to_string(utc_dt)
+                tx["_punch_time_utc"] = utc_dt
                 tx["_punch_date_ist"] = ist_dt.date()
     
                 grouped.setdefault(
@@ -556,89 +776,81 @@ class BiotimeService(models.Model):
                     []
                 ).append(tx)
     
-        # ---------------------------------
+        # --------------------------------------------------
         # CREATE / UPDATE ATTENDANCE
-        # ---------------------------------
+        # --------------------------------------------------
         for (employee_id, date), punches in grouped.items():
-            # Sort by actual UTC time
+    
             punches.sort(key=lambda x: x["_punch_time_utc"])
-        
-            check_in = punches[0]["_punch_time_utc"]
-            check_out = punches[-1]["_punch_time_utc"]
-        
-            # ⛔ ABSOLUTE SAFETY (Odoo core constraint)
-            if check_out < check_in:
-                _logger.warning(
-                    "Skipping invalid attendance (night-shift split needed): emp=%s date=%s",
+    
+            # 🔹 SINGLE PUNCH → LINE ONLY
+            if len(punches) == 1:
+                tx = punches[0]
+    
+                HrAttendanceLine.create({
+                    'attendance_id': False,
+                    'employee_id': employee_id,
+                    'punch_time': tx["_punch_time_utc"],
+                    'punch_state': tx.get("punch_state"),
+                    'terminal_sn': tx.get("terminal_sn"),
+                    'terminal_alias': tx.get("terminal_alias"),
+                    'biotime_transaction_id': tx["id"],
+                })
+    
+                _logger.info(
+                    "Single punch stored as line only: emp=%s date=%s",
                     employee_id, date
                 )
                 continue
-        
+    
+            check_in = punches[0]["_punch_time_utc"]
+            check_out = punches[-1]["_punch_time_utc"]
+    
+            # Absolute safety
+            if check_out <= check_in:
+                _logger.warning(
+                    "Skipping invalid attendance CREATE "
+                    "(check_out <= check_in): emp=%s date=%s "
+                    "check_in=%s check_out=%s",
+                    employee_id, date, check_in, check_out
+                )
+                continue
+    
             attendance = HrAttendance.search([
                 ('employee_id', '=', employee_id),
                 ('check_in', '>=', f"{date} 00:00:00"),
                 ('check_in', '<=', f"{date} 23:59:59"),
             ], limit=1)
-        
-            # if attendance:
-            #     attendance.write({
-            #         'check_out': check_out
-            #     })
+    
             if attendance:
-    # FINAL SAFETY CHECK (Odoo hard constraint)
                 if check_out <= attendance.check_in:
                     _logger.warning(
-                        "Skipping invalid attendance update "
-                        "(check_out <= check_in): emp=%s attendance=%s "
-                        "check_in=%s check_out=%s",
-                        employee_id,
-                        attendance.id,
-                        attendance.check_in,
-                        check_out,
+                        "Skipping invalid attendance UPDATE "
+                        "(check_out <= check_in): emp=%s attendance=%s",
+                        employee_id, attendance.id
                     )
                     continue
-            
-                attendance.write({
-                    'check_out': check_out
-                })
-
+    
+                attendance.write({'check_out': check_out})
             else:
-                # attendance = HrAttendance.create({
-                #     'employee_id': employee_id,
-                #     'check_in': check_in,
-                #     'check_out': check_out,
-                # })
-                if check_out <= check_in:
-                    _logger.warning(
-                        "Skipping invalid attendance CREATE "
-                        "(check_out <= check_in): emp=%s date=%s "
-                        "check_in=%s check_out=%s",
-                        employee_id,
-                        date,
-                        check_in,
-                        check_out,
-                    )
-                    continue
-                
                 attendance = HrAttendance.create({
                     'employee_id': employee_id,
                     'check_in': check_in,
                     'check_out': check_out,
                 })
-
-        
-            # ---------------------------------
-            # ✅ ALWAYS CREATE ATTENDANCE LINES
-            # ---------------------------------
+    
+            # --------------------------------------------------
+            # CREATE ATTENDANCE LINES
+            # --------------------------------------------------
+            line_vals = []
             for tx in punches:
-                # Double safety: prevent duplicate lines
                 if HrAttendanceLine.search(
                     [('biotime_transaction_id', '=', tx["id"])],
                     limit=1
                 ):
                     continue
-        
-                HrAttendanceLine.create({
+    
+                line_vals.append({
                     'attendance_id': attendance.id,
                     'employee_id': employee_id,
                     'punch_time': tx["_punch_time_utc"],
@@ -647,6 +859,25 @@ class BiotimeService(models.Model):
                     'terminal_alias': tx.get("terminal_alias"),
                     'biotime_transaction_id': tx["id"],
                 })
+    
+            if line_vals:
+                HrAttendanceLine.create(line_vals)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
