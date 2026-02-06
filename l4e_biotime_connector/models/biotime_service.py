@@ -35,11 +35,13 @@ class BiotimeService(models.Model):
         while url and url not in seen_urls and pages < max_pages:
             seen_urls.add(url)
             pages += 1
+            _logger.warning("This is ______________________________pages %s",pages)
     
             res = requests.get(url, auth=(username, password), timeout=30)
             res.raise_for_status()
     
             payload = res.json()
+            _logger.warning("This is ______________________________ payload details %s",payload)
             yield payload
     
             url = payload.get("next")
@@ -354,6 +356,7 @@ class BiotimeService(models.Model):
                     'terminal_alias': tx["terminal_alias"],
                     'biotime_transaction_id': tx["id"],
                 })
+
 
 
 
