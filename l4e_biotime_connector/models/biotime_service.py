@@ -667,6 +667,105 @@ class BiotimeService(models.Model):
     
     
     
+    # def _safe_paginated_get_line_new(
+    #     self,
+    #     start_url,
+    #     username,
+    #     password,
+    #     start_page=0,
+    #     max_pages=100,
+    # ):
+    #     parsed = urlparse(start_url)
+    #     query = parse_qs(parsed.query)
+    #     query["page"] = [str(start_page)]
+    
+    #     url = parsed._replace(
+    #         query=urlencode(query, doseq=True)
+    #     ).geturl()
+    
+    #     seen_urls = set()
+    #     page_count = 0   # 🔥 REAL limiter, not page number
+    
+    #     while url:
+    #         if url in seen_urls:
+    #             _logger.warning(
+    #                 "Biotime pagination stopped (repeated URL): %s", url
+    #             )
+    #             break
+    
+    #         if page_count >= max_pages:
+    #             _logger.warning(
+    #                 "Biotime pagination stopped (max pages %s reached)",
+    #                 max_pages
+    #             )
+    #             break
+    
+    #         seen_urls.add(url)
+    
+    #         _logger.info(
+    #             "Fetching Biotime page #%s: %s",
+    #             page_count,
+    #             url
+    #         )
+    
+    #         res = requests.get(
+    #             url,
+    #             auth=(username, password),
+    #             timeout=30
+    #         )
+    #         res.raise_for_status()
+    
+    #         payload = res.json()
+    #         yield payload
+    
+    #         next_url = payload.get("next")
+    #         if not next_url:
+    #             break
+    
+    #         if next_url.startswith("/"):
+    #             base = start_url.split("/iclock/api")[0]
+    #             next_url = base + next_url
+    
+    #         url = next_url
+    #         page_count += 1
+
+
+    # def _safe_paginated_get_line_new(self,start_url,username,password,start_page=0,stop_page=100):
+    #     parsed = urlparse(start_url)
+    #     query = parse_qs(parsed.query)
+    #     query["page"] = [str(start_page)]
+    
+    #     url = parsed._replace(query=urlencode(query, doseq=True)).geturl()
+    
+    #     seen_urls = set()
+    #     page = start_page
+    
+    #     while url and page > stop_page:
+    #         if url in seen_urls:
+    #             _logger.warning("Biotime pagination stopped (repeated URL): %s", url)
+    #             break
+    
+    #         seen_urls.add(url)
+    
+    #         _logger.info("Fetching Biotime page %s: %s", page, url)
+    
+    #         res = requests.get(url, auth=(username, password), timeout=30)
+    #         res.raise_for_status()
+    
+    #         payload = res.json()
+    #         yield payload
+    
+    #         next_url = payload.get("next")
+    #         if not next_url:
+    #             break
+    
+    #         if next_url.startswith("/"):
+    #             base = start_url.split("/iclock/api")[0]
+    #             next_url = base + next_url
+    
+    #         url = next_url
+    #         page += 1   # 👈 move backward
+
     def _safe_paginated_get_line_new(
         self,
         start_url,
@@ -684,7 +783,7 @@ class BiotimeService(models.Model):
         ).geturl()
     
         seen_urls = set()
-        page_count = 0   # 🔥 REAL limiter, not page number
+        page_count = 0  # 🔥 real limiter
     
         while url:
             if url in seen_urls:
@@ -728,45 +827,9 @@ class BiotimeService(models.Model):
     
             url = next_url
             page_count += 1
-
-
-    # def _safe_paginated_get_line_new(self,start_url,username,password,start_page=0,stop_page=100):
-    #     parsed = urlparse(start_url)
-    #     query = parse_qs(parsed.query)
-    #     query["page"] = [str(start_page)]
     
-    #     url = parsed._replace(query=urlencode(query, doseq=True)).geturl()
-    
-    #     seen_urls = set()
-    #     page = start_page
-    
-    #     while url and page > stop_page:
-    #         if url in seen_urls:
-    #             _logger.warning("Biotime pagination stopped (repeated URL): %s", url)
-    #             break
-    
-    #         seen_urls.add(url)
-    
-    #         _logger.info("Fetching Biotime page %s: %s", page, url)
-    
-    #         res = requests.get(url, auth=(username, password), timeout=30)
-    #         res.raise_for_status()
-    
-    #         payload = res.json()
-    #         yield payload
-    
-    #         next_url = payload.get("next")
-    #         if not next_url:
-    #             break
-    
-    #         if next_url.startswith("/"):
-    #             base = start_url.split("/iclock/api")[0]
-    #             next_url = base + next_url
-    
-    #         url = next_url
-    #         page += 1   # 👈 move backward
-    
-    
+        
+        
 
 
     def _auto_close_old_attendance(self, employee, new_check_in):
@@ -829,7 +892,7 @@ class BiotimeService(models.Model):
             username,
             password,
             start_page=0,
-            max_pages=100,
+            stop_page=100,
         ):
             data = payload.get("data", [])
     
@@ -988,6 +1051,7 @@ class BiotimeService(models.Model):
                     'terminal_alias': tx.get("terminal_alias"),
                     'biotime_transaction_id': tx["id"],
                 })
+
 
 
 
