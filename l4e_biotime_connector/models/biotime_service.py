@@ -841,6 +841,21 @@ class BiotimeService(models.Model):
         
             # Auto-close old open attendance FIRST
             self._auto_close_old_attendance(employee_rec, check_in)
+
+            open_attendance = HrAttendance.search([
+                ('employee_id', '=', employee_id),
+                ('check_out', '=', False),
+            ], limit=1)
+            
+            if open_attendance:
+                _logger.warning(
+                    "Cannot create attendance, open attendance still exists: "
+                    "emp=%s open_att=%s check_in=%s",
+                    employee_id,
+                    open_attendance.id,
+                    open_attendance.check_in,
+                )
+                continue  # 
         
             attendance = HrAttendance.search([
                 ('employee_id', '=', employee_id),
@@ -920,6 +935,7 @@ class BiotimeService(models.Model):
                     'terminal_alias': tx.get("terminal_alias"),
                     'biotime_transaction_id': tx["id"],
                 })
+
 
 
 
