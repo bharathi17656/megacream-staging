@@ -3,7 +3,7 @@ from odoo import models, fields
 from odoo.exceptions import UserError
 import logging
 
-from datetime import datetime
+from datetime import datetime,timedelta
 import pytz
 from urllib.parse import urlencode, urlparse, parse_qs
 
@@ -713,6 +713,48 @@ class BiotimeService(models.Model):
     
             url = next_url
             page += 1
+
+
+
+    def _auto_close_old_attendance(self, employee, new_check_in):
+        """
+        If there is an open attendance and 15 minutes passed,
+        auto close it and mark x_studio_no_checkout = True
+        """
+        HrAttendance = self.env['hr.attendance']
+    
+        open_attendance = HrAttendance.search([
+            ('employee_id', '=', employee.id),
+            ('check_out', '=', False),
+        ], limit=1)
+    
+        if not open_attendance:
+            return
+    
+        check_in = open_attendance.check_in
+        if not check_in:
+            return
+    
+        # ensure datetime comparison
+        if isinstance(check_in, str):
+            check_in = fields.Datetime.from_string(check_in)
+    
+        if new_check_in >= check_in + timedelta(minutes=15):
+            auto_checkout = check_in + timedelta(minutes=15)
+    
+            _logger.warning(
+                "Auto closing attendance (no checkout): emp=%s "
+                "check_in=%s auto_check_out=%s",
+                employee.id,
+                check_in,
+                auto_checkout,
+            )
+    
+            open_attendance.write({
+                'check_out': auto_checkout,
+                'x_studio_no_checkout': True,
+            })
+
     
 
 
@@ -793,6 +835,8 @@ class BiotimeService(models.Model):
         
             check_in = punches[0]["_punch_time_utc"]
             check_out = punches[-1]["_punch_time_utc"]
+            
+            self._auto_close_old_attendance(employee, check_in)
         
             attendance = HrAttendance.search([
                 ('employee_id', '=', employee_id),
@@ -872,6 +916,7 @@ class BiotimeService(models.Model):
                     'terminal_alias': tx.get("terminal_alias"),
                     'biotime_transaction_id': tx["id"],
                 })
+
 
 
 
