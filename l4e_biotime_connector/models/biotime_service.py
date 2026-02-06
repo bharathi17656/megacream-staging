@@ -290,6 +290,98 @@ class BiotimeService(models.Model):
     #                 'terminal_alias': tx.get('terminal_alias'),
     #                 'biotime_transaction_id': tx.get('id'),
     #             })
+    # def sync_attendance(self):
+    #     base_url, username, password = self._get_config()
+    #     start_url = f"{base_url}/iclock/api/transactions/"
+    
+    #     HrAttendance = self.env['hr.attendance']
+    #     HrAttendanceLine = self.env['hr.attendance.line']
+    #     Employee = self.env['hr.employee']
+    
+    #     grouped = {}
+    #     processed_tx_ids = set()  # 🔑 IMPORTANT
+    
+    #     for payload in self._safe_paginated_get(start_url, username, password):
+    #         data = payload.get("data", [])
+    
+    #         _logger.info("Biotime transactions page fetched: %s records", len(data))
+    
+    #         for tx in data:
+    #             tx_id = tx.get("id")
+    #             if not tx_id or tx_id in processed_tx_ids:
+    #                 continue
+    
+    #             processed_tx_ids.add(tx_id)
+    
+    #             # ⛔ Already exists in DB
+    #             if HrAttendanceLine.search(
+    #                 [('biotime_transaction_id', '=', tx_id)],
+    #                 limit=1
+    #             ):
+    #                 continue
+    
+    #             emp_code = tx.get("emp_code")
+    #             if not emp_code:
+    #                 continue
+    
+    #             employee = Employee.search(
+    #                 [('x_studio_emp_id', '=', emp_code)],
+    #                 limit=1
+    #             )
+    #             if not employee:
+    #                 continue
+    
+    #             # punch_time = fields.Datetime.from_string(tx["punch_time"])
+    #             # Biotime sends IST
+    #             ist = pytz.timezone("Asia/Kolkata")
+                
+    #             local_dt = datetime.strptime(
+    #                 tx["punch_time"],
+    #                 "%Y-%m-%d %H:%M:%S"
+    #             )
+                
+    #             # Attach IST timezone
+    #             ist_dt = ist.localize(local_dt)
+                
+    #             # Convert to UTC
+    #             punch_time_utc = ist_dt.astimezone(pytz.UTC)
+                
+    #             # Convert to Odoo-compatible string
+    #             punch_time = fields.Datetime.to_string(punch_time_utc)
+    #             date = punch_time.date()
+    
+    #             grouped.setdefault((employee.id, date), []).append(tx)
+    
+    #     for (employee_id, date), punches in grouped.items():
+    #         punches.sort(key=lambda x: x["punch_time"])
+    
+    #         attendance = HrAttendance.search([
+    #             ('employee_id', '=', employee_id),
+    #             ('check_in', '>=', f"{date} 00:00:00"),
+    #             ('check_in', '<=', f"{date} 23:59:59"),
+    #         ], limit=1)
+    
+    #         if attendance:
+    #             attendance.write({'check_out': punches[-1]["punch_time"]})
+    #         else:
+    #             attendance = HrAttendance.create({
+    #                 'employee_id': employee_id,
+    #                 'check_in': punches[0]["punch_time"],
+    #                 'check_out': punches[-1]["punch_time"],
+    #             })
+    
+    #         for tx in punches:
+    #             HrAttendanceLine.create({
+    #                 'attendance_id': attendance.id,
+    #                 'employee_id': employee_id,
+    #                 'punch_time': tx["punch_time"],
+    #                 'punch_state': tx["punch_state"],
+    #                 'terminal_sn': tx["terminal_sn"],
+    #                 'terminal_alias': tx["terminal_alias"],
+    #                 'biotime_transaction_id': tx["id"],
+    #             })
+
+
     def sync_attendance(self):
         base_url, username, password = self._get_config()
         start_url = f"{base_url}/iclock/api/transactions/"
@@ -299,12 +391,17 @@ class BiotimeService(models.Model):
         Employee = self.env['hr.employee']
     
         grouped = {}
-        processed_tx_ids = set()  # 🔑 IMPORTANT
+        processed_tx_ids = set()  # prevents same-run duplicates
+    
+        ist = pytz.timezone("Asia/Kolkata")
     
         for payload in self._safe_paginated_get(start_url, username, password):
             data = payload.get("data", [])
     
-            _logger.info("Biotime transactions page fetched: %s records", len(data))
+            _logger.info(
+                "Biotime transactions page fetched: %s records",
+                len(data)
+            )
     
             for tx in data:
                 tx_id = tx.get("id")
@@ -313,7 +410,7 @@ class BiotimeService(models.Model):
     
                 processed_tx_ids.add(tx_id)
     
-                # ⛔ Already exists in DB
+                # Skip if already imported in DB
                 if HrAttendanceLine.search(
                     [('biotime_transaction_id', '=', tx_id)],
                     limit=1
@@ -331,29 +428,37 @@ class BiotimeService(models.Model):
                 if not employee:
                     continue
     
-                # punch_time = fields.Datetime.from_string(tx["punch_time"])
-                # Biotime sends IST
-                ist = pytz.timezone("Asia/Kolkata")
-                
-                local_dt = datetime.strptime(
-                    tx["punch_time"],
-                    "%Y-%m-%d %H:%M:%S"
-                )
-                
-                # Attach IST timezone
+                # -------------------------------
+                # TIMEZONE FIX (IST → UTC)
+                # -------------------------------
+                try:
+                    local_dt = datetime.strptime(
+                        tx["punch_time"],
+                        "%Y-%m-%d %H:%M:%S"
+                    )
+                except Exception:
+                    _logger.warning(
+                        "Invalid punch_time format: %s", tx.get("punch_time")
+                    )
+                    continue
+    
                 ist_dt = ist.localize(local_dt)
-                
-                # Convert to UTC
-                punch_time_utc = ist_dt.astimezone(pytz.UTC)
-                
-                # Convert to Odoo-compatible string
-                punch_time = fields.Datetime.to_string(punch_time_utc)
-                date = punch_time.date()
+                utc_dt = ist_dt.astimezone(pytz.UTC)
     
-                grouped.setdefault((employee.id, date), []).append(tx)
+                # store converted values back into tx
+                tx["_punch_time_utc"] = fields.Datetime.to_string(utc_dt)
+                tx["_punch_date_ist"] = ist_dt.date()
     
+                grouped.setdefault(
+                    (employee.id, tx["_punch_date_ist"]),
+                    []
+                ).append(tx)
+    
+        # ---------------------------------
+        # CREATE / UPDATE ATTENDANCE
+        # ---------------------------------
         for (employee_id, date), punches in grouped.items():
-            punches.sort(key=lambda x: x["punch_time"])
+            punches.sort(key=lambda x: x["_punch_time_utc"])
     
             attendance = HrAttendance.search([
                 ('employee_id', '=', employee_id),
@@ -362,23 +467,18 @@ class BiotimeService(models.Model):
             ], limit=1)
     
             if attendance:
-                attendance.write({'check_out': punches[-1]["punch_time"]})
+                attendance.write({
+                    'check_out': punches[-1]["_punch_time_utc"]
+                })
             else:
                 attendance = HrAttendance.create({
                     'employee_id': employee_id,
-                    'check_in': punches[0]["punch_time"],
-                    'check_out': punches[-1]["punch_time"],
+                    'check_in': punches[0]["_punch_time_utc"],
+                    'check_out': punches[-1]["_punch_time_utc"],
                 })
     
-            for tx in punches:
-                HrAttendanceLine.create({
-                    'attendance_id': attendance.id,
-                    'employee_id': employee_id,
-                    'punch_time': tx["punch_time"],
-                    'punch_state': tx["punch_state"],
-                    'terminal_sn': tx["terminal_sn"],
-                    'terminal_alias': tx["terminal_alias"],
-                    'biotime_transaction_id': tx["id"],
-                })
+            # ---------------------------------
+
+
 
 
