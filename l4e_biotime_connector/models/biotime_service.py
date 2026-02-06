@@ -812,8 +812,8 @@ class BiotimeService(models.Model):
             start_url,
             username,
             password,
-            start_page=100,
-            stop_page=0,
+            start_page=0,
+            stop_page=-100,
         ):
             data = payload.get("data", [])
     
@@ -972,6 +972,7 @@ class BiotimeService(models.Model):
                     'terminal_alias': tx.get("terminal_alias"),
                     'biotime_transaction_id': tx["id"],
                 })
+
 
 
 
