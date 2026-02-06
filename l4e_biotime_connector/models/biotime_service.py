@@ -1,6 +1,8 @@
 import requests
 from odoo import models, fields
 from odoo.exceptions import UserError
+import logging
+_logger = logging.getLogger(__name__)
 
 
 class BiotimeService(models.Model):
@@ -18,7 +20,7 @@ class BiotimeService(models.Model):
 
         if not base_url or not username or not password:
             raise UserError("Biotime credentials missing")
-
+        _logger.warning("This is ______________________________ username %s password %s link %s",username,password,base_url)
         return base_url, username, password
 
     # ------------------------------------------------
@@ -30,6 +32,7 @@ class BiotimeService(models.Model):
 
         res = requests.get(url, auth=(username, password), timeout=30)
         res.raise_for_status()
+        _logger.warning("This is ______________________________ record terminal %s",res)
 
         Terminal = self.env['biotime.terminal']
 
@@ -168,3 +171,4 @@ class BiotimeService(models.Model):
                     'terminal_alias': tx['terminal_alias'],
                     'biotime_transaction_id': tx['id'],
                 })
+
