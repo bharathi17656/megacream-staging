@@ -84,25 +84,37 @@ class BiotimeService(models.Model):
     def sync_biodata(self):
         base_url, username, password = self._get_config()
         url = f"{base_url}/iclock/api/biodatas/"
-
+    
         Biodata = self.env['biotime.biodata']
         Employee = self.env['hr.employee']
-
+    
         while url:
             res = requests.get(url, auth=(username, password), timeout=30)
             res.raise_for_status()
             payload = res.json()
-
-            for b in payload.get("data", []):
+    
+            data = payload.get('data', [])
+    
+            _logger.info(
+                "Biotime biodata API response: count=%s",
+                len(data)
+            )
+    
+            for b in data:
+                if not b.get('employee'):
+                    continue
+    
                 emp_code = b['employee'].split()[0]
-
+    
                 employee = Employee.search([
                     ('biotime_emp_code', '=', emp_code)
                 ], limit=1)
-
-                Biodata.search([
-                    ('biotime_id', '=', b['id'])
-                ], limit=1).write({
+    
+                biodata = Biodata.search([
+                    ('biotime_id', '=', b.get('id'))
+                ], limit=1)
+    
+                vals = {
                     'employee_name': b.get('employee'),
                     'emp_code': emp_code,
                     'bio_type': b.get('bio_type'),
@@ -112,13 +124,13 @@ class BiotimeService(models.Model):
                     'major_ver': b.get('major_ver'),
                     'update_time': b.get('update_time'),
                     'employee_id': employee.id if employee else False,
-                }) or Biodata.create({
-                    'biotime_id': b['id'],
-                    'employee_name': b.get('employee'),
-                    'emp_code': emp_code,
-                })
+                }
+    
+                if biodata:
+                    biodata.write(vals)
+                else:
+                    vals['biotime_id'] = b.get('id')
 
-            url = payload.get("next")
 
     # ------------------------------------------------
     # FETCH TRANSACTIONS → ATTENDANCE
@@ -126,66 +138,83 @@ class BiotimeService(models.Model):
     def sync_attendance(self):
         base_url, username, password = self._get_config()
         url = f"{base_url}/iclock/api/transactions/"
-
+    
         HrAttendance = self.env['hr.attendance']
         HrAttendanceLine = self.env['hr.attendance.line']
         Employee = self.env['hr.employee']
-
+    
         grouped = {}
-
+    
         while url:
             res = requests.get(url, auth=(username, password), timeout=30)
             res.raise_for_status()
             payload = res.json()
-
-            for tx in payload.get("data", []):
+    
+            data = payload.get('data', [])
+    
+            _logger.info(
+                "Biotime transaction API response: count=%s",
+                len(data)
+            )
+    
+            for tx in data:
                 emp_code = tx.get('emp_code')
+                if not emp_code:
+                    continue
+    
                 employee = Employee.search([
                     ('biotime_emp_code', '=', emp_code)
                 ], limit=1)
-
+    
                 if not employee:
                     continue
-
+    
                 punch_time = fields.Datetime.from_string(tx['punch_time'])
                 date = punch_time.date()
-
+    
                 grouped.setdefault(
                     (employee.id, date),
                     []
                 ).append(tx)
-
-            url = payload.get("next")
-
+    
+            url = payload.get('next')
+    
         for (employee_id, date), punches in grouped.items():
             punches.sort(key=lambda x: x['punch_time'])
-
+    
             attendance = HrAttendance.search([
                 ('employee_id', '=', employee_id),
                 ('check_in', '>=', f"{date} 00:00:00"),
                 ('check_in', '<=', f"{date} 23:59:59"),
             ], limit=1)
-
-            if not attendance:
+    
+            if attendance:
+                attendance.write({
+                    'check_out': punches[-1]['punch_time']
+                })
+            else:
                 attendance = HrAttendance.create({
                     'employee_id': employee_id,
                     'check_in': punches[0]['punch_time'],
                     'check_out': punches[-1]['punch_time'],
                 })
-            else:
-                attendance.write({
-                    'check_out': punches[-1]['punch_time']
-                })
-
+    
             for tx in punches:
+                exists = HrAttendanceLine.search([
+                    ('biotime_transaction_id', '=', tx.get('id'))
+                ], limit=1)
+    
+                if exists:
+                    continue
+    
                 HrAttendanceLine.create({
                     'attendance_id': attendance.id,
                     'employee_id': employee_id,
-                    'punch_time': tx['punch_time'],
-                    'punch_state': tx['punch_state'],
-                    'terminal_sn': tx['terminal_sn'],
-                    'terminal_alias': tx['terminal_alias'],
-                    'biotime_transaction_id': tx['id'],
+                    'punch_time': tx.get('punch_time'),
+                    'punch_state': tx.get('punch_state'),
+                    'terminal_sn': tx.get('terminal_sn'),
+                    'terminal_alias': tx.get('terminal_alias'),
+                    'biotime_transaction_id': tx.get('id'),
                 })
 
 
