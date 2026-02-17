@@ -492,10 +492,11 @@ class BiotimeService(models.Model):
         Daily cron to auto close ALL open attendances
         and set checkout to 7:00 PM of the check-in date.
         """
-
-        open_attendances = self.search([
-            ('check_out', '=', False),
-        ])
+        HrAttendance = self.env['hr.attendance']
+    
+        open_attendances = HrAttendance.search([
+            ('employee_id', '=', employee.id),
+            ('check_out', '=', False)])
 
         for attendance in open_attendances:
 
@@ -514,6 +515,7 @@ class BiotimeService(models.Model):
                 'check_out': auto_checkout,
                 'x_studio_no_checkout': True,
             })
+
 
 
 
