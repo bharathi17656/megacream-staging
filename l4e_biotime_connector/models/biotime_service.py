@@ -1,5 +1,5 @@
 import requests
-from odoo import models, fields
+from odoo import models, fields , api
 from odoo.exceptions import UserError
 import logging
 
@@ -514,6 +514,7 @@ class BiotimeService(models.Model):
                 'check_out': auto_checkout,
                 'x_studio_no_checkout': True,
             })
+
 
 
 
