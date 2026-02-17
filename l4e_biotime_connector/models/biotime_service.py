@@ -495,9 +495,9 @@ class BiotimeService(models.Model):
     
         ist = pytz.timezone("Asia/Kolkata")
     
-        # ----------------------------
-        # FETCH DATA
-        # ----------------------------
+        # ------------------------------------------------
+        # FETCH TRANSACTIONS
+        # ------------------------------------------------
         for payload in self._safe_paginated_get_line_new(
                 start_url, username, password,
                 start_page=1, max_pages=25):
@@ -548,9 +548,9 @@ class BiotimeService(models.Model):
                     []
                 ).append(tx)
     
-        # ----------------------------
-        # CREATE / UPDATE ATTENDANCE
-        # ----------------------------
+        # ------------------------------------------------
+        # PROCESS GROUPED ATTENDANCE
+        # ------------------------------------------------
         for (employee_id, date), punches in grouped.items():
     
             punches.sort(key=lambda x: x["_punch_time_utc"])
@@ -560,53 +560,55 @@ class BiotimeService(models.Model):
     
             employee_rec = Employee.browse(employee_id)
     
-            # Close previous open attendance first
-            self._auto_close_old_attendance(employee_rec, check_in)
+            # ------------------------------------------------
+            # FORCE CLOSE ANY OPEN ATTENDANCE (ENTERPRISE SAFE)
+            # ------------------------------------------------
+            open_attendance = HrAttendance.search([
+                ('employee_id', '=', employee_id),
+                ('check_out', '=', False),
+            ], limit=1)
     
+            if open_attendance:
+    
+                check_in_utc = fields.Datetime.to_datetime(open_attendance.check_in)
+                check_in_ist = pytz.UTC.localize(check_in_utc).astimezone(ist)
+    
+                seven_pm_ist = ist.localize(
+                    datetime.combine(check_in_ist.date(), time(19, 0, 0))
+                )
+    
+                seven_pm_utc = seven_pm_ist.astimezone(pytz.UTC).replace(tzinfo=None)
+    
+                if seven_pm_utc > check_in_utc:
+                    open_attendance.write({
+                        'check_out': seven_pm_utc,
+                        'x_studio_no_checkout': True,
+                    })
+    
+            # ------------------------------------------------
+            # CREATE OR UPDATE ATTENDANCE
+            # ------------------------------------------------
             attendance = HrAttendance.search([
                 ('employee_id', '=', employee_id),
                 ('check_in', '>=', f"{date} 00:00:00"),
                 ('check_in', '<=', f"{date} 23:59:59"),
             ], limit=1)
     
-            # ----------------------------
-            # SINGLE PUNCH
-            # ----------------------------
-            if len(punches) == 1:
-    
-                if attendance:
-                    attendance.write({
-                        'check_in': check_in,
-                    })
-                else:
-                    attendance = HrAttendance.create({
-                        'employee_id': employee_id,
-                        'check_in': check_in,
-                    })
-    
-            # ----------------------------
-            # MULTIPLE PUNCHES
-            # ----------------------------
+            if not attendance:
+                attendance = HrAttendance.create({
+                    'employee_id': employee_id,
+                    'check_in': check_in,
+                    'check_out': check_out if check_out > check_in else False,
+                })
             else:
+                attendance.write({
+                    'check_in': check_in,
+                    'check_out': check_out if check_out > check_in else False,
+                })
     
-                if check_out <= check_in:
-                    continue
-    
-                if attendance:
-                    attendance.write({
-                        'check_in': check_in,
-                        'check_out': check_out,
-                    })
-                else:
-                    attendance = HrAttendance.create({
-                        'employee_id': employee_id,
-                        'check_in': check_in,
-                        'check_out': check_out,
-                    })
-    
-            # ----------------------------
+            # ------------------------------------------------
             # CREATE ALL PUNCH LINES
-            # ----------------------------
+            # ------------------------------------------------
             for tx in punches:
     
                 if HrAttendanceLine.search(
@@ -677,5 +679,6 @@ class BiotimeService(models.Model):
                 attendance.employee_id.id,
                 attendance.id,
             )
+
 
 
