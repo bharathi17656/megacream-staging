@@ -310,7 +310,179 @@ class BiotimeService(models.Model):
     
 
 
+    # def sync_attendance(self):
+    #     base_url, username, password = self._get_config()
+    #     start_url = f"{base_url}/iclock/api/transactions/?ordering=+-id"
+    
+    #     HrAttendance = self.env['hr.attendance']
+    #     HrAttendanceLine = self.env['hr.attendance.line']
+    #     Employee = self.env['hr.employee']
+    
+    #     grouped = {}
+    #     processed_tx_ids = set()
+    
+    #     ist = pytz.timezone("Asia/Kolkata")
+    
+    #     for payload in self._safe_paginated_get_line_new(start_url,username,password,start_page=1,max_pages=25 ):
+    #         data = payload.get("data", [])
+    
+    #         _logger.info("Biotime transactions page fetched: %s records", len(data))
+    
+    #         for tx in data:
+    #             tx_id = tx.get("id")
+    #             if not tx_id or tx_id in processed_tx_ids:
+    #                 continue
+    
+    #             processed_tx_ids.add(tx_id)
+    
+    #             # Prevent duplicates
+    #             if HrAttendanceLine.search(
+    #                 [('biotime_transaction_id', '=', tx_id)],
+    #                 limit=1
+    #             ):
+    #                 continue
+    
+    #             emp_code = tx.get("emp_code")
+    #             if not emp_code:
+    #                 continue
+    
+    #             employee = Employee.search(
+    #                 [('x_studio_emp_id', '=', emp_code)],
+    #                 limit=1
+    #             )
+    #             if not employee:
+    #                 continue
+    
+    #             try:
+    #                 local_dt = datetime.strptime(
+    #                     tx["punch_time"], "%Y-%m-%d %H:%M:%S"
+    #                 )
+    #             except Exception:
+    #                 _logger.warning("Invalid punch_time format: %s", tx.get("punch_time"))
+    #                 continue
+    
+    #             ist_dt = ist.localize(local_dt)
+    #             utc_dt = ist_dt.astimezone(pytz.UTC).replace(tzinfo=None)
+    
+    #             tx["_punch_time_utc"] = utc_dt
+    #             tx["_punch_date_ist"] = ist_dt.date()
+    
+    #             grouped.setdefault(
+    #                 (employee.id, tx["_punch_date_ist"]),
+    #                 []
+    #             ).append(tx)
+    
+     
+    #     # ---------------------------------
+    #     # CREATE / UPDATE ATTENDANCE
+    #     # ---------------------------------
+    #     for (employee_id, date), punches in grouped.items():
+    #         punches.sort(key=lambda x: x["_punch_time_utc"])
+        
+    #         check_in = punches[0]["_punch_time_utc"]
+    #         check_out = punches[-1]["_punch_time_utc"]
+        
+    #         # 🔥 FIX: always use correct employee
+    #         employee_rec = Employee.browse(employee_id)
+        
+    #         # Auto-close old open attendance FIRST
+    #         self._auto_close_old_attendance(employee_rec, check_in)
+
+    #         open_attendance = HrAttendance.search([
+    #             ('employee_id', '=', employee_id),
+    #             ('check_out', '=', False),
+    #         ], limit=1)
+            
+    #         if open_attendance:
+    #             _logger.warning(
+    #                 "Cannot create attendance, open attendance still exists: "
+    #                 "emp=%s open_att=%s check_in=%s",
+    #                 employee_id,
+    #                 open_attendance.id,
+    #                 open_attendance.check_in,
+    #             )
+    #             continue  # 
+        
+    #         attendance = HrAttendance.search([
+    #             ('employee_id', '=', employee_id),
+    #             ('check_in', '>=', f"{date} 00:00:00"),
+    #             ('check_in', '<=', f"{date} 23:59:59"),
+    #         ], limit=1)
+
+      
+    #         if len(punches) == 1:
+    #             if attendance:
+    #                 _logger.info(
+    #                     "Single punch already has attendance: emp=%s date=%s",
+    #                     employee_id, date
+    #                 )
+    #             else:
+    #                 HrAttendance.create({
+    #                     'employee_id': employee_id,
+    #                     'check_in': check_in,
+    #                     # check_out intentionally NOT set
+    #                 })
+        
+    #             _logger.info(
+    #                 "Single punch → attendance check_in only: emp=%s date=%s",
+    #                 employee_id, date
+    #             )
+    #             continue
+        
+    #         # ----------------------------
+    #         # ✅ MULTIPLE PUNCHES
+    #         # ----------------------------
+    #         if check_out <= check_in:
+    #             _logger.warning(
+    #                 "Skipping invalid attendance (check_out <= check_in): emp=%s date=%s",
+    #                 employee_id, date
+    #             )
+    #             continue
+        
+    #         if attendance:
+    #             if attendance.check_out and check_out <= attendance.check_in:
+    #                 _logger.warning(
+    #                     "Skipping invalid attendance UPDATE: emp=%s attendance=%s",
+    #                     employee_id,
+    #                     attendance.id,
+    #                 )
+    #                 continue
+        
+    #             attendance.write({
+    #                 'check_out': check_out
+    #             })
+    #         else:
+    #             HrAttendance.create({
+    #                 'employee_id': employee_id,
+    #                 'check_in': check_in,
+    #                 'check_out': check_out,
+    #             })
+
+      
+    #         # ---------------------------------
+    #         # ✅ ALWAYS CREATE ATTENDANCE LINES
+    #         # ---------------------------------
+    #         for tx in punches:
+    #             # Double safety: prevent duplicate lines
+    #             if HrAttendanceLine.search(
+    #                 [('biotime_transaction_id', '=', tx["id"])],
+    #                 limit=1
+    #             ):
+    #                 continue
+        
+    #             HrAttendanceLine.create({
+    #                 'attendance_id': attendance.id,
+    #                 'employee_id': employee_id,
+    #                 'punch_time': tx["_punch_time_utc"],
+    #                 'punch_state': self._sanitize_punch_state(tx.get("punch_state")),
+    #                 'terminal_sn': tx.get("terminal_sn"),
+    #                 'terminal_alias': tx.get("terminal_alias"),
+    #                 'biotime_transaction_id': tx["id"],
+    #             })
+
+
     def sync_attendance(self):
+
         base_url, username, password = self._get_config()
         start_url = f"{base_url}/iclock/api/transactions/?ordering=+-id"
     
@@ -323,19 +495,24 @@ class BiotimeService(models.Model):
     
         ist = pytz.timezone("Asia/Kolkata")
     
-        for payload in self._safe_paginated_get_line_new(start_url,username,password,start_page=1,max_pages=25 ):
+        # ----------------------------
+        # FETCH DATA
+        # ----------------------------
+        for payload in self._safe_paginated_get_line_new(
+                start_url, username, password,
+                start_page=1, max_pages=25):
+    
             data = payload.get("data", [])
     
-            _logger.info("Biotime transactions page fetched: %s records", len(data))
-    
             for tx in data:
+    
                 tx_id = tx.get("id")
                 if not tx_id or tx_id in processed_tx_ids:
                     continue
     
                 processed_tx_ids.add(tx_id)
     
-                # Prevent duplicates
+                # Prevent duplicate import
                 if HrAttendanceLine.search(
                     [('biotime_transaction_id', '=', tx_id)],
                     limit=1
@@ -358,7 +535,6 @@ class BiotimeService(models.Model):
                         tx["punch_time"], "%Y-%m-%d %H:%M:%S"
                     )
                 except Exception:
-                    _logger.warning("Invalid punch_time format: %s", tx.get("punch_time"))
                     continue
     
                 ist_dt = ist.localize(local_dt)
@@ -372,115 +548,85 @@ class BiotimeService(models.Model):
                     []
                 ).append(tx)
     
-     
-        # ---------------------------------
+        # ----------------------------
         # CREATE / UPDATE ATTENDANCE
-        # ---------------------------------
+        # ----------------------------
         for (employee_id, date), punches in grouped.items():
+    
             punches.sort(key=lambda x: x["_punch_time_utc"])
-        
+    
             check_in = punches[0]["_punch_time_utc"]
             check_out = punches[-1]["_punch_time_utc"]
-        
-            # 🔥 FIX: always use correct employee
+    
             employee_rec = Employee.browse(employee_id)
-        
-            # Auto-close old open attendance FIRST
+    
+            # Close previous open attendance first
             self._auto_close_old_attendance(employee_rec, check_in)
-
-            open_attendance = HrAttendance.search([
-                ('employee_id', '=', employee_id),
-                ('check_out', '=', False),
-            ], limit=1)
-            
-            if open_attendance:
-                _logger.warning(
-                    "Cannot create attendance, open attendance still exists: "
-                    "emp=%s open_att=%s check_in=%s",
-                    employee_id,
-                    open_attendance.id,
-                    open_attendance.check_in,
-                )
-                continue  # 
-        
+    
             attendance = HrAttendance.search([
                 ('employee_id', '=', employee_id),
                 ('check_in', '>=', f"{date} 00:00:00"),
                 ('check_in', '<=', f"{date} 23:59:59"),
             ], limit=1)
-
-      
+    
+            # ----------------------------
+            # SINGLE PUNCH
+            # ----------------------------
             if len(punches) == 1:
+    
                 if attendance:
-                    _logger.info(
-                        "Single punch already has attendance: emp=%s date=%s",
-                        employee_id, date
-                    )
+                    attendance.write({
+                        'check_in': check_in,
+                    })
                 else:
-                    HrAttendance.create({
+                    attendance = HrAttendance.create({
                         'employee_id': employee_id,
                         'check_in': check_in,
-                        # check_out intentionally NOT set
                     })
-        
-                _logger.info(
-                    "Single punch → attendance check_in only: emp=%s date=%s",
-                    employee_id, date
-                )
-                continue
-        
+    
             # ----------------------------
-            # ✅ MULTIPLE PUNCHES
+            # MULTIPLE PUNCHES
             # ----------------------------
-            if check_out <= check_in:
-                _logger.warning(
-                    "Skipping invalid attendance (check_out <= check_in): emp=%s date=%s",
-                    employee_id, date
-                )
-                continue
-        
-            if attendance:
-                if attendance.check_out and check_out <= attendance.check_in:
-                    _logger.warning(
-                        "Skipping invalid attendance UPDATE: emp=%s attendance=%s",
-                        employee_id,
-                        attendance.id,
-                    )
-                    continue
-        
-                attendance.write({
-                    'check_out': check_out
-                })
             else:
-                HrAttendance.create({
-                    'employee_id': employee_id,
-                    'check_in': check_in,
-                    'check_out': check_out,
-                })
-
-      
-            # ---------------------------------
-            # ✅ ALWAYS CREATE ATTENDANCE LINES
-            # ---------------------------------
+    
+                if check_out <= check_in:
+                    continue
+    
+                if attendance:
+                    attendance.write({
+                        'check_in': check_in,
+                        'check_out': check_out,
+                    })
+                else:
+                    attendance = HrAttendance.create({
+                        'employee_id': employee_id,
+                        'check_in': check_in,
+                        'check_out': check_out,
+                    })
+    
+            # ----------------------------
+            # CREATE ALL PUNCH LINES
+            # ----------------------------
             for tx in punches:
-                # Double safety: prevent duplicate lines
+    
                 if HrAttendanceLine.search(
                     [('biotime_transaction_id', '=', tx["id"])],
                     limit=1
                 ):
                     continue
-        
+    
                 HrAttendanceLine.create({
                     'attendance_id': attendance.id,
                     'employee_id': employee_id,
                     'punch_time': tx["_punch_time_utc"],
-                    'punch_state': self._sanitize_punch_state(tx.get("punch_state")),
+                    'punch_state': self._sanitize_punch_state(
+                        tx.get("punch_state")
+                    ),
                     'terminal_sn': tx.get("terminal_sn"),
                     'terminal_alias': tx.get("terminal_alias"),
                     'biotime_transaction_id': tx["id"],
                 })
-
-
+    
 
 
 
@@ -531,4 +677,5 @@ class BiotimeService(models.Model):
                 attendance.employee_id.id,
                 attendance.id,
             )
+
 
