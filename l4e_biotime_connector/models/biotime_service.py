@@ -489,47 +489,45 @@ class BiotimeService(models.Model):
     @api.model
     def cron_auto_close_attendance_7pm(self):
         """
-        Daily cron to auto close ALL open attendances
-        and set checkout to 7:00 PM of the check-in date.
+        Auto close ALL open attendances
+        and set checkout to 7:00 PM IST
         """
-        HrAttendance = self.env['hr.attendance']
     
-        open_attendances = HrAttendance.search([('check_out', '=', False)])
-
+        HrAttendance = self.env['hr.attendance']
+        ist = pytz.timezone("Asia/Kolkata")
+    
+        open_attendances = HrAttendance.search([
+            ('check_out', '=', False),
+        ])
+    
         for attendance in open_attendances:
-
+    
             if not attendance.check_in:
                 continue
-
-            # Get date of check_in
-            check_in_date = fields.Datetime.to_datetime(attendance.check_in).date()
-
-            # Build 7 PM of that date
-            auto_checkout_dt = datetime.combine(check_in_date, time(19, 0, 0))
-
-            auto_checkout = fields.Datetime.to_string(auto_checkout_dt)
-
+    
+            # Convert check_in (UTC) → IST
+            check_in_utc = fields.Datetime.to_datetime(attendance.check_in)
+            check_in_ist = pytz.UTC.localize(check_in_utc).astimezone(ist)
+    
+            # Build 7PM IST of that date
+            seven_pm_ist = ist.localize(
+                datetime.combine(check_in_ist.date(), time(19, 0, 0))
+            )
+    
+            # Convert back to UTC for storage
+            seven_pm_utc = seven_pm_ist.astimezone(pytz.UTC).replace(tzinfo=None)
+    
+            # Prevent invalid checkout
+            if seven_pm_utc <= check_in_utc:
+                continue
+    
             attendance.write({
-                'check_out': auto_checkout,
+                'check_out': seven_pm_utc,
                 'x_studio_no_checkout': True,
             })
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    
+            _logger.info(
+                "Auto-closed attendance at 7PM IST: emp=%s attendance=%s",
+                attendance.employee_id.id,
+                attendance.id,
+            )
