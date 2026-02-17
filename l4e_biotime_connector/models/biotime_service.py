@@ -3,7 +3,7 @@ from odoo import models, fields
 from odoo.exceptions import UserError
 import logging
 
-from datetime import datetime,timedelta
+from datetime import datetime,timedelta , time
 import pytz
 from urllib.parse import urlencode, urlparse, parse_qs
 
@@ -483,6 +483,37 @@ class BiotimeService(models.Model):
 
 
 
+
+
+
+    @api.model
+    def cron_auto_close_attendance_7pm(self):
+        """
+        Daily cron to auto close ALL open attendances
+        and set checkout to 7:00 PM of the check-in date.
+        """
+
+        open_attendances = self.search([
+            ('check_out', '=', False),
+        ])
+
+        for attendance in open_attendances:
+
+            if not attendance.check_in:
+                continue
+
+            # Get date of check_in
+            check_in_date = fields.Datetime.to_datetime(attendance.check_in).date()
+
+            # Build 7 PM of that date
+            auto_checkout_dt = datetime.combine(check_in_date, time(19, 0, 0))
+
+            auto_checkout = fields.Datetime.to_string(auto_checkout_dt)
+
+            attendance.write({
+                'check_out': auto_checkout,
+                'x_studio_no_checkout': True,
+            })
 
 
 
