@@ -494,9 +494,7 @@ class BiotimeService(models.Model):
         """
         HrAttendance = self.env['hr.attendance']
     
-        open_attendances = HrAttendance.search([
-            ('employee_id', '=', employee.id),
-            ('check_out', '=', False)])
+        open_attendances = HrAttendance.search([('check_out', '=', False)])
 
         for attendance in open_attendances:
 
@@ -515,6 +513,7 @@ class BiotimeService(models.Model):
                 'check_out': auto_checkout,
                 'x_studio_no_checkout': True,
             })
+
 
 
 
