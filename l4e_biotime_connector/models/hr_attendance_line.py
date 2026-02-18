@@ -55,8 +55,8 @@ class HrAttendanceLine(models.Model):
         HrAttendance = self.env['hr.attendance']
         HrAttendanceLine = self.env['hr.attendance.line']
     
-        start_dt = f"{date} 00:00:00"
-        end_dt = f"{date} 23:59:59"
+        start_dt = datetime.combine(date, datetime.min.time())
+        end_dt = datetime.combine(date, datetime.max.time())
     
         lines = HrAttendanceLine.search([
             ('employee_id', '=', employee_id),
@@ -86,12 +86,10 @@ class HrAttendanceLine(models.Model):
         if attendance:
             attendance.write(vals)
         else:
-            HrAttendance.create(vals)
+            attendance = HrAttendance.create(vals)
     
-        # link lines to attendance
-        lines.write({'attendance_id': attendance.id if attendance else False})
-
-
+        # link lines
+        lines.write({'attendance_id': attendance.id})
     
     @api.model
     def cron_recompute_all_attendance(self):
@@ -113,3 +111,4 @@ class HrAttendanceLine(models.Model):
 
     
     
+
