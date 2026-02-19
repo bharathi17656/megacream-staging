@@ -588,23 +588,45 @@ class BiotimeService(models.Model):
             # ------------------------------------------------
             # CREATE OR UPDATE ATTENDANCE
             # ------------------------------------------------
+            # attendance = HrAttendance.search([
+            #     ('employee_id', '=', employee_id),
+            #     ('check_in', '>=', f"{date} 00:00:00"),
+            #     ('check_in', '<=', f"{date} 23:59:59"),
+            # ], limit=1)
+    
+            # if not attendance:
+            #     attendance = HrAttendance.create({
+            #         'employee_id': employee_id,
+            #         'check_in': check_in,
+            #         'check_out': check_out if check_out > check_in else False,
+            #     })
+            # else:
+            #     attendance.write({
+            #         'check_in': check_in,
+            #         'check_out': check_out if check_out > check_in else False,
+            #     })
+
+            # Find open attendance first
             attendance = HrAttendance.search([
                 ('employee_id', '=', employee_id),
-                ('check_in', '>=', f"{date} 00:00:00"),
-                ('check_in', '<=', f"{date} 23:59:59"),
+                ('check_out', '=', False),
             ], limit=1)
-    
-            if not attendance:
+            
+            if attendance:
+                # Update checkout when real checkout arrives
+                if check_out > attendance.check_in:
+                    attendance.write({
+                        'check_out': check_out,
+                        'x_studio_no_checkout': False,
+                    })
+            else:
+                # No open attendance → create new
                 attendance = HrAttendance.create({
                     'employee_id': employee_id,
                     'check_in': check_in,
                     'check_out': check_out if check_out > check_in else False,
                 })
-            else:
-                attendance.write({
-                    'check_in': check_in,
-                    'check_out': check_out if check_out > check_in else False,
-                })
+
     
             # ------------------------------------------------
             # CREATE ALL PUNCH LINES
@@ -679,6 +701,7 @@ class BiotimeService(models.Model):
                 attendance.employee_id.id,
                 attendance.id,
             )
+
 
 
 
