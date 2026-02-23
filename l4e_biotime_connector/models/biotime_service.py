@@ -310,6 +310,149 @@ class BiotimeService(models.Model):
 
 
 
+    # def sync_attendance(self):
+
+    #     base_url, username, password = self._get_config()
+    #     start_url = f"{base_url}/iclock/api/transactions/?ordering=+-id"
+    
+    #     HrAttendance = self.env['hr.attendance']
+    #     HrAttendanceLine = self.env['hr.attendance.line']
+    #     Employee = self.env['hr.employee']
+    
+    #     grouped = {}
+    #     processed_tx_ids = set()
+    
+    #     ist = pytz.timezone("Asia/Kolkata")
+    
+    #     # ------------------------------------------------
+    #     # FETCH TRANSACTIONS
+    #     # ------------------------------------------------
+    #     for payload in self._safe_paginated_get_line_new(
+    #             start_url, username, password,
+    #             start_page=1, max_pages=40):
+    
+    #         data = payload.get("data", [])
+    
+    #         for tx in data:
+    
+    #             tx_id = tx.get("id")
+    #             if not tx_id or tx_id in processed_tx_ids:
+    #                 continue
+    
+    #             processed_tx_ids.add(tx_id)
+    
+    #             # Prevent duplicate punch import
+    #             if HrAttendanceLine.search(
+    #                 [('biotime_transaction_id', '=', tx_id)],
+    #                 limit=1
+    #             ):
+    #                 continue
+    
+    #             emp_code = tx.get("emp_code")
+    #             if not emp_code:
+    #                 continue
+    
+    #             employee = Employee.search(
+    #                 [('x_studio_emp_id', '=', emp_code)],
+    #                 limit=1
+    #             )
+    #             if not employee:
+    #                 continue
+    
+    #             try:
+    #                 local_dt = datetime.strptime(
+    #                     tx["punch_time"], "%Y-%m-%d %H:%M:%S"
+    #                 )
+    #             except Exception:
+    #                 continue
+    
+    #             ist_dt = ist.localize(local_dt)
+    #             utc_dt = ist_dt.astimezone(pytz.UTC).replace(tzinfo=None)
+    
+    #             tx["_punch_time_utc"] = utc_dt
+    #             tx["_punch_date_ist"] = ist_dt.date()
+    
+    #             grouped.setdefault(
+    #                 (employee.id, tx["_punch_date_ist"]),
+    #                 []
+    #             ).append(tx)
+    
+    #     # ------------------------------------------------
+    #     # PROCESS GROUPED ATTENDANCE
+    #     # ------------------------------------------------
+    #     for (employee_id, date), punches in grouped.items():
+    
+    #         punches.sort(key=lambda x: x["_punch_time_utc"])
+    
+    #         check_in = punches[0]["_punch_time_utc"]
+    #         check_out = punches[-1]["_punch_time_utc"]
+    
+    #         employee_rec = Employee.browse(employee_id)
+    
+    #         # ------------------------------------------------
+    #         # STEP 1: CLOSE ANY OPEN ATTENDANCE SAFELY
+    #         # ------------------------------------------------
+    #         open_attendance = HrAttendance.search([
+    #             ('employee_id', '=', employee_id),
+    #             ('check_out', '=', False),
+    #         ], limit=1)
+    
+    #         if open_attendance:
+    #             # Close it at new check_in time if valid
+    #             if check_in > open_attendance.check_in:
+    #                 open_attendance.write({
+    #                     'check_out': check_in,
+    #                     'x_studio_no_checkout': True,
+    #                 })
+    
+    #         # ------------------------------------------------
+    #         # STEP 2: RECHECK OPEN ATTENDANCE
+    #         # ------------------------------------------------
+    #         attendance = HrAttendance.search([
+    #             ('employee_id', '=', employee_id),
+    #             ('check_out', '=', False),
+    #         ], limit=1)
+    
+    #         if not attendance:
+    #             # Safe to create new attendance
+    #             attendance = HrAttendance.create({
+    #                 'employee_id': employee_id,
+    #                 'check_in': check_in,
+    #             })
+    
+    #         # ------------------------------------------------
+    #         # STEP 3: UPDATE CHECKOUT IF VALID
+    #         # ------------------------------------------------
+    #         if check_out and check_out > attendance.check_in:
+    #             attendance.write({
+    #                 'check_out': check_out,
+    #                 'x_studio_no_checkout': False,
+    #             })
+    
+    #         # ------------------------------------------------
+    #         # STEP 4: CREATE PUNCH LINES
+    #         # ------------------------------------------------
+    #         for tx in punches:
+    
+    #             if HrAttendanceLine.search(
+    #                 [('biotime_transaction_id', '=', tx["id"])],
+    #                 limit=1
+    #             ):
+    #                 continue
+    
+    #             HrAttendanceLine.create({
+    #                 'attendance_id': attendance.id,
+    #                 'employee_id': employee_id,
+    #                 'punch_time': tx["_punch_time_utc"],
+    #                 'punch_state': self._sanitize_punch_state(
+    #                     tx.get("punch_state")
+    #                 ),
+    #                 'terminal_sn': tx.get("terminal_sn"),
+    #                 'terminal_alias': tx.get("terminal_alias"),
+    #                 'biotime_transaction_id': tx["id"],
+    #             })
+
+
     def sync_attendance(self):
 
         base_url, username, password = self._get_config()
@@ -341,7 +484,7 @@ class BiotimeService(models.Model):
     
                 processed_tx_ids.add(tx_id)
     
-                # Prevent duplicate punch import
+                # Skip if already imported
                 if HrAttendanceLine.search(
                     [('biotime_transaction_id', '=', tx_id)],
                     limit=1
@@ -380,17 +523,15 @@ class BiotimeService(models.Model):
         # ------------------------------------------------
         # PROCESS GROUPED ATTENDANCE
         # ------------------------------------------------
-        for (employee_id, date), punches in grouped.items():
+        for (employee_id, punch_date), punches in grouped.items():
     
             punches.sort(key=lambda x: x["_punch_time_utc"])
     
             check_in = punches[0]["_punch_time_utc"]
             check_out = punches[-1]["_punch_time_utc"]
     
-            employee_rec = Employee.browse(employee_id)
-    
             # ------------------------------------------------
-            # STEP 1: CLOSE ANY OPEN ATTENDANCE SAFELY
+            # STEP 1: HANDLE OPEN ATTENDANCE
             # ------------------------------------------------
             open_attendance = HrAttendance.search([
                 ('employee_id', '=', employee_id),
@@ -398,15 +539,44 @@ class BiotimeService(models.Model):
             ], limit=1)
     
             if open_attendance:
-                # Close it at new check_in time if valid
-                if check_in > open_attendance.check_in:
-                    open_attendance.write({
-                        'check_out': check_in,
-                        'x_studio_no_checkout': True,
-                    })
+    
+                old_checkin_utc = fields.Datetime.to_datetime(
+                    open_attendance.check_in
+                )
+                old_checkin_ist = pytz.UTC.localize(
+                    old_checkin_utc
+                ).astimezone(ist)
+    
+                # If new punch is next day → close old at 7PM IST
+                if old_checkin_ist.date() < punch_date:
+    
+                    seven_pm_ist = ist.localize(
+                        datetime.combine(
+                            old_checkin_ist.date(),
+                            time(19, 0, 0)
+                        )
+                    )
+    
+                    seven_pm_utc = seven_pm_ist.astimezone(
+                        pytz.UTC
+                    ).replace(tzinfo=None)
+    
+                    if seven_pm_utc > old_checkin_utc:
+                        open_attendance.write({
+                            'check_out': seven_pm_utc,
+                            'x_studio_no_checkout': True,
+                        })
+    
+                else:
+                    # Same day → just update checkout
+                    if check_out > open_attendance.check_in:
+                        open_attendance.write({
+                            'check_out': check_out,
+                            'x_studio_no_checkout': False,
+                        })
     
             # ------------------------------------------------
-            # STEP 2: RECHECK OPEN ATTENDANCE
+            # STEP 2: ENSURE NO OPEN ATTENDANCE REMAINS
             # ------------------------------------------------
             attendance = HrAttendance.search([
                 ('employee_id', '=', employee_id),
@@ -414,14 +584,13 @@ class BiotimeService(models.Model):
             ], limit=1)
     
             if not attendance:
-                # Safe to create new attendance
                 attendance = HrAttendance.create({
                     'employee_id': employee_id,
                     'check_in': check_in,
                 })
     
             # ------------------------------------------------
-            # STEP 3: UPDATE CHECKOUT IF VALID
+            # STEP 3: UPDATE CHECKOUT FOR NEW RECORD
             # ------------------------------------------------
             if check_out and check_out > attendance.check_in:
                 attendance.write({
@@ -653,6 +822,7 @@ class BiotimeService(models.Model):
                 attendance.employee_id.id,
                 attendance.id,
             )
+
 
 
 
