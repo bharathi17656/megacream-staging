@@ -12,7 +12,7 @@ Includes:
 - PF / ESI
 - Deductions 
 - Net Salary
-- CTC 
+- CTC
 """,
     'author': 'L4E',
     'category': 'Human Resources/Payroll',
