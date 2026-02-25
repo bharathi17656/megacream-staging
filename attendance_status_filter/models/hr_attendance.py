@@ -1,7 +1,6 @@
 from odoo import models, fields, api
 from datetime import time
 
-
 class HrEmployee(models.Model):
     _inherit = "hr.employee"
 
@@ -11,7 +10,13 @@ class HrEmployee(models.Model):
 class HrAttendance(models.Model):
     _inherit = "hr.attendance"
 
-    status = fields.Char(
+    status = fields.Selection(
+        [
+            ("present", "Present"),
+            ("late", "Late"),
+            ("miss_out", "Miss Out"),
+            ("absent", "Absent"),
+        ],
         string="Status",
         compute="_compute_status",
         store=True,
@@ -22,26 +27,23 @@ class HrAttendance(models.Model):
     def _compute_status(self):
         for rec in self:
 
-            # No Check In
-            if not rec.check_in:
-                rec.status = "Absence"
+            # Both missing
+            if not rec.check_in and not rec.check_out:
+                rec.status = "absent"
 
-            # Miss In (Check Out exists but no Check In)
-            elif rec.check_out and not rec.check_in:
-                rec.status = "Miss In"
+            # Either check_in missing OR check_out missing
+            elif not rec.check_in or not rec.check_out:
+                rec.status = "miss_out"
 
-            # Late (After 09:30 AM)
-            elif rec.check_in:
-                # Convert UTC to user timezone
+            # Late check_in (after 9:30 AM)
+            else:
                 local_dt = fields.Datetime.context_timestamp(rec, rec.check_in)
 
                 if local_dt.time() > time(9, 30):
-                    rec.status = "Late"
+                    rec.status = "late"
                 else:
-                    rec.status = "Present"
+                    rec.status = "present"
 
-            else:
-                rec.status = "Present"
 
 
 

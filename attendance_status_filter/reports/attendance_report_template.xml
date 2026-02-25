@@ -57,22 +57,26 @@
                                         <td>
                                             <t t-esc="context_timestamp(rec.check_out).strftime('%H:%M') if rec.check_out else ''"/>
                                         </td>
-                                        <td>
+                                        <td style="text-align:center;">
 
-                                            <t t-if="not rec.check_in">
-                                                Absence(A)
+                                            <t t-if="rec.status == 'present'">
+                                                Present(P)
                                             </t>
 
-                                            <t t-elif="rec.check_out and not rec.check_in">
+                                            <t t-elif="rec.status == 'miss_out'">
                                                 Miss In(MI)
                                             </t>
 
-                                            <t t-elif="rec.check_in and context_timestamp(rec.check_in).time() &gt; datetime.time(9,30)">
+                                            <t t-elif="rec.status == 'late'">
                                                 Late(LT)
                                             </t>
 
+                                            <t t-elif="rec.status == 'absent'">
+                                                Absence(A)
+                                            </t>
+
                                             <t t-else="">
-                                                Present(P)
+                                                -
                                             </t>
 
                                         </td>
