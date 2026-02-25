@@ -842,7 +842,7 @@ class BiotimeService(models.Model):
         # =========================================================
         for payload in self._safe_paginated_get_line_new(
                 start_url, username, password,
-                start_page=1, max_pages=40):
+                start_page=1, max_pages=6):
     
             for tx in payload.get("data", []):
     
@@ -1073,6 +1073,7 @@ class BiotimeService(models.Model):
                 attendance.employee_id.id,
                 attendance.id,
             )
+
 
 
 
