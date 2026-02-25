@@ -7,16 +7,11 @@ class HrEmployee(models.Model):
     x_studio_emp_id = fields.Char(string="Emp ID")
 
 
+
 class HrAttendance(models.Model):
     _inherit = "hr.attendance"
 
-    status = fields.Selection(
-        [
-            ("present", "Present"),
-            ("late", "Late"),
-            ("miss_out", "Miss Out"),
-            ("absent", "Absent"),
-        ],
+    status = fields.Char(
         string="Status",
         compute="_compute_status",
         store=True,
@@ -29,22 +24,20 @@ class HrAttendance(models.Model):
 
             # Both missing
             if not rec.check_in and not rec.check_out:
-                rec.status = "absent"
+                rec.status = "Absence(A)"
 
             # Either check_in missing OR check_out missing
             elif not rec.check_in or not rec.check_out:
-                rec.status = "miss_out"
+                rec.status = "Miss In(MI)"
 
             # Late check_in (after 9:30 AM)
             else:
                 local_dt = fields.Datetime.context_timestamp(rec, rec.check_in)
 
                 if local_dt.time() > time(9, 30):
-                    rec.status = "late"
+                    rec.status = "Late(LT)"
                 else:
-                    rec.status = "present"
-
-
+                    rec.status = "Present(P)"
 
 
 
