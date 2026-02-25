@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+
+    <!-- TREE VIEW -->
+    <record id="view_attendance_tree_status" model="ir.ui.view">
+        <field name="name">hr.attendance.tree.status</field>
+        <field name="model">hr.attendance</field>
+        <field name="inherit_id" ref="hr_attendance.view_attendance_tree"/>
+        <field name="arch" type="xml">
+
+            <xpath expr="//field[@name='validated_overtime_hours']" position="after">
+                <field name="status" readonly="1"/>
+            </xpath>
+
+        </field>
+    </record>
+
+    <record id="view_attendance_search_today" model="ir.ui.view">
+        <field name="name">hr.attendance.search.today</field>
+        <field name="model">hr.attendance</field>
+
+        <!-- ✅ CORRECT ID from your screenshot -->
+        <field name="inherit_id" ref="hr_attendance.hr_attendance_view_filter"/>
+
+        <field name="arch" type="xml">
+
+            <!-- Insert after Date filter -->
+            <xpath expr="//filter[@name='check_in_filter']" position="after">
+
+                <filter string="Today"
+                        name="today_filter"
+                        domain="[('check_in','&gt;=', context_today()),
+                             ('check_in','&lt;', context_today() + datetime.timedelta(days=1))]"/>
+
+            </xpath>
+
+        </field>
+    </record>
+
+</odoo>
