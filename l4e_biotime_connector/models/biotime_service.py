@@ -212,7 +212,7 @@ class BiotimeService(models.Model):
     
     
 
-    def _safe_paginated_get_line_new(self,start_url,username,password,start_page=1,max_pages=50):
+    def _safe_paginated_get_line_new(self,start_url,username,password,start_page=1,max_pages=6):
         parsed = urlparse(start_url)
         query = parse_qs(parsed.query)
         query["page"] = [str(start_page)]
@@ -1073,6 +1073,7 @@ class BiotimeService(models.Model):
                 attendance.employee_id.id,
                 attendance.id,
             )
+
 
 
 
