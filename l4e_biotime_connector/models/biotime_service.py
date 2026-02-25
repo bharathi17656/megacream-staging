@@ -824,7 +824,7 @@ class BiotimeService(models.Model):
 
 
     def sync_attendance(self):
-    
+
         base_url, username, password = self._get_config()
         start_url = f"{base_url}/iclock/api/transactions/?ordering=+-id"
     
@@ -832,16 +832,14 @@ class BiotimeService(models.Model):
         HrAttendanceLine = self.env['hr.attendance.line']
         Employee = self.env['hr.employee']
     
+        ist = pytz.timezone("Asia/Kolkata")
+    
         grouped = {}
         processed_tx_ids = set()
     
-        ist = pytz.timezone("Asia/Kolkata")
-        now_ist = datetime.now(ist)
-        today_ist = now_ist.date()
-    
-        # --------------------------------------------
+        # =========================================================
         # 1️⃣ FETCH TRANSACTIONS
-        # --------------------------------------------
+        # =========================================================
         for payload in self._safe_paginated_get_line_new(
                 start_url, username, password,
                 start_page=1, max_pages=40):
@@ -890,9 +888,9 @@ class BiotimeService(models.Model):
                     []
                 ).append(tx)
     
-        # --------------------------------------------
+        # =========================================================
         # 2️⃣ PROCESS PER EMPLOYEE PER DAY
-        # --------------------------------------------
+        # =========================================================
         for (employee_id, punch_date), punches in grouped.items():
     
             punches.sort(key=lambda x: x["_punch_time_utc"])
@@ -900,9 +898,9 @@ class BiotimeService(models.Model):
             first_punch = punches[0]["_punch_time_utc"]
             last_punch = punches[-1]["_punch_time_utc"]
     
-            # ----------------------------------------
-            # Close previous open attendance (if day changed)
-            # ----------------------------------------
+            # -----------------------------------------------------
+            # 🔴 STEP A: CLOSE ANY PREVIOUS OPEN ATTENDANCE
+            # -----------------------------------------------------
             open_attendance = HrAttendance.search([
                 ('employee_id', '=', employee_id),
                 ('check_out', '=', False),
@@ -910,22 +908,25 @@ class BiotimeService(models.Model):
     
             if open_attendance:
     
-                open_checkin_utc = fields.Datetime.to_datetime(
+                open_checkin = fields.Datetime.to_datetime(
                     open_attendance.check_in
                 )
+    
                 open_checkin_ist = pytz.UTC.localize(
-                    open_checkin_utc
+                    open_checkin
                 ).astimezone(ist)
     
+                # If previous day attendance is still open
                 if open_checkin_ist.date() < punch_date:
     
-                    # Single punch device logic
                     lines = HrAttendanceLine.search([
                         ('attendance_id', '=', open_attendance.id)
                     ], order="punch_time asc")
     
                     if lines:
+    
                         if len(lines) == 1:
+                            # Only one punch → close at 7PM
                             seven_pm_ist = ist.localize(
                                 datetime.combine(
                                     open_checkin_ist.date(),
@@ -935,18 +936,21 @@ class BiotimeService(models.Model):
                             checkout_time = seven_pm_ist.astimezone(
                                 pytz.UTC
                             ).replace(tzinfo=None)
+                            no_checkout_flag = True
                         else:
+                            # Multiple punches → last punch
                             checkout_time = lines[-1].punch_time
+                            no_checkout_flag = False
     
                         if checkout_time > open_attendance.check_in:
                             open_attendance.write({
                                 'check_out': checkout_time,
-                                'x_studio_no_checkout': len(lines) == 1,
+                                'x_studio_no_checkout': no_checkout_flag,
                             })
     
-            # ----------------------------------------
-            # Find or create today's attendance
-            # ----------------------------------------
+            # -----------------------------------------------------
+            # 🔵 STEP B: FIND ATTENDANCE FOR THIS IST DATE
+            # -----------------------------------------------------
             day_start_ist = ist.localize(
                 datetime.combine(punch_date, time.min)
             )
@@ -968,13 +972,25 @@ class BiotimeService(models.Model):
                 ('check_in', '<=', day_end_utc),
             ], limit=1)
     
+            # -----------------------------------------------------
+            # 🟢 STEP C: CREATE OR UPDATE ATTENDANCE
+            # -----------------------------------------------------
             if attendance:
+    
+                new_checkin = min(attendance.check_in, first_punch)
+                new_checkout = max(
+                    attendance.check_out or last_punch,
+                    last_punch
+                )
+    
                 attendance.write({
-                    'check_in': min(attendance.check_in, first_punch),
-                    'check_out': last_punch,
+                    'check_in': new_checkin,
+                    'check_out': new_checkout,
                     'x_studio_no_checkout': False,
                 })
+    
             else:
+    
                 attendance = HrAttendance.create({
                     'employee_id': employee_id,
                     'check_in': first_punch,
@@ -982,9 +998,9 @@ class BiotimeService(models.Model):
                     'x_studio_no_checkout': False,
                 })
     
-            # ----------------------------------------
-            # Create punch lines
-            # ----------------------------------------
+            # -----------------------------------------------------
+            # 🟣 STEP D: CREATE PUNCH LINES
+            # -----------------------------------------------------
             for tx in punches:
     
                 if HrAttendanceLine.search(
@@ -1002,7 +1018,6 @@ class BiotimeService(models.Model):
                     'terminal_alias': tx.get("terminal_alias"),
                     'biotime_transaction_id': tx["id"],
                 })
-
 
 
     @api.model
@@ -1058,6 +1073,7 @@ class BiotimeService(models.Model):
                 attendance.employee_id.id,
                 attendance.id,
             )
+
 
 
 
