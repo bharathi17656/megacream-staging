@@ -1019,6 +1019,52 @@ class BiotimeService(models.Model):
             )
     
         _logger.info("=== BIOTIME SYNC COMPLETED ===")
+
+
+    def auto_close_at_nine_pm(self):
+
+        # ===============================================
+        # AUTO CLOSE OLD OPEN ATTENDANCES
+        # ===============================================
+        open_attendances = HrAttendance.search([
+            ('check_out', '=', False)
+        ])
+        
+        for att in open_attendances:
+        
+            checkin_utc = fields.Datetime.to_datetime(att.check_in)
+            checkin_ist = pytz.UTC.localize(checkin_utc).astimezone(ist)
+        
+            if checkin_ist.date() < today_ist:
+        
+                lines = HrAttendanceLine.search([
+                    ('attendance_id', '=', att.id)
+                ], order="punch_time asc")
+        
+                if lines:
+        
+                    if len(lines) == 1:
+                        # Only one punch → set 7 PM
+                        seven_pm_ist = ist.localize(
+                            datetime.combine(
+                                checkin_ist.date(),
+                                time(19, 0, 0)
+                            )
+                        )
+                        checkout_time = seven_pm_ist.astimezone(
+                            pytz.UTC
+                        ).replace(tzinfo=None)
+                        no_checkout_flag = True
+                    else:
+                        checkout_time = lines[-1].punch_time
+                        no_checkout_flag = False
+        
+                    if checkout_time > att.check_in:
+                        att.write({
+                            'check_out': checkout_time,
+                            'x_studio_no_checkout': no_checkout_flag,
+                        })
+
     
 
     @api.model
@@ -1074,6 +1120,7 @@ class BiotimeService(models.Model):
                 attendance.employee_id.id,
                 attendance.id,
             )
+
 
 
 
