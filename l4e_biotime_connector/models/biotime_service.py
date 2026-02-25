@@ -1037,7 +1037,8 @@ class BiotimeService(models.Model):
         # AUTO CLOSE OLD OPEN ATTENDANCES
         # ===============================================
         open_attendances = HrAttendance.search([
-            ('check_out', '=', False)
+            ('check_out', '=', False),
+            ('check_in', '!=', False),
         ])
         
         for att in open_attendances:
@@ -1130,6 +1131,7 @@ class BiotimeService(models.Model):
                 attendance.employee_id.id,
                 attendance.id,
             )
+
 
 
 
