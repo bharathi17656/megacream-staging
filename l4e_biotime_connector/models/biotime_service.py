@@ -1107,7 +1107,7 @@ class BiotimeService(models.Model):
                             nine_pm_ist = ist.localize(
                                 datetime.combine(
                                     attendance_date,
-                                    time(21, 0, 0)
+                                    time(19, 0, 0)
                                 )
                             )
                             checkout_time = nine_pm_ist.astimezone(
@@ -1184,6 +1184,7 @@ class BiotimeService(models.Model):
                 attendance.employee_id.id,
                 attendance.id,
             )
+
 
 
 
