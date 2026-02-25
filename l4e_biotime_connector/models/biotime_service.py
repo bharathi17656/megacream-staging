@@ -824,39 +824,24 @@ class BiotimeService(models.Model):
 
 
     def sync_attendance(self):
-
+    
         base_url, username, password = self._get_config()
     
         HrAttendance = self.env['hr.attendance']
         HrAttendanceLine = self.env['hr.attendance.line']
         Employee = self.env['hr.employee']
-        ICP = self.env['ir.config_parameter'].sudo()
     
         ist = pytz.timezone("Asia/Kolkata")
     
-        # =====================================================
-        # 1️⃣ GET LAST SYNCED TRANSACTION ID
-        # =====================================================
-        last_id = int(ICP.get_param(
-            'biotime.last_transaction_id', default=0
-        ))
+        start_url = f"{base_url}/iclock/api/transactions/?ordering=+-id"
     
-        start_url = (
-            f"{base_url}/iclock/api/transactions/"
-            f"?ordering=id&id__gt={last_id}"
-        )
-    
-        grouped = {}
-        processed_tx_ids = set()
-        max_processed_id = last_id
-    
+        all_transactions = []
         page_count = 0
-        max_pages = 10
-    
+        max_pages = 6
         url = start_url
     
         # =====================================================
-        # 2️⃣ FETCH MAX 10 PAGES ONLY (INCREMENTAL)
+        # 1️⃣ FETCH LATEST 6 PAGES
         # =====================================================
         while url and page_count < max_pages:
     
@@ -869,59 +854,76 @@ class BiotimeService(models.Model):
             if not data:
                 break
     
-            for tx in data:
-    
-                tx_id = tx.get("id")
-                if not tx_id:
-                    continue
-    
-                if tx_id > max_processed_id:
-                    max_processed_id = tx_id
-    
-                if HrAttendanceLine.search(
-                    [('biotime_transaction_id', '=', tx_id)],
-                    limit=1
-                ):
-                    continue
-    
-                emp_code = tx.get("emp_code")
-                if not emp_code:
-                    continue
-    
-                employee = Employee.search(
-                    [('x_studio_emp_id', '=', emp_code)],
-                    limit=1
-                )
-                if not employee:
-                    continue
-    
-                try:
-                    local_dt = datetime.strptime(
-                        tx["punch_time"], "%Y-%m-%d %H:%M:%S"
-                    )
-                except Exception:
-                    continue
-    
-                ist_dt = ist.localize(local_dt)
-                utc_dt = ist_dt.astimezone(pytz.UTC).replace(tzinfo=None)
-    
-                punch_date = ist_dt.date()
-    
-                grouped.setdefault(
-                    (employee.id, punch_date),
-                    []
-                ).append({
-                    "tx_id": tx_id,
-                    "punch_time": utc_dt,
-                    "terminal_sn": tx.get("terminal_sn"),
-                    "terminal_alias": tx.get("terminal_alias"),
-                })
+            all_transactions.extend(data)
     
             url = payload.get("next")
             page_count += 1
     
+        if not all_transactions:
+            return
+    
         # =====================================================
-        # 3️⃣ PROCESS PER EMPLOYEE PER DAY
+        # 2️⃣ SORT ALL BY punch_time ASCENDING
+        # =====================================================
+        def parse_time(tx):
+            try:
+                return datetime.strptime(tx["punch_time"], "%Y-%m-%d %H:%M:%S")
+            except:
+                return datetime.min
+    
+        all_transactions.sort(key=parse_time)
+    
+        # =====================================================
+        # 3️⃣ GROUP BY EMPLOYEE + IST DATE
+        # =====================================================
+        grouped = {}
+    
+        for tx in all_transactions:
+    
+            tx_id = tx.get("id")
+            emp_code = tx.get("emp_code")
+    
+            if not tx_id or not emp_code:
+                continue
+    
+            # Skip already imported punch
+            if HrAttendanceLine.search(
+                [('biotime_transaction_id', '=', tx_id)],
+                limit=1
+            ):
+                continue
+    
+            employee = Employee.search(
+                [('x_studio_emp_id', '=', emp_code)],
+                limit=1
+            )
+            if not employee:
+                continue
+    
+            try:
+                local_dt = datetime.strptime(
+                    tx["punch_time"], "%Y-%m-%d %H:%M:%S"
+                )
+            except:
+                continue
+    
+            ist_dt = ist.localize(local_dt)
+            utc_dt = ist_dt.astimezone(pytz.UTC).replace(tzinfo=None)
+    
+            punch_date = ist_dt.date()
+    
+            grouped.setdefault(
+                (employee.id, punch_date),
+                []
+            ).append({
+                "tx_id": tx_id,
+                "punch_time": utc_dt,
+                "terminal_sn": tx.get("terminal_sn"),
+                "terminal_alias": tx.get("terminal_alias"),
+            })
+    
+        # =====================================================
+        # 4️⃣ PROCESS PER EMPLOYEE PER DAY
         # =====================================================
         for (employee_id, punch_date), punches in grouped.items():
     
@@ -930,9 +932,9 @@ class BiotimeService(models.Model):
             first_punch = punches[0]["punch_time"]
             last_punch = punches[-1]["punch_time"]
     
-            # -------------------------------------------------
-            # 🔴 CLOSE ANY PREVIOUS OPEN ATTENDANCE
-            # -------------------------------------------------
+            # -----------------------------------------------
+            # CLOSE PREVIOUS OPEN ATTENDANCE (ENTERPRISE SAFE)
+            # -----------------------------------------------
             open_attendance = HrAttendance.search([
                 ('employee_id', '=', employee_id),
                 ('check_out', '=', False),
@@ -940,11 +942,11 @@ class BiotimeService(models.Model):
     
             if open_attendance:
     
-                open_checkin_utc = fields.Datetime.to_datetime(
+                open_checkin = fields.Datetime.to_datetime(
                     open_attendance.check_in
                 )
                 open_checkin_ist = pytz.UTC.localize(
-                    open_checkin_utc
+                    open_checkin
                 ).astimezone(ist)
     
                 if open_checkin_ist.date() < punch_date:
@@ -975,9 +977,9 @@ class BiotimeService(models.Model):
                                 'x_studio_no_checkout': no_checkout_flag,
                             })
     
-            # -------------------------------------------------
-            # 🔵 FIND OR CREATE TODAY ATTENDANCE
-            # -------------------------------------------------
+            # -----------------------------------------------
+            # FIND OR CREATE ATTENDANCE FOR THIS DATE
+            # -----------------------------------------------
             day_start_ist = ist.localize(
                 datetime.combine(punch_date, time.min)
             )
@@ -1016,9 +1018,9 @@ class BiotimeService(models.Model):
                     'x_studio_no_checkout': False,
                 })
     
-            # -------------------------------------------------
-            # 🟣 CREATE PUNCH LINES
-            # -------------------------------------------------
+            # -----------------------------------------------
+            # CREATE PUNCH LINES
+            # -----------------------------------------------
             for p in punches:
     
                 if HrAttendanceLine.search(
@@ -1036,15 +1038,6 @@ class BiotimeService(models.Model):
                     'terminal_alias': p["terminal_alias"],
                     'biotime_transaction_id': p["tx_id"],
                 })
-    
-        # =====================================================
-        # 4️⃣ SAVE LAST PROCESSED ID
-        # =====================================================
-        if max_processed_id > last_id:
-            ICP.set_param(
-                'biotime.last_transaction_id',
-                max_processed_id
-            )
 
 
     @api.model
@@ -1100,6 +1093,7 @@ class BiotimeService(models.Model):
                 attendance.employee_id.id,
                 attendance.id,
             )
+
 
 
 
