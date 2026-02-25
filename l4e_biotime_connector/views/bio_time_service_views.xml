@@ -50,11 +50,7 @@
     </record>
 
     <!-- MENU -->
-    <menuitem id="menu_biotime_root"
-              name="Biotime"
-              parent="hr_attendance.menu_hr_attendance_root"
-              sequence="50"/>
-
+ 
     <menuitem id="menu_biotime_control"
               name="Control Panel"
               parent="menu_biotime_root"
