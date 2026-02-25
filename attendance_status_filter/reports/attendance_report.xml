@@ -1,0 +1,13 @@
+<odoo>
+
+    <record id="action_report_attendance_daily" model="ir.actions.report">
+        <field name="name">Daily Attendance Report</field>
+        <field name="model">hr.attendance</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">attendance_status_filter.attendance_daily_template</field>
+        <field name="report_file">attendance_status_filter.attendance_daily_template</field>
+        <field name="binding_model_id" ref="hr_attendance.model_hr_attendance"/>
+        <field name="binding_type">report</field>
+    </record>
+
+</odoo>

@@ -1,0 +1,79 @@
+<odoo>
+    <template id="attendance_daily_template">
+
+        <t t-call="web.html_container">
+            <t t-call="web.external_layout">
+                <main>
+                    <div class="page">
+
+                        <h2 style="text-align:center;">
+                            Daily Attendance Report
+                        </h2>
+
+                        <table class="table table-sm table-bordered">
+                            <thead>
+                                <tr>
+                                    <th>No</th>
+                                    <th>Employee ID</th>
+                                    <th>First Name</th>
+                                    <th>Date</th>
+                                    <th>Timetable</th>
+                                    <th>Clock In</th>
+                                    <th>Clock Out</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+
+                            <tbody>
+                                <t t-set="count" t-value="1"/>
+                                <t t-foreach="docs" t-as="rec">
+                                    <tr>
+
+                                        <td>
+                                            <t t-esc="count"/>
+                                        </td>
+
+                                        <td>
+                                            <t t-esc="rec.employee_id.x_studio_emp_id or ''"/>
+                                        </td>
+
+                                        <td>
+                                            <t t-esc="rec.employee_id.name"/>
+                                        </td>
+
+                                        <td>
+                                            <t t-esc="rec.check_in.date() if rec.check_in else ''"/>
+                                        </td>
+
+                                        <td>
+                                            <t t-esc="rec.employee_id.resource_calendar_id.name or ''"/>
+                                        </td>
+
+                                        <td>
+                                            <t t-esc="rec.check_in.strftime('%H:%M') if rec.check_in else ''"/>
+                                        </td>
+
+                                        <td>
+                                            <t t-esc="rec.check_out.strftime('%H:%M') if rec.check_out else ''"/>
+                                        </td>
+
+                                        <td>
+                                            <t t-esc="rec.status"/>
+                                        </td>
+
+                                    </tr>
+
+                                    <t t-set="count" t-value="count + 1"/>
+
+                                </t>
+                            </tbody>
+
+                        </table>
+
+                    </div>
+                </main>
+            </t>
+        </t>
+
+    </template>
+</odoo>

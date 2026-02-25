@@ -5,7 +5,7 @@ class HrEmployee(models.Model):
 
     x_studio_emp_id = fields.Char(string="Emp ID")
 
-    
+
 class HrAttendance(models.Model):
     _inherit = "hr.attendance"
 
