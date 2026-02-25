@@ -825,6 +825,9 @@ class BiotimeService(models.Model):
 
     def sync_attendance(self):
     
+        _logger = logging.getLogger(__name__)
+        _logger.info("=== BIOTIME SYNC STARTED ===")
+    
         base_url, username, password = self._get_config()
     
         HrAttendance = self.env['hr.attendance']
@@ -832,6 +835,9 @@ class BiotimeService(models.Model):
         Employee = self.env['hr.employee']
     
         ist = pytz.timezone("Asia/Kolkata")
+    
+        today_ist = datetime.now(ist).date()
+        _logger.info(f"Syncing only from today: {today_ist}")
     
         start_url = f"{base_url}/iclock/api/transactions/?ordering=+-id"
     
@@ -844,6 +850,8 @@ class BiotimeService(models.Model):
         # 1️⃣ FETCH LATEST 6 PAGES
         # =====================================================
         while url and page_count < max_pages:
+    
+            _logger.info(f"Fetching page {page_count + 1}")
     
             res = requests.get(url, auth=(username, password), timeout=30)
             res.raise_for_status()
@@ -860,10 +868,13 @@ class BiotimeService(models.Model):
             page_count += 1
     
         if not all_transactions:
+            _logger.info("No transactions found.")
             return
     
+        _logger.info(f"Total transactions fetched: {len(all_transactions)}")
+    
         # =====================================================
-        # 2️⃣ SORT ALL BY punch_time ASCENDING
+        # 2️⃣ SORT BY punch_time ASC
         # =====================================================
         def parse_time(tx):
             try:
@@ -874,7 +885,7 @@ class BiotimeService(models.Model):
         all_transactions.sort(key=parse_time)
     
         # =====================================================
-        # 3️⃣ GROUP BY EMPLOYEE + IST DATE
+        # 3️⃣ GROUP BY EMPLOYEE + DATE (ONLY TODAY)
         # =====================================================
         grouped = {}
     
@@ -908,8 +919,12 @@ class BiotimeService(models.Model):
                 continue
     
             ist_dt = ist.localize(local_dt)
-            utc_dt = ist_dt.astimezone(pytz.UTC).replace(tzinfo=None)
     
+            # 🔴 SKIP OLD DATES
+            if ist_dt.date() < today_ist:
+                continue
+    
+            utc_dt = ist_dt.astimezone(pytz.UTC).replace(tzinfo=None)
             punch_date = ist_dt.date()
     
             grouped.setdefault(
@@ -922,8 +937,10 @@ class BiotimeService(models.Model):
                 "terminal_alias": tx.get("terminal_alias"),
             })
     
+        _logger.info(f"Employees to process: {len(grouped)}")
+    
         # =====================================================
-        # 4️⃣ PROCESS PER EMPLOYEE PER DAY
+        # 4️⃣ PROCESS
         # =====================================================
         for (employee_id, punch_date), punches in grouped.items():
     
@@ -932,91 +949,49 @@ class BiotimeService(models.Model):
             first_punch = punches[0]["punch_time"]
             last_punch = punches[-1]["punch_time"]
     
+            _logger.info(
+                f"Processing Employee {employee_id} "
+                f"{punch_date} | Punches: {len(punches)}"
+            )
+    
             # -----------------------------------------------
-            # CLOSE PREVIOUS OPEN ATTENDANCE (ENTERPRISE SAFE)
+            # ENTERPRISE SAFE OVERLAP CHECK
             # -----------------------------------------------
-            open_attendance = HrAttendance.search([
+            overlap = HrAttendance.search([
                 ('employee_id', '=', employee_id),
+                ('check_in', '<=', last_punch),
+                '|',
                 ('check_out', '=', False),
+                ('check_out', '>=', first_punch),
             ], limit=1)
     
-            if open_attendance:
+            if overlap:
     
-                open_checkin = fields.Datetime.to_datetime(
-                    open_attendance.check_in
+                new_checkin = min(overlap.check_in, first_punch)
+                new_checkout = max(
+                    overlap.check_out or last_punch,
+                    last_punch
                 )
-                open_checkin_ist = pytz.UTC.localize(
-                    open_checkin
-                ).astimezone(ist)
     
-                if open_checkin_ist.date() < punch_date:
-    
-                    lines = HrAttendanceLine.search([
-                        ('attendance_id', '=', open_attendance.id)
-                    ], order="punch_time asc")
-    
-                    if lines:
-                        if len(lines) == 1:
-                            seven_pm_ist = ist.localize(
-                                datetime.combine(
-                                    open_checkin_ist.date(),
-                                    time(19, 0, 0)
-                                )
-                            )
-                            checkout_time = seven_pm_ist.astimezone(
-                                pytz.UTC
-                            ).replace(tzinfo=None)
-                            no_checkout_flag = True
-                        else:
-                            checkout_time = lines[-1].punch_time
-                            no_checkout_flag = False
-    
-                        if checkout_time > open_attendance.check_in:
-                            open_attendance.write({
-                                'check_out': checkout_time,
-                                'x_studio_no_checkout': no_checkout_flag,
-                            })
-    
-            # -----------------------------------------------
-            # FIND OR CREATE ATTENDANCE FOR THIS DATE
-            # -----------------------------------------------
-            day_start_ist = ist.localize(
-                datetime.combine(punch_date, time.min)
-            )
-            day_end_ist = ist.localize(
-                datetime.combine(punch_date, time.max)
-            )
-    
-            day_start_utc = day_start_ist.astimezone(
-                pytz.UTC
-            ).replace(tzinfo=None)
-    
-            day_end_utc = day_end_ist.astimezone(
-                pytz.UTC
-            ).replace(tzinfo=None)
-    
-            attendance = HrAttendance.search([
-                ('employee_id', '=', employee_id),
-                ('check_in', '>=', day_start_utc),
-                ('check_in', '<=', day_end_utc),
-            ], limit=1)
-    
-            if attendance:
-                attendance.write({
-                    'check_in': min(attendance.check_in, first_punch),
-                    'check_out': max(
-                        attendance.check_out or last_punch,
-                        last_punch
-                    ),
+                overlap.write({
+                    'check_in': new_checkin,
+                    'check_out': new_checkout,
                     'x_studio_no_checkout': False,
                 })
+    
+                attendance = overlap
+                _logger.info(f"Updated existing attendance ID {attendance.id}")
+    
             else:
+    
                 attendance = HrAttendance.create({
                     'employee_id': employee_id,
                     'check_in': first_punch,
                     'check_out': False,
                     'x_studio_no_checkout': False,
                 })
+    
+                _logger.info(f"Created attendance ID {attendance.id}")
     
             # -----------------------------------------------
             # CREATE PUNCH LINES
@@ -1038,7 +1013,13 @@ class BiotimeService(models.Model):
                     'terminal_alias': p["terminal_alias"],
                     'biotime_transaction_id': p["tx_id"],
                 })
-
+    
+            _logger.info(
+                f"Punch lines created for Employee {employee_id}"
+            )
+    
+        _logger.info("=== BIOTIME SYNC COMPLETED ===")
+    
 
     @api.model
     def cron_auto_close_attendance_7pm(self):
@@ -1093,6 +1074,7 @@ class BiotimeService(models.Model):
                 attendance.employee_id.id,
                 attendance.id,
             )
+
 
 
 
