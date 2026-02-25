@@ -11,12 +11,14 @@
         "views/biotime_biodata_view.xml",
         "views/hr_attendance_line_view.xml",
          "views/biotime_menu.xml",
+        "views/bio_time_service_views.xml"
 
     ], 
     "installable": True,
     'application': True,
     'license': 'LGPL-3',
 }
+
 
 
 
