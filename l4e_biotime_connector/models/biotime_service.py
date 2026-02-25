@@ -17,6 +17,9 @@ class BiotimeService(models.Model):
     # ------------------------------------------------
     # CONFIG
     # ------------------------------------------------
+
+
+    
     def _get_config(self):
         ICP = self.env['ir.config_parameter'].sudo()
         base_url = ICP.get_param('biotime.base_url')
@@ -1184,6 +1187,25 @@ class BiotimeService(models.Model):
     #             attendance.employee_id.id,
     #             attendance.id,
     #         )
+
+
+
+    def action_sync_terminals(self):
+        self.sync_terminals()
+        return True
+    
+    def action_sync_biodata(self):
+        self.sync_biodata()
+        return True
+    
+    def action_sync_attendance(self):
+        self.sync_attendance()
+        return True
+    
+    def action_manual_close(self):
+        self.auto_close_at_nine_pm()
+        return True
+
 
 
 
