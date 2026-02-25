@@ -57,26 +57,26 @@
                                         <td>
                                             <t t-esc="context_timestamp(rec.check_out).strftime('%H:%M') if rec.check_out else ''"/>
                                         </td>
-                                        <td style="text-align:center;">
+                                        <td>
 
-                                            <t t-if="rec.status == 'present'">
-                                                Present(P)
-                                            </t>
-
-                                            <t t-elif="rec.status == 'miss_out'">
-                                                Miss In(MI)
-                                            </t>
-
-                                            <t t-elif="rec.status == 'late'">
-                                                Late(LT)
-                                            </t>
-
-                                            <t t-elif="rec.status == 'absent'">
+                                            <!-- No Check In -->
+                                            <t t-if="not rec.check_in">
                                                 Absence(A)
                                             </t>
 
+                                            <!-- Late (After 09:30 AM) -->
+                                            <t t-elif="context_timestamp(rec.check_in).time() &gt; datetime.time(9,30)">
+                                                Late(LT)
+                                            </t>
+
+                                            <!-- Miss Out (No Check Out) -->
+                                            <t t-elif="not rec.check_out">
+                                                Miss Out(MO)
+                                            </t>
+
+                                            <!-- Normal Present -->
                                             <t t-else="">
-                                                -
+                                                Present(P)
                                             </t>
 
                                         </td>
