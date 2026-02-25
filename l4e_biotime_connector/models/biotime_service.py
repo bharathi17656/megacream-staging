@@ -1022,43 +1022,50 @@ class BiotimeService(models.Model):
 
 
     def auto_close_at_nine_pm(self):
-
-        # base_url, username, password = self._get_config()
+    
+        _logger = logging.getLogger(__name__)
+        _logger.info("=== AUTO CLOSE ATTENDANCE STARTED ===")
     
         HrAttendance = self.env['hr.attendance']
         HrAttendanceLine = self.env['hr.attendance.line']
-        Employee = self.env['hr.employee']
     
         ist = pytz.timezone("Asia/Kolkata")
     
-        today_ist = datetime.now(ist).date()
-
-        # ===============================================
-        # AUTO CLOSE OLD OPEN ATTENDANCES
-        # ===============================================
+        now_ist = datetime.now(ist)
+        today_ist = now_ist.date()
+    
         open_attendances = HrAttendance.search([
             ('check_out', '=', False),
             ('check_in', '!=', False),
         ])
-        
+    
+        _logger.info(f"Open attendances found: {len(open_attendances)}")
+    
         for att in open_attendances:
-        
+    
             checkin_utc = fields.Datetime.to_datetime(att.check_in)
             checkin_ist = pytz.UTC.localize(checkin_utc).astimezone(ist)
-        
-            if checkin_ist.date() < today_ist:
-        
+    
+            attendance_date = checkin_ist.date()
+    
+            # --------------------------------------------------
+            # CASE 1: Previous day open → close immediately
+            # --------------------------------------------------
+            if attendance_date < today_ist:
+    
+                _logger.info(f"Closing previous day attendance ID {att.id}")
+    
                 lines = HrAttendanceLine.search([
                     ('attendance_id', '=', att.id)
                 ], order="punch_time asc")
-        
+    
                 if lines:
-        
+    
                     if len(lines) == 1:
                         # Only one punch → set 7 PM
                         seven_pm_ist = ist.localize(
                             datetime.combine(
-                                checkin_ist.date(),
+                                attendance_date,
                                 time(19, 0, 0)
                             )
                         )
@@ -1069,13 +1076,59 @@ class BiotimeService(models.Model):
                     else:
                         checkout_time = lines[-1].punch_time
                         no_checkout_flag = False
-        
+    
                     if checkout_time > att.check_in:
                         att.write({
                             'check_out': checkout_time,
                             'x_studio_no_checkout': no_checkout_flag,
                         })
-
+    
+                        _logger.info(
+                            f"Closed attendance {att.id} at {checkout_time}"
+                        )
+    
+            # --------------------------------------------------
+            # CASE 2: Today open AND time > 9 PM → auto close
+            # --------------------------------------------------
+            elif attendance_date == today_ist:
+    
+                if now_ist.time() >= time(21, 0, 0):
+    
+                    _logger.info(f"9PM auto close for attendance ID {att.id}")
+    
+                    lines = HrAttendanceLine.search([
+                        ('attendance_id', '=', att.id)
+                    ], order="punch_time asc")
+    
+                    if lines:
+    
+                        if len(lines) == 1:
+                            # only one punch
+                            nine_pm_ist = ist.localize(
+                                datetime.combine(
+                                    attendance_date,
+                                    time(21, 0, 0)
+                                )
+                            )
+                            checkout_time = nine_pm_ist.astimezone(
+                                pytz.UTC
+                            ).replace(tzinfo=None)
+                            no_checkout_flag = True
+                        else:
+                            checkout_time = lines[-1].punch_time
+                            no_checkout_flag = False
+    
+                        if checkout_time > att.check_in:
+                            att.write({
+                                'check_out': checkout_time,
+                                'x_studio_no_checkout': no_checkout_flag,
+                            })
+    
+                            _logger.info(
+                                f"9PM closed attendance {att.id}"
+                            )
+    
+        _logger.info("=== AUTO CLOSE ATTENDANCE COMPLETED ===")
     
 
     @api.model
@@ -1131,6 +1184,7 @@ class BiotimeService(models.Model):
                 attendance.employee_id.id,
                 attendance.id,
             )
+
 
 
 
