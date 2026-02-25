@@ -1,0 +1,64 @@
+<odoo>
+
+    <!-- FORM VIEW -->
+    <record id="view_biotime_service_form" model="ir.ui.view">
+        <field name="name">biotime.service.form</field>
+        <field name="model">biotime.service</field>
+        <field name="arch" type="xml">
+            <form string="Biotime Control Panel" create="false" edit="false">
+                <sheet>
+                    <group>
+                        <div style="text-align:center; padding:30px;">
+
+                            <button name="action_manual_close"
+                                    type="object"
+                                    string="Manual Close"
+                                    class="btn btn-primary"
+                                    style="margin:10px; width:200px; height:60px;"/>
+
+                            <button name="action_sync_terminals"
+                                    type="object"
+                                    string="Sync Terminals"
+                                    class="btn btn-secondary"
+                                    style="margin:10px; width:200px; height:60px;"/>
+
+                            <button name="action_sync_biodata"
+                                    type="object"
+                                    string="Sync Biodata"
+                                    class="btn btn-info"
+                                    style="margin:10px; width:200px; height:60px;"/>
+
+                            <button name="action_sync_attendance"
+                                    type="object"
+                                    string="Sync Attendance"
+                                    class="btn btn-success"
+                                    style="margin:10px; width:200px; height:60px;"/>
+
+                        </div>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- ACTION -->
+    <record id="action_biotime_service" model="ir.actions.act_window">
+        <field name="name">Biotime Control</field>
+        <field name="res_model">biotime.service</field>
+        <field name="view_mode">form</field>
+        <field name="target">current</field>
+    </record>
+
+    <!-- MENU -->
+    <menuitem id="menu_biotime_root"
+              name="Biotime"
+              parent="hr_attendance.menu_hr_attendance_root"
+              sequence="50"/>
+
+    <menuitem id="menu_biotime_control"
+              name="Control Panel"
+              parent="menu_biotime_root"
+              action="action_biotime_service"
+              sequence="1"/>
+
+</odoo>
