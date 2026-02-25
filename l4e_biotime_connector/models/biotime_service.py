@@ -24,14 +24,14 @@ class BiotimeService(models.Model):
             readonly=True
     )
 
-    @api.model
-    def create(self, vals):
-        if self.search_count([]) >= 1:
-            raise UserError("Biotime Control Panel already exists.")
-        return super().create(vals)
+    # @api.model
+    # def create(self, vals):
+    #     if self.search_count([]) >= 1:
+    #         raise UserError("Biotime Control Panel already exists.")
+    #     return super().create(vals)
 
-    def unlink(self):
-        raise UserError("You cannot delete Biotime Control Panel.")
+    # def unlink(self):
+    #     raise UserError("You cannot delete Biotime Control Panel.")
 
 
     
@@ -1220,6 +1220,7 @@ class BiotimeService(models.Model):
     def action_manual_close(self):
         self.auto_close_at_nine_pm()
         return True
+
 
 
 
