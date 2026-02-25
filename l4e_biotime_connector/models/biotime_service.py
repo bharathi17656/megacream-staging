@@ -1092,7 +1092,7 @@ class BiotimeService(models.Model):
             # --------------------------------------------------
             elif attendance_date == today_ist:
     
-                if now_ist.time() >= time(21, 0, 0):
+                if now_ist.time() >= time(19, 0, 0):
     
                     _logger.info(f"9PM auto close for attendance ID {att.id}")
     
@@ -1131,59 +1131,60 @@ class BiotimeService(models.Model):
         _logger.info("=== AUTO CLOSE ATTENDANCE COMPLETED ===")
     
 
-    @api.model
-    def cron_auto_close_attendance_7pm(self):
-        """
-        Auto close ALL open attendances
-        Only for PAST days
-        Set checkout to 7:00 PM IST
-        """
+    # @api.model
+    # def cron_auto_close_attendance_7pm(self):
+    #     """
+    #     Auto close ALL open attendances
+    #     Only for PAST days
+    #     Set checkout to 7:00 PM IST
+    #     """
 
-        HrAttendance = self.env['hr.attendance']
-        ist = pytz.timezone("Asia/Kolkata")
+    #     HrAttendance = self.env['hr.attendance']
+    #     ist = pytz.timezone("Asia/Kolkata")
 
-        # Current IST date
-        now_ist = datetime.now(ist)
-        today_ist_date = now_ist.date()
+    #     # Current IST date
+    #     now_ist = datetime.now(ist)
+    #     today_ist_date = now_ist.date()
 
-        # Search only open attendances
-        open_attendances = HrAttendance.search([
-            ('check_out', '=', False),
-            ('check_in', '!=', False),
-        ])
+    #     # Search only open attendances
+    #     open_attendances = HrAttendance.search([
+    #         ('check_out', '=', False),
+    #         ('check_in', '!=', False),
+    #     ])
 
-        for attendance in open_attendances:
+    #     for attendance in open_attendances:
 
-            # Convert check_in (UTC → IST)
-            check_in_utc = fields.Datetime.to_datetime(attendance.check_in)
-            check_in_ist = pytz.UTC.localize(check_in_utc).astimezone(ist)
+    #         # Convert check_in (UTC → IST)
+    #         check_in_utc = fields.Datetime.to_datetime(attendance.check_in)
+    #         check_in_ist = pytz.UTC.localize(check_in_utc).astimezone(ist)
 
-            # ✅ Skip if today (we want only past days)
-            if check_in_ist.date() >= today_ist_date:
-                continue
+    #         # ✅ Skip if today (we want only past days)
+    #         if check_in_ist.date() >= today_ist_date:
+    #             continue
 
-            # Build 7PM IST of that day
-            seven_pm_ist = ist.localize(
-                datetime.combine(check_in_ist.date(), time(19, 0, 0))
-            )
+    #         # Build 7PM IST of that day
+    #         seven_pm_ist = ist.localize(
+    #             datetime.combine(check_in_ist.date(), time(19, 0, 0))
+    #         )
 
-            # Convert back to UTC for storage
-            seven_pm_utc = seven_pm_ist.astimezone(pytz.UTC).replace(tzinfo=None)
+    #         # Convert back to UTC for storage
+    #         seven_pm_utc = seven_pm_ist.astimezone(pytz.UTC).replace(tzinfo=None)
 
-            # Prevent invalid checkout
-            if seven_pm_utc <= check_in_utc:
-                continue
+    #         # Prevent invalid checkout
+    #         if seven_pm_utc <= check_in_utc:
+    #             continue
 
-            attendance.write({
-                'check_out': seven_pm_utc,
-                'x_studio_no_checkout': True,
-            })
+    #         attendance.write({
+    #             'check_out': seven_pm_utc,
+    #             'x_studio_no_checkout': True,
+    #         })
 
-            _logger.info(
-                "Auto-closed past attendance at 7PM IST: emp=%s attendance=%s",
-                attendance.employee_id.id,
-                attendance.id,
-            )
+    #         _logger.info(
+    #             "Auto-closed past attendance at 7PM IST: emp=%s attendance=%s",
+    #             attendance.employee_id.id,
+    #             attendance.id,
+    #         )
+
 
 
 
