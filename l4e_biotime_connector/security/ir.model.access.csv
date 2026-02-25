@@ -8,4 +8,4 @@ access_biotime_biodata_manager,biotime.biodata manager,model_biotime_biodata,hr.
 
 access_hr_attendance_line_user,hr.attendance.line user,model_hr_attendance_line,base.group_user,1,0,0,0
 access_hr_attendance_line_manager,hr.attendance.line manager,model_hr_attendance_line,hr.group_hr_manager,1,1,1,1
-access_biotime_service,access.biotime.service,model_biotime_service,hr.group_hr_manager,1,1,1,1
+access_biotime_service,access.biotime.service,model_biotime_service,hr.group_hr_manager,1,1,1,0
