@@ -1023,6 +1023,16 @@ class BiotimeService(models.Model):
 
     def auto_close_at_nine_pm(self):
 
+        # base_url, username, password = self._get_config()
+    
+        HrAttendance = self.env['hr.attendance']
+        HrAttendanceLine = self.env['hr.attendance.line']
+        Employee = self.env['hr.employee']
+    
+        ist = pytz.timezone("Asia/Kolkata")
+    
+        today_ist = datetime.now(ist).date()
+
         # ===============================================
         # AUTO CLOSE OLD OPEN ATTENDANCES
         # ===============================================
@@ -1120,6 +1130,7 @@ class BiotimeService(models.Model):
                 attendance.employee_id.id,
                 attendance.id,
             )
+
 
 
 
