@@ -72,7 +72,7 @@ class AttendanceReportWizard(models.TransientModel):
         if check_in_local.time() > time(9, 30):
             return "Late (LT)"
 
-        if not att.check_out:
-            return "Miss Out (MO)"
+        if not att.check_in and att.check_out:
+            return "Miss In (MI)"
 
         return "Present (P)"
