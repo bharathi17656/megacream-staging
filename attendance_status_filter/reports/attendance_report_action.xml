@@ -1,0 +1,9 @@
+<odoo>
+    <record id="action_attendance_daily_report" model="ir.actions.report">
+        <field name="name">Attendance Daily Report</field>
+        <field name="model">attendance.report.wizard</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">attendance_status_filter.attendance_daily_report_template</field>
+        <field name="report_file">attendance_status_filter.attendance_daily_report_template</field>
+    </record>
+</odoo>

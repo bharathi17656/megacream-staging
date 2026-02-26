@@ -1,0 +1,62 @@
+<odoo>
+    <template id="attendance_daily_report_template">
+        <t t-call="web.html_container">
+            <t t-call="web.external_layout">
+                <main>
+                    <div class="page">
+
+                        <h2 class="text-center">
+                            <strong>Daily Summary Report</strong>
+                        </h2>
+
+                        <p style="text-align:center;">
+                            From
+                            <t t-esc="date_from"/>
+                            To
+                            <t t-esc="date_to"/>
+                        </p>
+
+                        <!-- ✅ INIT COUNTER -->
+                        <t t-set="count" t-value="0"/>
+
+                       <table class="table table-sm table-bordered">
+                            <thead>
+                                <tr>
+                                    <th style="text-align:center;">No</th>
+                                    <th style="text-align:center;">Employee ID</th>
+                                    <th style="text-align:center;">First Name</th>
+                                    <th style="text-align:center;">Date</th>
+                                    <th style="text-align:center;">Timetable</th>
+                                    <th style="text-align:center;">Clock In</th>
+                                    <th style="text-align:center;">Clock Out</th>
+                                    <th style="text-align:center;">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody style="text-align:center;">
+
+                                <t t-foreach="records" t-as="rec">
+                                    <!-- ✅ INCREMENT -->
+                                    <t t-set="count" t-value="count + 1"/>
+
+                                   <tr style="text-align:center;">
+                                        <td>
+                                            <t t-esc="count"/>
+                                        </td>
+                                        <td t-esc="rec['emp_id']"/>
+                                        <td t-esc="rec['name']"/>
+                                        <td t-esc="rec['date']"/>
+                                        <td t-esc="rec['job']"/>
+                                        <td t-esc="rec['check_in'] or '-'"/>
+                                        <td t-esc="rec['check_out'] or '-'"/>
+                                        <td t-esc="rec['status']"/>
+                                    </tr>
+                                </t>
+                            </tbody>
+                        </table>
+
+                    </div>
+                </main>
+            </t>
+        </t>
+    </template>
+</odoo>

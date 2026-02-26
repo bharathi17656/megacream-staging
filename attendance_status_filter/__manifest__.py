@@ -1,17 +1,57 @@
 {
-    "name": "Attendance Status & Today Filter",
+    "name": "Attendance Daily Report",
     "version": "1.0",
-    "depends": ["hr_attendance"],
+    "summary": "Daily Attendance Report with Absent Employees",
+    "category": "Human Resources",
     "author": "Custom",
-    "category": "HR",
-    "summary": "Adds Status field, Today filter and Daily PDF Report in Attendance",
+    "license": "LGPL-3",
+    "depends": ["hr", "hr_attendance"],
     "data": [
-        # Views
+        "security/ir.model.access.csv",
+        "views/attendance_report_wizard_view.xml",
         "views/attendance_views.xml",
-        # Reports
-        "reports/attendance_report.xml",
-        "reports/attendance_report_template.xml",
+        "views/server_action.xml",
+        "reports/attendance_report_action.xml",
+        "reports/attendance_daily_report_template.xml",
     ],
     "installable": True,
-    "application": False,
 }
+
+
+
+
+
+
+# {
+#     "name": "Attendance Daily Report",
+#     "version": "1.0.0",
+#     "summary": "Daily Attendance Report with Date Range and Absent Employees",
+#     "description": """
+#         Generate Daily Attendance Report with:
+#         - Date Range Selection
+#         - Today Button
+#         - Present / Late / Miss Out / Absence
+#         - All Employees Included
+#         - PDF Report
+#     """,
+#     "author": "Custom",
+#     "category": "Human Resources",
+#     "license": "LGPL-3",
+#     "depends": [
+#         "hr",
+#         "hr_attendance",
+#     ],
+#     "data": [
+#         "security/ir.model.access.csv",
+#         # Wizard View
+#         "views/attendance_report_wizard_view.xml",
+#         "views/attendance_views.xml",
+#         # Report Action
+#         "reports/attendance_report.xml",
+#         # Report Template
+#         "reports/attendance_report_template.xml",
+#     ],
+#     "installable": True,
+#     "application": False,
+#     "auto_install": False,
+# }

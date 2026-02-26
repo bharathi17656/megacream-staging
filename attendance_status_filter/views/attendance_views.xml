@@ -18,8 +18,6 @@
     <record id="view_attendance_search_today" model="ir.ui.view">
         <field name="name">hr.attendance.search.today</field>
         <field name="model">hr.attendance</field>
-
-        <!-- ✅ CORRECT ID from your screenshot -->
         <field name="inherit_id" ref="hr_attendance.hr_attendance_view_filter"/>
 
         <field name="arch" type="xml">
