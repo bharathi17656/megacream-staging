@@ -5,7 +5,7 @@ import logging
 
 _logger = logging.getLogger(__name__)
 
-FESTIVAL_HOLIDAY_MODEL = 'hr.festival.holiday'
+FESTIVAL_HOLIDAY_MODEL = 'resource.calendar.leaves'
 
 
 class HrPayslip(models.Model):
