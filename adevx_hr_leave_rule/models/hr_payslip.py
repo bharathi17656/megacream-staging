@@ -331,7 +331,8 @@ class HrPayslip(models.Model):
                     'code': 'LEAVE90',
                     'number_of_days': unpaid_days_total,
                     'number_of_hours': unpaid_days_total * 8,
-                    'amount': round(-unpaid_days_total * per_day, 2),   # negative deduction
+                    # 'amount': round(-unpaid_days_total * per_day, 2),   # negative deduction
+                    'amount':0.0,
                     'work_entry_type_id': wet('LEAVE90', 'Unpaid / LOP'),
                 })
 
