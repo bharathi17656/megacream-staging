@@ -25,18 +25,27 @@ class HrAttendance(models.Model):
                 rec.status = "Miss In"
                 continue
 
-            # 3️⃣ Late (both exist & check_in after 09:30)
             if rec.check_in:
-                local_dt = fields.Datetime.context_timestamp(
-                    rec, rec.check_in
-                )
+                local_dt = fields.Datetime.context_timestamp(rec, rec.check_in)
+
                 if local_dt.time() > time(9, 30):
                     rec.status = "Late"
-                    continue
+                else:
+                    rec.status = "Present"
 
-            # 4️⃣ Present (both exist & on time)
-            if rec.check_in:
-                rec.status = "Present"
+
+            # 3️⃣ Late (both exist & check_in after 09:30)
+            # if rec.check_in:
+            #     local_dt = fields.Datetime.context_timestamp(
+            #         rec, rec.check_in
+            #     )
+            #     if local_dt.time() > time(9, 30):
+            #         rec.status = "Late"
+            #         continue
+            #
+            # # 4️⃣ Present (both exist & on time)
+            # if rec.check_in:
+            #     rec.status = "Present"
 
 
 
