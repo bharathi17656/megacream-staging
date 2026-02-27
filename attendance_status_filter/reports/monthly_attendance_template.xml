@@ -59,18 +59,22 @@
                         <table class="table table-borderless" style="width:100%; font-size:18px; border-collapse:collapse; text-align:center;">
                             <thead>
                                 <tr>
-                                    <th rowspan="2">Sl No</th>
-                                    <th rowspan="2">Employee</th>
+                                     <th rowspan="2" style="font-weight:bold; color:#000;" >
+                                        Sl No
+                                    </th>
+                                    <th rowspan="2" style="font-weight:bold; color:#000;" >
+                                        Employee
+                                    </th>
 
                                     <t t-foreach="data['days']" t-as="d">
-                                        <th>
+                                         <th style="font-weight:bold; color:#000;">
                                             <t t-esc="d['day']"/>
                                         </th>
                                     </t>
                                 </tr>
                                 <tr>
                                     <t t-foreach="data['days']" t-as="d">
-                                        <th>
+                                         <th style="font-weight:bold; color:#000;">
                                             <t t-esc="d['date']"/>
                                         </th>
                                     </t>
