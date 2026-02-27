@@ -4,3 +4,4 @@ from . import hr_leave_type
 from . import hr_working_schedule
 from . import hr_festival_holiday
 from . import hr_payslip
+from . import hr_payslip_worked_days
