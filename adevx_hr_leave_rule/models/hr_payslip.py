@@ -204,6 +204,17 @@ class HrPayslip(models.Model):
                 paid_leave_credit = len(group2_paid_leave_dates)
                 absent_days = max(0, absent_days - paid_leave_credit)
 
+            # ── Group 1: 1 casual leave per month ──────────────────────
+            # Mon–Sat group, all Sundays are off.
+            # 1st absent day → covered as Casual Leave (paid).
+            # Any further absent days remain as LOP.
+            casual_leave_credit = 0
+            if group == 'group_1':
+                casual_leave_quota = 1
+                cl_taken = absent_day_list[:casual_leave_quota]
+                casual_leave_credit = len(cl_taken)
+                absent_days = max(0, absent_days - casual_leave_credit)
+
             if group in ('group_2', 'group_3'):
                 # Detect full-7-day-week Sundays
                 week_map = {}
@@ -242,8 +253,8 @@ class HrPayslip(models.Model):
                 absent_days = max(0, absent_days - lop_compensated)
 
             # ── 8. Final tallies ──────────────────────────────────────
-            # paid_days = attendance + festival paid-offs + Group 2 paid leave
-            paid_days = full_days + half_days + paid_leave_credit
+            # paid_days = attendance + festival paid-offs + any leave credits
+            paid_days = full_days + half_days + paid_leave_credit + casual_leave_credit
             unpaid_days_total = float(absent_days)
 
             payslip.paid_days = paid_days
@@ -337,6 +348,17 @@ class HrPayslip(models.Model):
                     'number_of_hours': paid_leave_credit * 8,
                     'amount': round(paid_leave_credit * per_day, 2),
                     'work_entry_type_id': wet('PAIDLEAVE', 'Paid Leave'),
+                })
+
+            # Group 1 casual leave: 1st absent day is paid
+            if casual_leave_credit and group == 'group_1':
+                lines.append({
+                    'name': 'Casual Leave (Group 1)',
+                    'code': 'CASUALLEAVE',
+                    'number_of_days': float(casual_leave_credit),
+                    'number_of_hours': casual_leave_credit * 8,
+                    'amount': round(casual_leave_credit * per_day, 2),
+                    'work_entry_type_id': wet('CASUALLEAVE', 'Casual Leave'),
                 })
 
             if lop_compensated and group in ('group_2', 'group_3'):
