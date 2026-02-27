@@ -56,7 +56,6 @@
     <menuitem
         id="menu_hr_festival_holiday"
         name="Festival Holidays"
-        parent="hr_holidays.menu_open_ask_holiday"
         action="action_hr_festival_holiday"
         sequence="50"/>
 
