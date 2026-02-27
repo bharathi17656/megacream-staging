@@ -11,7 +11,9 @@
         # Security
         "security/leave_access_group.xml",
         'security/ir.model.access.csv',
-        
+
+        # Views
+        'views/hr_group_leave_views.xml',
         # 'views/hr_attendance_approval_views.xml',
         # "views/hr_leave_rule.xml",
         # "views/hr_leave_type.xml",
