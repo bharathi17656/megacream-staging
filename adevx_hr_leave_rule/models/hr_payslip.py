@@ -273,26 +273,22 @@ class HrPayslip(models.Model):
             lines = []
 
             if full_days:
-                # ── Present line: number_of_days drives Odoo's computed amount ──
-                # Odoo recomputes amount = number_of_days × per_day after creation,
-                # so we set number_of_days to produce: wage - absent_before_comp × per_day
-                #
-                #   (total_calendar_days - absent_before_comp) × per_day
-                #   = wage - absent_before_comp × per_day  ✓
-                #
-                # Group 1: no Sunday pay — use actual attendance days (full_days)
-                # Groups 2/3/4: full wage concept — use calendar days minus absents
+                # ── Present line amount per group ─────────────────────────────
+                # Groups 2/3/4: amount = wage - absent_before_comp × per_day
+                #   → shows full salary minus the raw absent deduction
+                #   → Days column always shows actual attendance (full_days)
+                # Group 1: amount = full_days × per_day (Mon-Sat only group)
                 if group in ('group_2', 'group_3', 'group_4'):
-                    present_days = total_calendar_days - absent_before_comp
+                    present_amount = round(wage - absent_before_comp * per_day, 2)
                 else:
-                    present_days = full_days
+                    present_amount = round(full_days * per_day, 2)
 
                 lines.append({
                     'name': 'Present (Full Day)',
                     'code': 'WORK100',
-                    'number_of_days': present_days,
-                    'number_of_hours': present_days * 8,
-                    'amount': round(present_days * per_day, 2),
+                    'number_of_days': full_days,
+                    'number_of_hours': full_days * 8,
+                    'amount': present_amount,
                     'work_entry_type_id': wet('WORK100', 'Attendance'),
                 })
 
@@ -349,12 +345,12 @@ class HrPayslip(models.Model):
 
             if double_pay_d and group in ('group_2', 'group_3'):
                 lines.append({
-                    'name': 'Double Pay (7-Day Week)',
+                    'name': 'Sunday Worked',
                     'code': 'DOUBLEPAY',
                     'number_of_days': double_pay_d,
                     'number_of_hours': double_pay_d * 8,
-                    'amount': round(double_pay_d * per_day, 2),    # extra pay for Sunday
-                    'work_entry_type_id': wet('DOUBLEPAY', 'Double Pay'),
+                    'amount': round(double_pay_d * per_day, 2),
+                    'work_entry_type_id': wet('DOUBLEPAY', 'Sunday Worked'),
                 })
 
             if out_day_count:
