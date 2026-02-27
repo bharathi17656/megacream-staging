@@ -45,7 +45,7 @@ class HrPayslip(models.Model):
         """Return set of dates covered by approved Casual Leave (CL) in the period."""
         cl_leaves = self.env['hr.leave'].search([
             ('employee_id', '=', employee.id),
-            ('holiday_status_id.code', '=', 'CL'),
+            ('holiday_status_id.short_code', '=', 'CL'),
             ('date_from', '<=', date_to),
             ('date_to', '>=', date_from),
             ('state', '=', 'validate'),
