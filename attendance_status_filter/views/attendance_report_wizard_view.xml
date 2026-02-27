@@ -20,7 +20,7 @@
     </record>
 
     <record id="action_attendance_report_wizard" model="ir.actions.act_window">
-        <field name="name">Attendance Report</field>
+        <field name="name">Daily Attendance Report</field>
         <field name="res_model">attendance.report.wizard</field>
         <field name="view_mode">form</field>
         <field name="view_id" ref="view_attendance_report_wizard"/>

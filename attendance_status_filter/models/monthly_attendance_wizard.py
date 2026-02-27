@@ -10,9 +10,26 @@ class MonthlyAttendanceWizard(models.TransientModel):
 
     month = fields.Selection(
         [(str(i), calendar.month_name[i]) for i in range(1, 13)],
-        required=True
+        string="Month",
+        required=True,
+        default=lambda self: str(date.today().month),
     )
-    year = fields.Integer(required=True)
+    year = fields.Selection(
+        selection=lambda self: self._get_year_selection(),
+        string="Year",
+        required=True,
+        default=lambda self: str(date.today().year),
+    )
+
+    def _get_year_selection(self):
+        start_year = 2026
+        current_year = date.today().year
+
+        years = []
+        for y in range(start_year, current_year + 6):
+            years.append((str(y), str(y)))
+
+        return years
 
     def action_print_monthly(self):
         self.ensure_one()
@@ -23,7 +40,7 @@ class MonthlyAttendanceWizard(models.TransientModel):
 
     def _prepare_report_data(self):
         month = int(self.month)
-        year = self.year
+        year = int(self.year)  # ✅ FIXED
         days_in_month = calendar.monthrange(year, month)[1]
 
         days = []
@@ -34,7 +51,10 @@ class MonthlyAttendanceWizard(models.TransientModel):
                 "date": d,
             })
 
-        employees = self.env["hr.employee"].search([], order="name")
+        employees = self.env["hr.employee"].search([
+            ("active", "=", True),
+            ("user_id", "!=", self.env.ref("base.user_admin").id)
+        ], order="name")
 
         tz = pytz.timezone(self.env.user.tz or "UTC")
 
@@ -77,8 +97,11 @@ class MonthlyAttendanceWizard(models.TransientModel):
             sl_no += 1
 
         return {
-            "date_from": date(year, month, 1),
-            "date_to": date(year, month, days_in_month),
+            "date_from": date(year, month, 1).strftime("%B %d %Y"),
+            "date_to": date(year, month, days_in_month).strftime("%B %d %Y"),
+            "month_name": calendar.month_name[month],
+            "year": year,
+            "month_year": f"{calendar.month_name[month]} {year}",
             "days": days,
             "records": records,
         }
@@ -87,9 +110,8 @@ class MonthlyAttendanceWizard(models.TransientModel):
         if not att:
             return "A"
 
-        # Miss In (No check_in but check_out exists)
-        if not att.check_in and att.check_out:
-            return "MI"
+        if not att.check_in:
+            return "MI" if att.check_out else "A"
 
         check_in = fields.Datetime.context_timestamp(self, att.check_in)
 

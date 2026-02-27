@@ -32,7 +32,10 @@ class AttendanceReportWizard(models.TransientModel):
         ).astimezone(pytz.UTC)
 
         # Get ALL employees
-        employees = self.env["hr.employee"].search([], order="name asc")
+        employees = self.env["hr.employee"].search([
+            ("active", "=", True),
+            ("user_id", "!=", self.env.ref("base.user_admin").id)
+        ], order="name")
 
         # Get attendance records in range
         attendances = self.env["hr.attendance"].search([
@@ -97,8 +100,8 @@ class AttendanceReportWizard(models.TransientModel):
             current_date += timedelta(days=1)
 
         return {
-            "date_from": self.date_from,
-            "date_to": self.date_to,
+            "date_from": self.date_from.strftime("%B %d %Y"),
+            "date_to": self.date_to.strftime("%B %d %Y"),
             "records": records,
         }
 

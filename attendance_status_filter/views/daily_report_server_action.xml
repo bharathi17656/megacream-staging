@@ -1,7 +1,7 @@
 <odoo>
     <record id="server_action_attendance_report_wizard"
             model="ir.actions.server">
-        <field name="name">Attendance Report</field>
+        <field name="name">Daily Attendance Report</field>
         <field name="model_id" ref="hr_attendance.model_hr_attendance"/>
         <field name="binding_model_id" ref="hr_attendance.model_hr_attendance"/>
         <field name="binding_type">action</field>
@@ -9,7 +9,7 @@
         <field name="code"><![CDATA[
 action = {
     "type": "ir.actions.act_window",
-    "name": "Attendance Report",
+    "name": "Daily Attendance Report",
     "res_model": "attendance.report.wizard",
     "view_mode": "form",
     "view_id": env.ref(

@@ -12,9 +12,8 @@
 
                         <!-- DATE RANGE -->
                         <p style="text-align:center;">
-                            <t t-esc="data['date_from']"/>
-                            to
-                            <t t-esc="data['date_to']"/>
+                            From <t t-esc="data['date_from']"/>
+                            To <t t-esc="data['date_to']"/>
                         </p>
 
                         <!-- HEADER ROW 1 (Company | Generated on) -->
