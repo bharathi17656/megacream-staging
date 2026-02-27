@@ -183,9 +183,7 @@ class HrPayslip(models.Model):
 
             festival_pd = len(festival_on_working)
 
-            # ── 7. Group-specific: Sunday compensation & Double Pay ───
-            double_pay_d = 0
-            lop_compensated = 0
+            # ── 7. Group-specific: Sunday compensation & Paid Leave ───
 
             # Capture ORIGINAL absent count here (before paid leave or LOP comp)
             # so the Present line shows: wage - (absent_before_comp * per_day)
@@ -216,41 +214,16 @@ class HrPayslip(models.Model):
                 absent_days = max(0, absent_days - casual_leave_credit)
 
             if group in ('group_2', 'group_3'):
-                # Detect full-7-day-week Sundays
-                week_map = {}
-                for d in all_days:
-                    iso_year, iso_week, _ = d.isocalendar()
-                    key = (iso_year, iso_week)
-                    if key not in week_map:
-                        week_map[key] = {
-                            'ms_expected': [],
-                            'ms_worked': set(),
-                            'sun': None,
-                        }
-                    if is_sunday(d):
-                        week_map[key]['sun'] = d
-                    elif d in working_days_set and d not in out_days and d not in festival_on_working:
-                        week_map[key]['ms_expected'].append(d)
-                        # Group 2 paid leave dates count as fully worked
-                        if att_map.get(d, 0) >= 7 or d in group2_paid_leave_dates:
-                            week_map[key]['ms_worked'].add(d)
-
-                full_7day_sundays = set()
-                for key, wdata in week_map.items():
-                    exp = wdata['ms_expected']
-                    sun = wdata['sun']
-                    if (exp
-                            and len(wdata['ms_worked']) >= len(exp)
-                            and sun and sun in attended_any):
-                        full_7day_sundays.add(sun)
-
-                double_pay_d = len(full_7day_sundays)
-
-                # Compensatory Sundays (worked, but NOT in a full-7-day week)
-                compensatory_sundays = sundays_worked - full_7day_sundays
-                lop_offset = len(compensatory_sundays)
-                lop_compensated = min(lop_offset, absent_days)
-                absent_days = max(0, absent_days - lop_compensated)
+                # ── Simple Sunday compensation ────────────────────────
+                # Any Sunday worked directly offsets one absent day.
+                total_sundays_worked = len(sundays_worked)
+                sunday_compensated = min(absent_days, total_sundays_worked)
+                extra_sunday = max(0, total_sundays_worked - absent_days)
+                remaining_lop = max(0, absent_days - total_sundays_worked)
+                absent_days = remaining_lop
+            else:
+                sunday_compensated = 0
+                extra_sunday = 0
 
             # ── 8. Final tallies ──────────────────────────────────────
             # paid_days = attendance + festival paid-offs + any leave credits
@@ -259,10 +232,10 @@ class HrPayslip(models.Model):
 
             payslip.paid_days = paid_days
             payslip.unpaid_days = unpaid_days_total
-            payslip.double_pay_days = float(double_pay_d)
+            payslip.double_pay_days = float(extra_sunday)
             payslip.sunday_worked_days = float(len(sundays_worked))
             payslip.festival_worked_days = float(len(festivals_worked))
-            payslip.lop_compensated_days = float(lop_compensated)
+            payslip.lop_compensated_days = float(sunday_compensated)
             payslip.paid_amount = paid_days * per_day
             payslip.unpaid_amount = unpaid_days_total * per_day
             payslip.total_saturdays_in_month = float(sum(1 for d in all_days if d.weekday() == 5))
@@ -358,24 +331,26 @@ class HrPayslip(models.Model):
                     'work_entry_type_id': wet('CASUALLEAVE', 'Casual Leave'),
                 })
 
-            if lop_compensated and group in ('group_2', 'group_3'):
+            # Sunday Compensated: Sundays used to offset LOP (Groups 2/3)
+            if sunday_compensated and group in ('group_2', 'group_3'):
                 lines.append({
-                    'name': 'LOP Compensated (Sunday Work)',
+                    'name': 'Sunday Compensated',
                     'code': 'LOPCOMP',
-                    'number_of_days': lop_compensated,
-                    'number_of_hours': lop_compensated * 8,
-                    'amount': round(lop_compensated * per_day, 2),
-                    'work_entry_type_id': wet('LOPCOMP', 'LOP Compensated'),
+                    'number_of_days': float(sunday_compensated),
+                    'number_of_hours': sunday_compensated * 8,
+                    'amount': round(sunday_compensated * per_day, 2),
+                    'work_entry_type_id': wet('LOPCOMP', 'Sunday Compensated'),
                 })
 
-            if double_pay_d and group in ('group_2', 'group_3'):
+            # Extra Work Sunday: surplus Sundays beyond LOP offset (Groups 2/3)
+            if extra_sunday and group in ('group_2', 'group_3'):
                 lines.append({
-                    'name': 'Sunday Worked',
+                    'name': 'Extra Work Sunday',
                     'code': 'DOUBLEPAY',
-                    'number_of_days': double_pay_d,
-                    'number_of_hours': double_pay_d * 8,
-                    'amount': round(double_pay_d * per_day, 2),
-                    'work_entry_type_id': wet('DOUBLEPAY', 'Sunday Worked'),
+                    'number_of_days': float(extra_sunday),
+                    'number_of_hours': extra_sunday * 8,
+                    'amount': round(extra_sunday * per_day, 2),
+                    'work_entry_type_id': wet('DOUBLEPAY', 'Extra Work Sunday'),
                 })
 
             if out_day_count:
