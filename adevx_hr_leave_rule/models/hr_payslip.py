@@ -41,6 +41,24 @@ class HrPayslip(models.Model):
         ])
         return {h.date for h in holidays}
 
+    def _get_cl_dates(self, employee, date_from, date_to):
+        """Return set of dates covered by approved Casual Leave (CL) in the period."""
+        cl_leaves = self.env['hr.leave'].search([
+            ('employee_id', '=', employee.id),
+            ('holiday_status_id.code', '=', 'CL'),
+            ('date_from', '<=', date_to),
+            ('date_to', '>=', date_from),
+            ('state', '=', 'validate'),
+        ])
+        cl_dates = set()
+        for leave in cl_leaves:
+            cur = max(leave.date_from.date(), date_from)
+            end = min(leave.date_to.date(), date_to)
+            while cur <= end:
+                cl_dates.add(cur)
+                cur += timedelta(days=1)
+        return cl_dates
+
     def _build_attendance_map(self, employee, date_from, date_to, version):
         """Return {date: hours_worked} for the period, filtered by version dates."""
         attendances = self.env['hr.attendance'].search([
@@ -72,9 +90,10 @@ class HrPayslip(models.Model):
         Key formula:
           per_day  = wage / total_calendar_days_in_month
           present  = attendance record ≥ 3 hrs → full (≥7 hrs) or half (≥3 hrs)
-          absent   = no attendance on a Mon–Sat working day → LOP at per_day rate
+          cl       = approved Casual Leave day → paid full day (no attendance needed)
+          absent   = no attendance + no CL on a Mon–Sat working day → LOP
 
-        Leave applications are NOT consulted.
+        CL (Casual Leave) is consulted. All other leave types are ignored.
         Group rules come from the Working Schedule (resource.calendar.employee_group_rule).
         """
 
@@ -155,10 +174,15 @@ class HrPayslip(models.Model):
                 festival_on_working = festival_dates & working_days_set
             festivals_worked = festival_dates & attended_any
 
+            # ── 5b. Approved Casual Leave (CL) dates ─────────────────
+            cl_dates = self._get_cl_dates(employee, date_from, date_to)
+            cl_on_working = cl_dates & working_days_set - out_days - festival_on_working
+
             # ── 6. Classify each expected working day by attendance ───
             full_days = 0.0
             half_days = 0.0
             absent_days = 0
+            cl_days = 0
 
             for d in working_days:
                 if d in out_days:
@@ -166,6 +190,10 @@ class HrPayslip(models.Model):
                 if d in festival_on_working:
                     # Festival day on working day = paid off, no attendance needed
                     full_days += 1
+                    continue
+                if d in cl_on_working:
+                    # Approved CL = paid full day, no attendance needed
+                    cl_days += 1
                     continue
                 hrs = att_map.get(d, 0)
                 if hrs >= 7:
@@ -201,7 +229,8 @@ class HrPayslip(models.Model):
                         week_map[key]['sun'] = d
                     elif d in working_days_set and d not in out_days and d not in festival_on_working:
                         week_map[key]['ms_expected'].append(d)
-                        if att_map.get(d, 0) >= 7:
+                        # CL day is treated as fully worked for double-pay eligibility
+                        if att_map.get(d, 0) >= 7 or d in cl_on_working:
                             week_map[key]['ms_worked'].add(d)
 
                 full_7day_sundays = set()
@@ -244,12 +273,17 @@ class HrPayslip(models.Model):
             #     → shows full salary minus the raw LOP deduction
             #     → LOP Compensated & Double Pay then appear as clean additions
             #
-            #   Example (Feb, ₹15,000, 23 present, 1 absent, 4 Sundays worked):
-            #     per_day            = 15000/28 = ₹535.71
+            #   Example A (no CL): 23 present, 1 absent, 4 Sundays worked (Group 3)
             #     Present (Full Day) = 15000 - 535.71 = ₹14,464.29
             #     LOP Compensated    = 1 × 535.71    = ₹535.71
-            #     Double Pay         = 3 × 535.71    = ₹1,607.14
+            #     Double Pay         = 3 × 535.71    = ₹1,607.14  (1 Sunday compensatory)
             #     Net                               = ₹16,607.14
+            #
+            #   Example B (1 CL): 23 present, 1 CL, 4 Sundays worked (Group 3)
+            #     Present (Full Day) = 15000 - 0     = ₹15,000.00
+            #     Casual Leave       = 1 × 535.71    = ₹535.71
+            #     Double Pay         = 4 × 535.71    = ₹2,142.86  (all 4 Sundays double)
+            #     Net                               = ₹17,678.57
 
             def wet(code, name):
                 return self._get_or_create_work_entry_type(code, name).id
@@ -264,6 +298,16 @@ class HrPayslip(models.Model):
                     'number_of_hours': full_days * 8,
                     'amount': round(wage - absent_before_comp * per_day, 2),
                     'work_entry_type_id': wet('WORK100', 'Attendance'),
+                })
+
+            if cl_days:
+                lines.append({
+                    'name': 'Casual Leave (Paid)',
+                    'code': 'CL',
+                    'number_of_days': cl_days,
+                    'number_of_hours': cl_days * 8,
+                    'amount': round(cl_days * per_day, 2),
+                    'work_entry_type_id': wet('CL', 'Casual Leave'),
                 })
 
             if half_days:
