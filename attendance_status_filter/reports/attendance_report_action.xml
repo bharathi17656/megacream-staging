@@ -7,3 +7,4 @@
         <field name="report_file">attendance_status_filter.attendance_daily_report_template</field>
     </record>
 </odoo>
+

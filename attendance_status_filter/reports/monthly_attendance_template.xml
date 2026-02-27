@@ -1,0 +1,245 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<odoo>
+    <template id="monthly_attendance_template">
+        <t t-call="web.html_container">
+            <t t-call="web.basic_layout">
+                <main>
+                    <div class="page">
+                        <!-- TITLE -->
+                        <h2 style="text-align:center;">
+                            Monthly Attendance Status
+                        </h2>
+
+                        <!-- DATE RANGE -->
+                        <p style="text-align:center;">
+                            <t t-esc="data['date_from']"/>
+                            to
+                            <t t-esc="data['date_to']"/>
+                        </p>
+
+                        <!-- HEADER ROW 1 (Company | Generated on) -->
+                        <table class="table table-borderless"
+                               style="width:100%; font-size:11px; border:0 !important; border-collapse:collapse;">
+                            <tr>
+                                <td style="text-align:left; width:33%; border:0 !important;">
+                                    <strong style="color:#000000;">
+                                        Company:
+                                    </strong>
+                                    <t t-esc="env.company.name"/>
+                                </td>
+                                <td style="width:34%; border:0 !important;"> </td>
+                                <td style="text-align:right; width:33%; border:0 !important;">
+                                     <strong style="color:#000000;">
+                                         Generated on:
+                                     </strong>
+                                    <t t-esc="generated_on"/>
+                                </td>
+                            </tr>
+                        </table>
+                        <!-- HEADER ROW 2 (Employee Info | Attendance) -->
+                        <table class="table table-borderless"
+                               style="width:100%; font-size:12px; margin-top:2px; border:0 !important; border-collapse:collapse;">
+                            <tr>
+                                <td style="text-align:left; width:33%; padding-left:16px; border:0 !important;">
+                                    <strong style="color:#000000;">
+                                        Employee Information
+                                    </strong>
+                                </td>
+                                <td style="text-align:center; width:34%; border:0 !important;">
+                                    <strong style="color:#000000;">
+                                        Attendance
+                                    </strong>
+                                </td>
+
+                                <td style="width:33%; border:0 !important;"> </td>
+                            </tr>
+                        </table>
+                        <!-- ATTENDANCE TABLE -->
+                        <table class="table table-borderless"
+                               style="width:100%; font-size:10px; text-align:center;">
+                            <thead>
+                                <tr style="text-align:center;">
+                                    <th rowspan="2">
+                                        <strong style="color:#000000;">
+                                            Sl No
+                                        </strong>
+                                    </th>
+                                    <th rowspan="2">
+                                        <strong style="color:#000000;">
+                                            Employee
+                                        </strong>
+                                    </th>
+
+                                    <t t-foreach="data['days']" t-as="d">
+                                        <th>
+                                            <strong style="color:#000000;text-align:center;">
+                                                <t t-esc="d['day']"/>
+                                            </strong>
+                                        </th>
+                                    </t>
+                                </tr>
+                                <tr style="text-align:center; text-align:center;">
+                                    <t t-foreach="data['days']" t-as="d">
+                                        <th>
+                                            <strong style="color:#000000;">
+                                                <t t-esc="d['date']"/>
+                                            </strong>
+                                        </th>
+                                    </t>
+                                </tr>
+                            </thead>
+
+                            <!--                            <thead>-->
+                            <!--                                <tr style="text-align:center;">-->
+                            <!--                                    <th rowspan="2">Sl No</th>-->
+                            <!--                                    <th rowspan="2">Employee</th>-->
+
+                            <!--                                    <t t-foreach="data['days']" t-as="d">-->
+                            <!--                                        <th>-->
+                            <!--                                            <t t-esc="d['day']"/>-->
+                            <!--                                        </th>-->
+                            <!--                                    </t>-->
+                            <!--                                </tr>-->
+                            <!--                                <tr style="text-align:center;">-->
+                            <!--                                    <t t-foreach="data['days']" t-as="d">-->
+                            <!--                                        <th>-->
+                            <!--                                            <t t-esc="d['date']"/>-->
+                            <!--                                        </th>-->
+                            <!--                                    </t>-->
+                            <!--                                </tr>-->
+                            <!--                            </thead>-->
+
+                            <tbody>
+                                <t t-foreach="data['records']" t-as="rec">
+                                    <tr style="text-align:center;">
+                                        <td>
+                                            <t t-esc="rec['sl_no']"/>
+                                        </td>
+                                        <td style="text-align:left;">
+                                            <t t-esc="rec['name']"/>
+                                        </td>
+                                        <t t-foreach="rec['attendance']" t-as="st">
+                                            <td style="font-weight:bold;">
+
+                                                <!-- Present -->
+                                                <t t-if="st == 'P'">
+                                                    <span style="color:#00c853;">P</span>
+                                                </t>
+
+                                                <!-- Absent -->
+                                                <t t-if="st == 'A'">
+                                                    <span style="color:#d50000;">A</span>
+                                                </t>
+
+                                                <!-- Late -->
+                                                <t t-if="st == 'LT'">
+                                                    <span style="color:#000000;">LT</span>
+                                                </t>
+
+                                                <!-- Miss In -->
+                                                <t t-if="st == 'MI'">
+                                                    <span style="color:#000000;">MI</span>
+                                                </t>
+
+                                            </td>
+                                        </t>
+                                    </tr>
+                                </t>
+                            </tbody>
+
+                        </table>
+
+                    </div>
+                </main>
+            </t>
+        </t>
+    </template>
+
+</odoo>
+
+
+        <!--<?xml version="1.0" encoding="UTF-8"?>-->
+        <!--<odoo>-->
+        <!--    <template id="monthly_attendance_template">-->
+        <!--        <t t-call="web.external_layout">-->
+        <!--            <div class="page">-->
+
+        <!--                &lt;!&ndash; TITLE &ndash;&gt;-->
+        <!--                <h2 style="text-align:center; margin-bottom:4px;">-->
+        <!--                    <strong>Monthly Attendance Status</strong>-->
+        <!--                </h2>-->
+
+        <!--                <p style="text-align:center;">-->
+        <!--                    <t t-esc="data['date_from']"/>-->
+        <!--                    to-->
+        <!--                    <t t-esc="data['date_to']"/>-->
+        <!--                </p>-->
+
+        <!--                &lt;!&ndash; COMPANY / GENERATED &ndash;&gt;-->
+        <!--                <table style="width:100%; font-size:11px; border:0; border-collapse:collapse;">-->
+        <!--                    <tr>-->
+        <!--                        <td style="text-align:left; border:0;">-->
+        <!--                            <strong>Company:</strong>-->
+        <!--                            <t t-esc="env.company.name"/>-->
+        <!--                        </td>-->
+        <!--                        <td style="text-align:right; border:0;">-->
+        <!--                            <strong>Generated on:</strong>-->
+        <!--                            <t t-esc="context_timestamp(datetime.datetime.now())-->
+        <!--                                .strftime('%d-%m-%Y %H:%M:%S')"/>-->
+        <!--                        </td>-->
+        <!--                    </tr>-->
+        <!--                </table>-->
+
+        <!--                <table class="table table-bordered"-->
+        <!--                       style="width:100%; font-size:10px; text-align:center;">-->
+
+        <!--                    <thead>-->
+        <!--                        <tr>-->
+        <!--                            <th rowspan="2">Sl No</th>-->
+        <!--                            <th rowspan="2">Employee</th>-->
+
+        <!--                            <t t-foreach="data['days']" t-as="d">-->
+        <!--                                <th>-->
+        <!--                                    <t t-esc="d['day']"/>-->
+        <!--                                </th>-->
+        <!--                            </t>-->
+        <!--                        </tr>-->
+
+        <!--                        <tr>-->
+        <!--                            <t t-foreach="data['days']" t-as="d">-->
+        <!--                                <th>-->
+        <!--                                    <t t-esc="d['date']"/>-->
+        <!--                                </th>-->
+        <!--                            </t>-->
+        <!--                        </tr>-->
+        <!--                    </thead>-->
+
+        <!--                    <tbody>-->
+        <!--                        <t t-foreach="data['records']" t-as="rec">-->
+        <!--                            <tr>-->
+        <!--                                <td>-->
+        <!--                                    <t t-esc="rec['sl_no']"/>-->
+        <!--                                </td>-->
+
+        <!--                                <td style="text-align:left;">-->
+        <!--                                    <t t-esc="rec['name']"/>-->
+        <!--                                </td>-->
+
+        <!--                                <t t-foreach="rec['attendance']" t-as="st">-->
+        <!--                                    <td>-->
+        <!--                                        <t t-esc="st"/>-->
+        <!--                                    </td>-->
+        <!--                                </t>-->
+
+        <!--                            </tr>-->
+        <!--                        </t>-->
+        <!--                    </tbody>-->
+
+        <!--                </table>-->
+
+
+        <!--            </div>-->
+        <!--        </t>-->
+        <!--    </template>-->
+        <!--</odoo>-->
+

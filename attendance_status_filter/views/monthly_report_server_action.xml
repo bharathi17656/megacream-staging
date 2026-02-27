@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+
+    <record id="monthly_action_attendance_report_wizard"
+            model="ir.actions.server">
+        <field name="name">Monthly Attendance Report</field>
+        <field name="model_id" ref="hr_attendance.model_hr_attendance"/>
+        <field name="binding_model_id" ref="hr_attendance.model_hr_attendance"/>
+        <field name="binding_type">action</field>
+        <field name="state">code</field>
+        <field name="code"><![CDATA[
+action = {
+    "type": "ir.actions.act_window",
+    "res_model": "monthly.attendance.wizard",
+    "view_mode": "form",
+    "view_id": env.ref("attendance_status_filter.view_monthly_attendance_wizard_form").id,
+    "target": "new",
+}
+        ]]></field>
+    </record>
+
+</odoo>

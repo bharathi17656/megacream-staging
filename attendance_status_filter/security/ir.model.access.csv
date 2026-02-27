@@ -1,2 +1,3 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
 access_attendance_report_wizard,attendance.report.wizard,model_attendance_report_wizard,base.group_user,1,1,1,1
+access_monthly_attendance_wizard,monthly.attendance.wizard,model_monthly_attendance_wizard,base.group_user,1,1,1,1

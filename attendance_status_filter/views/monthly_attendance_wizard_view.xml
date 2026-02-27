@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+
+    <record id="view_monthly_attendance_wizard_form" model="ir.ui.view">
+        <field name="name">monthly.attendance.wizard.form</field>
+        <field name="model">monthly.attendance.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Monthly Attendance Report">
+                <group>
+                    <field name="month"/>
+                    <field name="year"/>
+                </group>
+                <footer>
+                    <button name="action_print_monthly"
+                            string="Print"
+                            type="object"
+                            class="btn-primary"/>
+                    <button string="Cancel"
+                            special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_monthly_attendance_wizard"
+            model="ir.actions.act_window">
+        <field name="name">Monthly Attendance</field>
+        <field name="res_model">monthly.attendance.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="view_id" ref="view_monthly_attendance_wizard_form"/>
+        <field name="target">new</field>
+    </record>
+
+</odoo>
