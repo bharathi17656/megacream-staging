@@ -43,7 +43,7 @@ class HrPayslip(models.Model):
             ('date_from', '>=', date_from),
             ('date_to', '<=', date_to),
         ])
-        return {h.date for h in holidays}
+        return {h.date_from.date() for h in holidays if h.date_from}
 
     def _build_attendance_map(self, employee, date_from, date_to, version):
         """Return {date: hours_worked} for the period, filtered by version dates."""
