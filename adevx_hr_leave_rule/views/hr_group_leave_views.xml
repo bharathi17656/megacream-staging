@@ -66,7 +66,7 @@
     <record id="view_resource_calendar_form_group_rule" model="ir.ui.view">
         <field name="name">resource.calendar.form.employee.group.rule</field>
         <field name="model">resource.calendar</field>
-        <field name="inherit_id" ref="resource.resource_calendar_form_view"/>
+        <field name="inherit_id" ref="hr.resource_calendar_form_view"/>
         <field name="arch" type="xml">
             <xpath expr="//field[@name='name']" position="after">
                 <field name="employee_group_rule"
