@@ -183,6 +183,10 @@ class HrPayslip(models.Model):
             double_pay_d = 0
             lop_compensated = 0
 
+            # Capture ORIGINAL absent count here (before paid leave or LOP comp)
+            # so the Present line shows: wage - (absent_before_comp * per_day)
+            absent_before_comp = absent_days
+
             # ── Group 2: 1-day paid leave allowance per month ──────────
             # The absent day is treated as a paid day AND counts as 'worked'
             # for the full-7-day-week Sunday check, so all worked Sundays
@@ -195,10 +199,6 @@ class HrPayslip(models.Model):
                 group2_paid_leave_dates = set(pl_taken)
                 paid_leave_credit = len(group2_paid_leave_dates)
                 absent_days = max(0, absent_days - paid_leave_credit)
-
-            # Track original absent count BEFORE lop compensation so the
-            # Present line can show: wage - (absent_before_comp * per_day)
-            absent_before_comp = absent_days
 
             if group in ('group_2', 'group_3'):
                 # Detect full-7-day-week Sundays
