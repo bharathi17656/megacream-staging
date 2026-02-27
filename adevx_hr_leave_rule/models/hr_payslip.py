@@ -290,15 +290,11 @@ class HrPayslip(models.Model):
             lines = []
 
             if full_days:
-                # ── Present line amount per group ─────────────────────────────
-                # Groups 2/3/4: amount = wage - absent_before_comp × per_day
-                #   → shows full salary minus the raw absent deduction
-                #   → Days column always shows actual attendance (full_days)
-                # Group 1: amount = full_days × per_day (Mon-Sat only group)
-                if group in ('group_2', 'group_3', 'group_4'):
-                    present_amount = round(wage - absent_before_comp * per_day, 2)
-                else:
-                    present_amount = round(full_days * per_day, 2)
+                # ── Present line amount (ALL groups) ──────────────────────────
+                # amount = (total_calendar_days - absent_before_comp) × per_day
+                #        = wage - absent_before_comp × per_day
+                # Days column shows actual attendance (full_days)
+                present_amount = round(wage - absent_before_comp * per_day, 2)
 
                 lines.append({
                     'name': 'Present (Full Day)',
