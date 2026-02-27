@@ -183,16 +183,22 @@ class HrPayslip(models.Model):
 
             festival_pd = len(festival_on_working)
 
+            # Festival Present: festivals on working days where employee
+            # actually worked (Groups 2/3 only). These are removed from
+            # Present and can offset LOP like Sundays.
+            festival_present_count = 0
+            if group in ('group_2', 'group_3'):
+                festival_present_set = festival_on_working & attended_any
+                festival_present_count = len(festival_present_set)
+                full_days -= festival_present_count   # will show separately
+
             # ── 7. Group-specific: Sunday compensation & Paid Leave ───
 
             # Capture ORIGINAL absent count here (before paid leave or LOP comp)
-            # so the Present line shows: wage - (absent_before_comp * per_day)
+            # so the Present line shows: wage - (absent_before_comp × per_day)
             absent_before_comp = absent_days
 
             # ── Group 2: 1-day paid leave allowance per month ──────────
-            # The absent day is treated as a paid day AND counts as 'worked'
-            # for the full-7-day-week Sunday check, so all worked Sundays
-            # qualify for double pay instead of compensatory use.
             group2_paid_leave_dates = set()
             paid_leave_credit = 0
             if group == 'group_2':
@@ -203,9 +209,6 @@ class HrPayslip(models.Model):
                 absent_days = max(0, absent_days - paid_leave_credit)
 
             # ── Group 1: 1 casual leave per month ──────────────────────
-            # Mon–Sat group, all Sundays are off.
-            # 1st absent day → covered as Casual Leave (paid).
-            # Any further absent days remain as LOP.
             casual_leave_credit = 0
             if group == 'group_1':
                 casual_leave_quota = 1
@@ -214,16 +217,24 @@ class HrPayslip(models.Model):
                 absent_days = max(0, absent_days - casual_leave_credit)
 
             if group in ('group_2', 'group_3'):
-                # ── Simple Sunday compensation ────────────────────────
-                # Any Sunday worked directly offsets one absent day.
+                # ── Combined compensation pool: Sundays + Festival Present ──
                 total_sundays_worked = len(sundays_worked)
-                sunday_compensated = min(absent_days, total_sundays_worked)
-                extra_sunday = max(0, total_sundays_worked - absent_days)
-                remaining_lop = max(0, absent_days - total_sundays_worked)
+                comp_pool = total_sundays_worked + festival_present_count
+                total_compensated = min(absent_days, comp_pool)
+                remaining_lop = max(0, absent_days - comp_pool)
+
+                # Allocate: Sundays first, then Festival Present
+                sunday_compensated = min(total_sundays_worked, total_compensated)
+                festival_compensated = total_compensated - sunday_compensated
+                extra_sunday = max(0, total_sundays_worked - sunday_compensated)
+                festival_present_extra = max(0, festival_present_count - festival_compensated)
+
                 absent_days = remaining_lop
             else:
                 sunday_compensated = 0
                 extra_sunday = 0
+                festival_compensated = 0
+                festival_present_extra = 0
 
             # ── 8. Final tallies ──────────────────────────────────────
             # paid_days = attendance + festival paid-offs + any leave credits
@@ -340,6 +351,18 @@ class HrPayslip(models.Model):
                     'number_of_hours': sunday_compensated * 8,
                     'amount': round(sunday_compensated * per_day, 2),
                     'work_entry_type_id': wet('LOPCOMP', 'Sunday Compensated'),
+                })
+
+            # Festival Present: employee worked on a festival holiday (Groups 2/3)
+            # Shows all festival present days; those used for LOP comp + extras
+            if festival_present_count and group in ('group_2', 'group_3'):
+                lines.append({
+                    'name': 'Festival Present',
+                    'code': 'FESTPRESENT',
+                    'number_of_days': float(festival_present_count),
+                    'number_of_hours': festival_present_count * 8,
+                    'amount': round(festival_present_count * per_day, 2),
+                    'work_entry_type_id': wet('FESTPRESENT', 'Festival Present'),
                 })
 
             # Extra Work Sunday: surplus Sundays beyond LOP offset (Groups 2/3)
