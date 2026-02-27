@@ -191,6 +191,7 @@ class HrPayslip(models.Model):
                 festival_present_set = festival_on_working & attended_any
                 festival_present_count = len(festival_present_set)
                 full_days -= festival_present_count   # will show separately
+                festival_pd -= festival_present_count  # don't double-count in Festival Holiday
 
             # ── 7. Group-specific: Sunday compensation & Paid Leave ───
 
