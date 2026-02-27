@@ -63,7 +63,7 @@
          Working Schedule: Employee Group Rule Field
          (resource.calendar form)
          ============================ -->
-    <record id="view_resource_calendar_form_group_rule" model="ir.ui.view">
+    <!-- <record id="view_resource_calendar_form_group_rule" model="ir.ui.view">
         <field name="name">resource.calendar.form.employee.group.rule</field>
         <field name="model">resource.calendar</field>
         <field name="inherit_id" ref="hr.resource_calendar_form_view"/>
@@ -74,7 +74,7 @@
                        placeholder="Select the payroll group rule for this schedule…"/>
             </xpath>
         </field>
-    </record>   
+    </record>    -->
 
     <!-- ============================
          HR Payslip: Group LOP Summary Tab
