@@ -181,6 +181,10 @@ class HrPayslip(models.Model):
             double_pay_d = 0
             lop_compensated = 0
 
+            # Track original absent days BEFORE lop compensation so the
+            # Present line can show: wage - (absent_before_comp * per_day)
+            absent_before_comp = absent_days
+
             if group in ('group_2', 'group_3'):
                 # Detect full-7-day-week Sundays
                 week_map = {}
@@ -235,10 +239,17 @@ class HrPayslip(models.Model):
             #
             # FORMULA:
             #   per_day = wage / total_calendar_days   (e.g. 15000/28 for Feb)
-            #   Each line amount = number_of_days * per_day
             #
-            # This ensures the correct per-day rate appears in the UI and feeds
-            # into Odoo salary rules correctly.
+            #   Present (Full Day) amount = wage - (absent_before_comp * per_day)
+            #     → shows full salary minus the raw LOP deduction
+            #     → LOP Compensated & Double Pay then appear as clean additions
+            #
+            #   Example (Feb, ₹15,000, 23 present, 1 absent, 4 Sundays worked):
+            #     per_day            = 15000/28 = ₹535.71
+            #     Present (Full Day) = 15000 - 535.71 = ₹14,464.29
+            #     LOP Compensated    = 1 × 535.71    = ₹535.71
+            #     Double Pay         = 3 × 535.71    = ₹1,607.14
+            #     Net                               = ₹16,607.14
 
             def wet(code, name):
                 return self._get_or_create_work_entry_type(code, name).id
@@ -251,7 +262,7 @@ class HrPayslip(models.Model):
                     'code': 'WORK100',
                     'number_of_days': full_days,
                     'number_of_hours': full_days * 8,
-                    'amount': round(full_days * per_day, 2),
+                    'amount': round(wage - absent_before_comp * per_day, 2),
                     'work_entry_type_id': wet('WORK100', 'Attendance'),
                 })
 
