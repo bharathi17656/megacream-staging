@@ -40,8 +40,8 @@ class HrPayslip(models.Model):
 
     def _get_festival_dates(self, date_from, date_to):
         holidays = self.env[FESTIVAL_HOLIDAY_MODEL].search([
-            ('date', '>=', date_from),
-            ('date', '<=', date_to),
+            ('date_from', '>=', date_from),
+            ('date_to', '<=', date_to),
         ])
         return {h.date for h in holidays}
 
