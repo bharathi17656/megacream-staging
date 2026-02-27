@@ -12,13 +12,15 @@
 
                         <!-- DATE RANGE -->
                         <p style="text-align:center;">
-                            From <t t-esc="data['date_from']"/>
-                            To <t t-esc="data['date_to']"/>
+                            From
+                            <t t-esc="data['date_from']"/>
+                            To
+                            <t t-esc="data['date_to']"/>
                         </p>
 
                         <!-- HEADER ROW 1 (Company | Generated on) -->
                         <table class="table table-borderless"
-                               style="width:100%; font-size:11px; border:0 !important; border-collapse:collapse;">
+                               style="width:100%; font-size:18px; border:0 !important; border-collapse:collapse;">
                             <tr>
                                 <td style="text-align:left; width:33%; border:0 !important;">
                                     <strong style="color:#000000;">
@@ -28,16 +30,16 @@
                                 </td>
                                 <td style="width:34%; border:0 !important;"> </td>
                                 <td style="text-align:right; width:33%; border:0 !important;">
-                                     <strong style="color:#000000;">
-                                         Generated on:
-                                     </strong>
+                                    <strong style="color:#000000;">
+                                        Generated on:
+                                    </strong>
                                     <t t-esc="generated_on"/>
                                 </td>
                             </tr>
                         </table>
                         <!-- HEADER ROW 2 (Employee Info | Attendance) -->
                         <table class="table table-borderless"
-                               style="width:100%; font-size:12px; margin-top:2px; border:0 !important; border-collapse:collapse;">
+                               style="width:100%; font-size:18px; margin-top:2px; border:0 !important; border-collapse:collapse;">
                             <tr>
                                 <td style="text-align:left; width:33%; padding-left:16px; border:0 !important;">
                                     <strong style="color:#000000;">
@@ -53,99 +55,49 @@
                                 <td style="width:33%; border:0 !important;"> </td>
                             </tr>
                         </table>
-                        <!-- ATTENDANCE TABLE -->
-                        <table class="table table-borderless"
-                               style="width:100%; font-size:10px; text-align:center;">
+
+                        <table class="table table-borderless" style="width:100%; font-size:18px; border-collapse:collapse; text-align:center;">
                             <thead>
-                                <tr style="text-align:center;">
-                                    <th rowspan="2">
-                                        <strong style="color:#000000;">
-                                            Sl No
-                                        </strong>
-                                    </th>
-                                    <th rowspan="2">
-                                        <strong style="color:#000000;">
-                                            Employee
-                                        </strong>
-                                    </th>
+                                <tr>
+                                    <th rowspan="2">Sl No</th>
+                                    <th rowspan="2">Employee</th>
 
                                     <t t-foreach="data['days']" t-as="d">
                                         <th>
-                                            <strong style="color:#000000;text-align:center;">
-                                                <t t-esc="d['day']"/>
-                                            </strong>
+                                            <t t-esc="d['day']"/>
                                         </th>
                                     </t>
                                 </tr>
-                                <tr style="text-align:center; text-align:center;">
+                                <tr>
                                     <t t-foreach="data['days']" t-as="d">
                                         <th>
-                                            <strong style="color:#000000;">
-                                                <t t-esc="d['date']"/>
-                                            </strong>
+                                            <t t-esc="d['date']"/>
                                         </th>
                                     </t>
                                 </tr>
                             </thead>
 
-                            <!--                            <thead>-->
-                            <!--                                <tr style="text-align:center;">-->
-                            <!--                                    <th rowspan="2">Sl No</th>-->
-                            <!--                                    <th rowspan="2">Employee</th>-->
-
-                            <!--                                    <t t-foreach="data['days']" t-as="d">-->
-                            <!--                                        <th>-->
-                            <!--                                            <t t-esc="d['day']"/>-->
-                            <!--                                        </th>-->
-                            <!--                                    </t>-->
-                            <!--                                </tr>-->
-                            <!--                                <tr style="text-align:center;">-->
-                            <!--                                    <t t-foreach="data['days']" t-as="d">-->
-                            <!--                                        <th>-->
-                            <!--                                            <t t-esc="d['date']"/>-->
-                            <!--                                        </th>-->
-                            <!--                                    </t>-->
-                            <!--                                </tr>-->
-                            <!--                            </thead>-->
-
                             <tbody>
                                 <t t-foreach="data['records']" t-as="rec">
-                                    <tr style="text-align:center;">
+                                    <tr style="height:18px;">
                                         <td>
                                             <t t-esc="rec['sl_no']"/>
                                         </td>
                                         <td style="text-align:left;">
                                             <t t-esc="rec['name']"/>
                                         </td>
+
                                         <t t-foreach="rec['attendance']" t-as="st">
                                             <td style="font-weight:bold;">
-
-                                                <!-- Present -->
-                                                <t t-if="st == 'P'">
-                                                    <span style="color:#00c853;">P</span>
-                                                </t>
-
-                                                <!-- Absent -->
-                                                <t t-if="st == 'A'">
-                                                    <span style="color:#d50000;">A</span>
-                                                </t>
-
-                                                <!-- Late -->
-                                                <t t-if="st == 'LT'">
-                                                    <span style="color:#000000;">LT</span>
-                                                </t>
-
-                                                <!-- Miss In -->
-                                                <t t-if="st == 'MI'">
-                                                    <span style="color:#000000;">MI</span>
-                                                </t>
-
+                                                <span t-if="st == 'P'" style="color:#00c853;">P</span>
+                                                <span t-if="st == 'A'" style="color:#d50000;">A</span>
+                                                <span t-if="st == 'LT'" style="color:#000000;">LT</span>
+                                                <span t-if="st == 'MI'" style="color:#000000;">MI</span>
                                             </td>
                                         </t>
                                     </tr>
                                 </t>
                             </tbody>
-
                         </table>
 
                     </div>
