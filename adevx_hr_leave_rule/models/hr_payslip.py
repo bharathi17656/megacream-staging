@@ -273,12 +273,26 @@ class HrPayslip(models.Model):
             lines = []
 
             if full_days:
+                # ── Present line: number_of_days drives Odoo's computed amount ──
+                # Odoo recomputes amount = number_of_days × per_day after creation,
+                # so we set number_of_days to produce: wage - absent_before_comp × per_day
+                #
+                #   (total_calendar_days - absent_before_comp) × per_day
+                #   = wage - absent_before_comp × per_day  ✓
+                #
+                # Group 1: no Sunday pay — use actual attendance days (full_days)
+                # Groups 2/3/4: full wage concept — use calendar days minus absents
+                if group in ('group_2', 'group_3', 'group_4'):
+                    present_days = total_calendar_days - absent_before_comp
+                else:
+                    present_days = full_days
+
                 lines.append({
                     'name': 'Present (Full Day)',
                     'code': 'WORK100',
-                    'number_of_days': full_days,
-                    'number_of_hours': full_days * 8,
-                    'amount': round(wage - absent_before_comp * per_day, 2),
+                    'number_of_days': present_days,
+                    'number_of_hours': present_days * 8,
+                    'amount': round(present_days * per_day, 2),
                     'work_entry_type_id': wet('WORK100', 'Attendance'),
                 })
 
