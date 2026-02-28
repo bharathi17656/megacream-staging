@@ -28,6 +28,7 @@ class HrPayslip(models.Model):
     # Calendar summary
     total_saturdays_in_month = fields.Float(string="Total Saturdays in Month", readonly=True)
     total_sundays_in_month = fields.Float(string="Total Sundays in Month", readonly=True)
+    total_festival_days_in_month = fields.Float(string="Total Festival Days in Month", readonly=True)
 
     # ------------------------------------------------------------------
     # Helpers
@@ -252,6 +253,7 @@ class HrPayslip(models.Model):
             payslip.unpaid_amount = unpaid_days_total * per_day
             payslip.total_saturdays_in_month = float(sum(1 for d in all_days if d.weekday() == 5))
             payslip.total_sundays_in_month = float(len(sunday_days))
+            payslip.total_festival_days_in_month = float(len(festival_dates))
 
             # ── 9. Build worked_days lines with explicit amounts ──────
             #
