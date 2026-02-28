@@ -44,17 +44,13 @@ class HrPayslip(models.Model):
         ])
         return {h.date for h in holidays if h.date}
 
-    def _build_attendance_map(self, employee, date_from, date_to, version):
+    def _build_attendance_map(self, employee, date_from, date_to):
 
         attendances = self.env['hr.attendance'].search([
             ('employee_id', '=', employee.id),
             ('check_in', '>=', datetime.combine(date_from, time.min)),
             ('check_in', '<=', datetime.combine(date_to, time.max)),
         ])
-        _logger.warning("Attendances: %s", attendances)
-        _logger.warning("Employee: %s", employee)
-        _logger.warning("Date From: %s", date_from)
-        _logger.warning("Date To: %s", date_to)
 
         att_map = {}
 
@@ -64,10 +60,10 @@ class HrPayslip(models.Model):
 
             work_date = att.check_in.date()
 
-            hours = 0
-            if att.check_out:
-                hours = (att.check_out - att.check_in).total_seconds() / 3600
+            # 🔥 USE ODOO FIELD DIRECTLY
+            hours = att.worked_hours or 0.0
 
+            # If multiple entries same day, keep maximum
             att_map[work_date] = max(att_map.get(work_date, 0), hours)
 
         return att_map
@@ -130,18 +126,21 @@ class HrPayslip(models.Model):
 
             for d in working_days:
 
+                # Festival auto paid
                 if d in festival_dates:
-                    continue  # Festival automatically paid
+                    continue
 
                 hrs = att_map.get(d, 0)
 
                 if hrs >= 6:
                     attendance_present += 1
+
+                elif 4 <= hrs < 6:
+                    attendance_present += 0.5
+                    absent_days += 0.5
+
                 else:
-
-                    _logger.warning("__________________________Absent: %s and Hours: %s", d, hrs)
                     absent_days += 1
-
             # Group 1 Casual Leave
             casual_leave = 0
             if group == 'group_1':
