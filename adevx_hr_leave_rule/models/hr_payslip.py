@@ -79,7 +79,6 @@ class HrPayslip(models.Model):
             if not employee:
                 continue
 
-            # Working schedule
             cal = (
                 version.resource_calendar_id
                 if version and version.resource_calendar_id
@@ -91,7 +90,6 @@ class HrPayslip(models.Model):
             date_from = payslip.date_from
             date_to = payslip.date_to
 
-            # Wage (Odoo 19 safe)
             try:
                 wage = payslip._get_contract_wage() or 0.0
             except Exception:
@@ -99,9 +97,9 @@ class HrPayslip(models.Model):
 
             payslip.worked_days_line_ids.unlink()
 
-            # ─────────────────────────────────────────────
-            # 1️⃣ Build calendar days
-            # ─────────────────────────────────────────────
+            # ─────────────────────────────
+            # 1️⃣ Calendar days
+            # ─────────────────────────────
             all_days = []
             cur = date_from
             while cur <= date_to:
@@ -110,50 +108,39 @@ class HrPayslip(models.Model):
 
             total_calendar_days = len(all_days)
             payslip.total_days_in_month = total_calendar_days
-
             per_day = wage / total_calendar_days if total_calendar_days else 0
 
-            # ─────────────────────────────────────────────
-            # 2️⃣ Define working days per group
-            # ─────────────────────────────────────────────
             def is_sunday(d):
                 return d.weekday() == 6
 
+            festival_dates = self._get_festival_dates(date_from, date_to)
+
+            # ─────────────────────────────
+            # 2️⃣ Working days
+            # ─────────────────────────────
             if group == 'group_4':
                 working_days = list(all_days)
                 sunday_days = set()
-                festival_dates = set()
             else:
                 working_days = [d for d in all_days if not is_sunday(d)]
                 sunday_days = {d for d in all_days if is_sunday(d)}
-                festival_dates = self._get_festival_dates(date_from, date_to)
 
             working_set = set(working_days)
+
             payslip.total_working_days_in_month = len(working_days)
 
-            # ─────────────────────────────────────────────
-            # 3️⃣ Attendance Map
-            # ─────────────────────────────────────────────
+            # ─────────────────────────────
+            # 3️⃣ Attendance
+            # ─────────────────────────────
             att_map = self._build_attendance_map(employee, date_from, date_to, version)
             attended_dates = set(att_map.keys())
 
             sundays_worked = sunday_days & attended_dates
             festivals_worked = festival_dates & attended_dates
 
-            # ─────────────────────────────────────────────
-            # 4️⃣ Out of contract filter
-            # ─────────────────────────────────────────────
-            out_days = set()
-            if version:
-                out_days = {
-                    d for d in working_days
-                    if (version.contract_date_start and d < version.contract_date_start)
-                    or (version.contract_date_end and d > version.contract_date_end)
-                }
-
-            # ─────────────────────────────────────────────
-            # 5️⃣ Attendance classification
-            # ─────────────────────────────────────────────
+            # ─────────────────────────────
+            # 4️⃣ Classify days
+            # ─────────────────────────────
             full_days = 0.0
             half_days = 0.0
             absent_days = 0
@@ -161,8 +148,11 @@ class HrPayslip(models.Model):
 
             for d in working_days:
 
-                if d in out_days:
-                    continue
+                # Group 1-3 → Festival on weekday = paid off
+                if group in ('group_1', 'group_2', 'group_3'):
+                    if d in festival_dates:
+                        full_days += 1
+                        continue
 
                 hrs = att_map.get(d, 0)
 
@@ -174,20 +164,18 @@ class HrPayslip(models.Model):
                     absent_days += 1
                     absent_dates.append(d)
 
-            # ─────────────────────────────────────────────
-            # 6️⃣ Group Logic
-            # ─────────────────────────────────────────────
             absent_before_comp = absent_days
 
+            # ─────────────────────────────
+            # 5️⃣ Group Rules
+            # ─────────────────────────────
             casual_leave_credit = 0
             paid_leave_credit = 0
 
-            # Group 1 → 1 Casual Leave
             if group == 'group_1':
                 casual_leave_credit = min(1, absent_days)
                 absent_days -= casual_leave_credit
 
-            # Group 2 → 1 Paid Leave
             if group == 'group_2':
                 paid_leave_credit = min(1, absent_days)
                 absent_days -= paid_leave_credit
@@ -202,27 +190,23 @@ class HrPayslip(models.Model):
                 total_sunday = len(sundays_worked)
                 total_festival = len(festivals_worked)
 
-                # Sunday compensate first
                 sunday_compensated = min(absent_days, total_sunday)
                 absent_days -= sunday_compensated
 
-                # Festival compensate next
                 festival_compensated = min(absent_days, total_festival)
                 absent_days -= festival_compensated
 
-                # Remaining Sunday/Festival = OT
                 extra_sunday = max(0, total_sunday - sunday_compensated)
                 extra_festival = max(0, total_festival - festival_compensated)
 
-            # Remaining absent = LOP
             final_lop = absent_days
+            double_pay_days = extra_sunday + extra_festival
 
-            # ─────────────────────────────────────────────
-            # 7️⃣ Final Totals
-            # ─────────────────────────────────────────────
+            # ─────────────────────────────
+            # 6️⃣ Final Totals
+            # ─────────────────────────────
             paid_days = full_days + half_days + casual_leave_credit + paid_leave_credit
             unpaid_days = float(final_lop)
-            double_pay_days = extra_sunday + extra_festival
 
             payslip.paid_days = paid_days
             payslip.unpaid_days = unpaid_days
@@ -238,9 +222,9 @@ class HrPayslip(models.Model):
             payslip.total_sundays_in_month = float(len(sunday_days))
             payslip.total_festival_days_in_month = float(len(festival_dates))
 
-            # ─────────────────────────────────────────────
-            # 8️⃣ Build Worked Day Lines
-            # ─────────────────────────────────────────────
+            # ─────────────────────────────
+            # 7️⃣ Build lines
+            # ─────────────────────────────
             def wet(code, name):
                 return self._get_or_create_work_entry_type(code, name).id
 
@@ -294,16 +278,6 @@ class HrPayslip(models.Model):
                     'number_of_hours': paid_leave_credit * 8,
                     'amount': round(paid_leave_credit * per_day, 2),
                     'work_entry_type_id': wet('PAIDLEAVE', 'Paid Leave'),
-                })
-
-            if sunday_compensated:
-                lines.append({
-                    'name': 'Sunday Compensated',
-                    'code': 'LOPCOMP',
-                    'number_of_days': sunday_compensated,
-                    'number_of_hours': sunday_compensated * 8,
-                    'amount': round(sunday_compensated * per_day, 2),
-                    'work_entry_type_id': wet('LOPCOMP', 'Sunday Compensated'),
                 })
 
             if double_pay_days:
