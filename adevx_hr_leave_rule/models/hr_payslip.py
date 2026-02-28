@@ -310,14 +310,23 @@ class HrPayslip(models.Model):
                     'work_entry_type_id': wet('FESTIVAL', 'Festival Holiday'),
                 })
 
-            if unpaid_days_total:
+            # Absent / LOP line — group-specific display
+            # Groups 1 & 4: show ALL absent (before CL offset), amount = deduction info
+            # Groups 2 & 3: show remaining LOP (after Sunday/Festival comp), amount = 0
+            if group in ('group_1', 'group_4'):
+                absent_display = float(absent_before_comp)
+                absent_amount = round(absent_before_comp * per_day, 2)
+            else:
+                absent_display = unpaid_days_total
+                absent_amount = 0.0
+
+            if absent_display:
                 lines.append({
                     'name': 'Absent / LOP',
                     'code': 'LEAVE90',
-                    'number_of_days': unpaid_days_total,
-                    'number_of_hours': unpaid_days_total * 8,
-                    # 'amount': round(-unpaid_days_total * per_day, 2),   # negative deduction
-                    'amount':0.0,
+                    'number_of_days': absent_display,
+                    'number_of_hours': absent_display * 8,
+                    'amount': absent_amount,
                     'work_entry_type_id': wet('LEAVE90', 'Unpaid / LOP'),
                 })
 
