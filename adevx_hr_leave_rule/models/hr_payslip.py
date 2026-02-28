@@ -45,20 +45,28 @@ class HrPayslip(models.Model):
         return {h.date for h in holidays if h.date}
 
     def _build_attendance_map(self, employee, date_from, date_to, version):
+
         attendances = self.env['hr.attendance'].search([
             ('employee_id', '=', employee.id),
             ('check_in', '>=', datetime.combine(date_from, time.min)),
-            ('check_out', '<=', datetime.combine(date_to, time.max)),
+            ('check_in', '<=', datetime.combine(date_to, time.max)),
         ])
-        att_map = {}
-        for att in attendances:
-            if not att.check_in or not att.check_out:
-                continue
-            work_date = att.check_in.date()
-            hours = (att.check_out - att.check_in).total_seconds() / 3600
-            att_map[work_date] = max(att_map.get(work_date, 0), hours)
-        return att_map
 
+        att_map = {}
+
+        for att in attendances:
+            if not att.check_in:
+                continue
+
+            work_date = att.check_in.date()
+
+            hours = 0
+            if att.check_out:
+                hours = (att.check_out - att.check_in).total_seconds() / 3600
+
+            att_map[work_date] = max(att_map.get(work_date, 0), hours)
+
+        return att_map
     # ─────────────────────────────────────────
     # Main Compute
     # ─────────────────────────────────────────
