@@ -80,166 +80,131 @@ class HrPayslip(models.Model):
 
             payslip.worked_days_line_ids.unlink()
 
-            # ────────────────────────
-            # Calendar Setup
-            # ────────────────────────
+            # ----------------------------
+            # Calendar
+            # ----------------------------
             all_days = []
             cur = date_from
             while cur <= date_to:
                 all_days.append(cur)
                 cur += timedelta(days=1)
 
-            total_calendar_days = len(all_days)
-            payslip.total_days_in_month = total_calendar_days
-
-            per_day = wage / total_calendar_days if total_calendar_days else 0
+            total_days = len(all_days)
+            payslip.total_days_in_month = total_days
+            per_day = wage / total_days if total_days else 0
 
             def is_sunday(d):
                 return d.weekday() == 6
 
             festival_dates = self._get_festival_dates(date_from, date_to)
 
-            if group == 'group_4':
-                working_days = list(all_days)
-                sunday_days = set()
-            else:
-                working_days = [d for d in all_days if not is_sunday(d)]
-                sunday_days = {d for d in all_days if is_sunday(d)}
+            sunday_days = {d for d in all_days if is_sunday(d)}
+            working_days = [d for d in all_days if not is_sunday(d)]
 
             payslip.total_working_days_in_month = len(working_days)
+            payslip.total_sundays_in_month = len(sunday_days)
+            payslip.total_festival_days_in_month = len(festival_dates)
 
             att_map = self._build_attendance_map(employee, date_from, date_to, version)
             attended_dates = set(att_map.keys())
 
-            sundays_worked = sunday_days & attended_dates
-            festivals_worked = festival_dates & attended_dates
-
-            # ────────────────────────
-            # Attendance Classification
-            # ────────────────────────
-            full_days = 0
-            half_days = 0
+            # ----------------------------
+            # Count
+            # ----------------------------
+            attendance_present = 0
             absent_days = 0
 
             for d in working_days:
 
-                # Festival paid day (Group 1-3)
-                if group in ('group_1', 'group_2', 'group_3') and d in festival_dates:
-                    continue
+                if d in festival_dates:
+                    continue  # Festival automatically paid
 
                 hrs = att_map.get(d, 0)
 
                 if hrs >= 7:
-                    full_days += 1
-                elif hrs >= 3:
-                    half_days += 0.5
+                    attendance_present += 1
                 else:
                     absent_days += 1
 
-            # ────────────────────────
-            # Group Rules
-            # ────────────────────────
-            casual_leave_credit = 0
-            paid_leave_credit = 0
-
+            # Group 1 Casual Leave
+            casual_leave = 0
             if group == 'group_1':
-                casual_leave_credit = min(1, absent_days)
-                absent_days -= casual_leave_credit
-
-            if group == 'group_2':
-                paid_leave_credit = min(1, absent_days)
-                absent_days -= paid_leave_credit
-
-            sunday_comp = 0
-            fest_comp = 0
-            extra_sunday = 0
-            extra_fest = 0
-
-            if group in ('group_2', 'group_3'):
-                sunday_comp = min(absent_days, len(sundays_worked))
-                absent_days -= sunday_comp
-
-                fest_comp = min(absent_days, len(festivals_worked))
-                absent_days -= fest_comp
-
-                extra_sunday = max(0, len(sundays_worked) - sunday_comp)
-                extra_fest = max(0, len(festivals_worked) - fest_comp)
+                casual_leave = min(1, absent_days)
+                absent_days -= casual_leave
 
             final_lop = absent_days
-            double_pay_days = extra_sunday + extra_fest
 
-            # ────────────────────────
-            # Final Salary Logic
-            # ────────────────────────
+            # ----------------------------
+            # Salary Logic
+            # ----------------------------
             unpaid_amount = round(final_lop * per_day, 2)
             net_salary = round(wage - unpaid_amount, 2)
 
             payslip.unpaid_days = final_lop
             payslip.unpaid_amount = unpaid_amount
             payslip.paid_amount = net_salary
-            payslip.double_pay_days = double_pay_days
-            payslip.sunday_worked_days = len(sundays_worked)
-            payslip.festival_worked_days = len(festivals_worked)
-            payslip.lop_compensated_days = sunday_comp
-            payslip.total_sundays_in_month = len(sunday_days)
-            payslip.total_festival_days_in_month = len(festival_dates)
 
-            # ────────────────────────
+            # ----------------------------
             # Build Lines
-            # ────────────────────────
+            # ----------------------------
             def wet(code, name):
                 return self._get_or_create_work_entry_type(code, name).id
 
             lines = []
 
-            if full_days:
+            # Attendance
+            if attendance_present:
                 lines.append({
-                    'name': 'Present (Full Day)',
+                    'name': 'Attendance (Mon-Sat)',
                     'code': 'WORK100',
-                    'number_of_days': full_days,
-                    'number_of_hours': full_days * 8,
-                    'amount': round(full_days * per_day, 2),
+                    'number_of_days': attendance_present,
+                    'number_of_hours': attendance_present * 8,
+                    'amount': round(attendance_present * per_day, 2),
                     'work_entry_type_id': wet('WORK100', 'Attendance'),
                 })
 
+            # Paid Sundays
+            lines.append({
+                'name': 'Paid Sunday',
+                'code': 'SUNDAY',
+                'number_of_days': len(sunday_days),
+                'number_of_hours': len(sunday_days) * 8,
+                'amount': round(len(sunday_days) * per_day, 2),
+                'work_entry_type_id': wet('SUNDAY', 'Paid Sunday'),
+            })
+
+            # Paid Festival
+            fest_count = len(festival_dates)
+            if fest_count:
+                lines.append({
+                    'name': 'Paid Festival',
+                    'code': 'FESTIVAL',
+                    'number_of_days': fest_count,
+                    'number_of_hours': fest_count * 8,
+                    'amount': round(fest_count * per_day, 2),
+                    'work_entry_type_id': wet('FESTIVAL', 'Paid Festival'),
+                })
+
+            # Casual Leave
+            if casual_leave:
+                lines.append({
+                    'name': 'Casual Leave',
+                    'code': 'CASUAL',
+                    'number_of_days': casual_leave,
+                    'number_of_hours': casual_leave * 8,
+                    'amount': round(casual_leave * per_day, 2),
+                    'work_entry_type_id': wet('CASUAL', 'Casual Leave'),
+                })
+
+            # LOP
             if final_lop:
                 lines.append({
                     'name': 'Absent / LOP',
-                    'code': 'LEAVE90',
+                    'code': 'LOP',
                     'number_of_days': final_lop,
                     'number_of_hours': final_lop * 8,
                     'amount': unpaid_amount,
-                    'work_entry_type_id': wet('LEAVE90', 'Unpaid / LOP'),
-                })
-
-            if casual_leave_credit:
-                lines.append({
-                    'name': 'Casual Leave',
-                    'code': 'CASUALLEAVE',
-                    'number_of_days': casual_leave_credit,
-                    'number_of_hours': casual_leave_credit * 8,
-                    'amount': round(casual_leave_credit * per_day, 2),
-                    'work_entry_type_id': wet('CASUALLEAVE', 'Casual Leave'),
-                })
-
-            if paid_leave_credit:
-                lines.append({
-                    'name': 'Paid Leave (Group 2)',
-                    'code': 'PAIDLEAVE',
-                    'number_of_days': paid_leave_credit,
-                    'number_of_hours': paid_leave_credit * 8,
-                    'amount': round(paid_leave_credit * per_day, 2),
-                    'work_entry_type_id': wet('PAIDLEAVE', 'Paid Leave'),
-                })
-
-            if double_pay_days:
-                lines.append({
-                    'name': 'Double Pay (Sunday/Festival)',
-                    'code': 'DOUBLEPAY',
-                    'number_of_days': double_pay_days,
-                    'number_of_hours': double_pay_days * 8,
-                    'amount': round(double_pay_days * per_day, 2),
-                    'work_entry_type_id': wet('DOUBLEPAY', 'Double Pay'),
+                    'work_entry_type_id': wet('LOP', 'Unpaid'),
                 })
 
             payslip.worked_days_line_ids = [(0, 0, v) for v in lines]
