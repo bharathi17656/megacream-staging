@@ -51,6 +51,10 @@ class HrPayslip(models.Model):
             ('check_in', '>=', datetime.combine(date_from, time.min)),
             ('check_in', '<=', datetime.combine(date_to, time.max)),
         ])
+        _logger.warning("Attendances: %s", attendances)
+        _logger.warning("Employee: %s", employee)
+        _logger.warning("Date From: %s", date_from)
+        _logger.warning("Date To: %s", date_to)
 
         att_map = {}
 
