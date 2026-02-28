@@ -121,7 +121,7 @@ class HrPayslip(models.Model):
 
                 hrs = att_map.get(d, 0)
 
-                if hrs >= 7:
+                if hrs >= 6:
                     attendance_present += 1
                 else:
                     absent_days += 1
