@@ -192,8 +192,14 @@ class HrPayslip(models.Model):
             # ---------------------------------------------------
             # Salary
             # ---------------------------------------------------
+            # unpaid_amount = round(final_lop * per_day, 2)
+            # net_salary = round(wage - unpaid_amount, 2)
+
             unpaid_amount = round(final_lop * per_day, 2)
-            net_salary = round(wage - unpaid_amount, 2)
+
+            extra_ot_amount = round(double_pay_days * per_day, 2)
+
+            net_salary = round(wage - unpaid_amount + extra_ot_amount,2)
 
             payslip.unpaid_days = final_lop
             payslip.paid_days = present_days + casual_leave + paid_leave_credit + lop_compensated + double_pay_days
