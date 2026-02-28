@@ -939,8 +939,8 @@ class BiotimeService(models.Model):
             ist_dt = ist.localize(local_dt)
     
             # 🔴 SKIP OLD DATES
-            if ist_dt.date() < today_ist:
-                continue
+            # if ist_dt.date() < today_ist:
+            #     continue
     
             utc_dt = ist_dt.astimezone(pytz.UTC).replace(tzinfo=None)
             punch_date = ist_dt.date()
