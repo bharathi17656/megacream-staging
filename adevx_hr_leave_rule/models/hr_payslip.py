@@ -114,7 +114,7 @@ class HrPayslip(models.Model):
             payslip.total_sundays_in_month = len(sunday_days)
             payslip.total_festival_days_in_month = len(festival_dates)
 
-            att_map = self._build_attendance_map(employee, date_from, date_to, version)
+            att_map = self._build_attendance_map(employee, date_from, date_to)
             _logger.warning("Attendance Map: %s", att_map)
             attended_dates = set(att_map.keys())
 
