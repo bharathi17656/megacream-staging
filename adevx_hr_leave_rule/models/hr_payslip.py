@@ -214,11 +214,11 @@ class HrPayslip(models.Model):
             # LOP
             if final_lop:
                 lines.append({
-                    'name': 'Absent / LOP',
+                    'name': f'Absent / LOP (Unpaid : {unpaid_amount})',
                     'code': 'LOP',
                     'number_of_days': final_lop,
                     'number_of_hours': final_lop * 8,
-                    'amount': unpaid_amount,
+                    'amount': 0.0,
                     'work_entry_type_id': wet('LOP', 'Unpaid'),
                 })
 
