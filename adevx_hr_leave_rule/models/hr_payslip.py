@@ -125,7 +125,8 @@ class HrPayslip(models.Model):
                 if hrs >= 6:
                     attendance_present += 1
                 else:
-                    _logger.warning("__________________________Absent: %s", d)
+
+                    _logger.warning("__________________________Absent: %s and Hours: %s", d, hrs)
                     absent_days += 1
 
             # Group 1 Casual Leave
