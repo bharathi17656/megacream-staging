@@ -310,30 +310,23 @@ class HrPayslip(models.Model):
                     'work_entry_type_id': wet('FESTIVAL', 'Festival Holiday'),
                 })
 
-            # Absent / LOP line — group-specific display
-            # Groups 1 & 4: show ALL absent (before CL offset), amount = deduction info
-            # Groups 2 & 3: show remaining LOP (after Sunday/Festival comp), amount = 0
-            if group in ('group_1', 'group_4'):
-                absent_display = float(absent_before_comp)
-                absent_amount = round(absent_before_comp * per_day, 2)
-            else:
-                absent_display = unpaid_days_total
-                absent_amount = 0.0
-
-            if absent_display:
+            # Absent / LOP line — final LOP after all offsets
+            # Days = unpaid_days_total (remaining after CL / Sunday / Festival comp)
+            # Amount = LOP × per_day (informational — deduction already in Present)
+            if unpaid_days_total:
                 lines.append({
                     'name': 'Absent / LOP',
                     'code': 'LEAVE90',
-                    'number_of_days': absent_display,
-                    'number_of_hours': absent_display * 8,
-                    'amount': absent_amount,
+                    'number_of_days': unpaid_days_total,
+                    'number_of_hours': unpaid_days_total * 8,
+                    'amount': round(unpaid_days_total * per_day, 2),
                     'work_entry_type_id': wet('LEAVE90', 'Unpaid / LOP'),
                 })
 
-            # Group 2 paid leave: adds back the deduction shown in Present line
+            # Group 2 casual leave: adds back the deduction shown in Present line
             if paid_leave_credit and group == 'group_2':
                 lines.append({
-                    'name': 'Paid Leave (Group 2)',
+                    'name': 'Casual Leave (Group 2)',
                     'code': 'PAIDLEAVE',
                     'number_of_days': float(paid_leave_credit),
                     'number_of_hours': paid_leave_credit * 8,
