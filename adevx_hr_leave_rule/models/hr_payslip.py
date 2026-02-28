@@ -5,7 +5,7 @@ import logging
 
 _logger = logging.getLogger(__name__)
 
-FESTIVAL_HOLIDAY_MODEL = 'resource.calendar.leaves'
+FESTIVAL_HOLIDAY_MODEL = 'hr.festival.holiday'
 
 
 class HrPayslip(models.Model):
@@ -40,10 +40,10 @@ class HrPayslip(models.Model):
 
     def _get_festival_dates(self, date_from, date_to):
         holidays = self.env[FESTIVAL_HOLIDAY_MODEL].search([
-            ('date_from', '>=', date_from),
-            ('date_to', '<=', date_to),
+            ('date', '>=', date_from),
+            ('date', '<=', date_to),
         ])
-        return {h.date_from.date() for h in holidays if h.date_from}
+        return {h.date for h in holidays if h.date}
 
     def _build_attendance_map(self, employee, date_from, date_to, version):
         """Return {date: hours_worked} for the period, filtered by version dates."""
