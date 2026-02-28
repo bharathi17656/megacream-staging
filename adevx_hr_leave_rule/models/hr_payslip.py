@@ -14,6 +14,7 @@ class HrPayslip(models.Model):
     unpaid_amount = fields.Float(string="Unpaid Amount", readonly=True)
     unpaid_days = fields.Float(string="Unpaid Days", readonly=True)
     paid_amount = fields.Float(string="Paid Amount", readonly=True)
+    paid_days = fields.Float(string="Paid Days", readonly=True)
 
     double_pay_days = fields.Float(string="Double Pay Days", readonly=True)
     sunday_worked_days = fields.Float(string="Sunday Worked Days", readonly=True)
@@ -194,6 +195,7 @@ class HrPayslip(models.Model):
             net_salary = round(wage - unpaid_amount, 2)
 
             payslip.unpaid_days = final_lop
+            payslip.paid_days = present_days + casual_leave + paid_leave_credit + lop_compensated + double_pay_days
             payslip.unpaid_amount = unpaid_amount
             payslip.paid_amount = net_salary
             payslip.double_pay_days = double_pay_days
