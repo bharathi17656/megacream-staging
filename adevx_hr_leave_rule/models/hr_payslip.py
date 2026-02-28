@@ -300,15 +300,15 @@ class HrPayslip(models.Model):
                     'work_entry_type_id': wet('HALF', 'Half Day Attendance'),
                 })
 
-            if festival_pd and group in ('group_1', 'group_2', 'group_3'):
-                lines.append({
-                    'name': 'Festival Holiday (Paid Off)',
-                    'code': 'FESTIVAL',
-                    'number_of_days': festival_pd,
-                    'number_of_hours': festival_pd * 8,
-                    'amount': round(festival_pd * per_day, 2),
-                    'work_entry_type_id': wet('FESTIVAL', 'Festival Holiday'),
-                })
+            # if festival_pd and group in ('group_1', 'group_2', 'group_3'):
+            #     lines.append({
+            #         'name': 'Festival Holiday (Paid Off)',
+            #         'code': 'FESTIVAL',
+            #         'number_of_days': festival_pd,
+            #         'number_of_hours': festival_pd * 8,
+            #         'amount': round(festival_pd * per_day, 2),
+            #         'work_entry_type_id': wet('FESTIVAL', 'Festival Holiday'),
+            #     })
 
             # Absent / LOP line — final LOP after all offsets
             # Days = unpaid_days_total (remaining after CL / Sunday / Festival comp)
