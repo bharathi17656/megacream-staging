@@ -1,10 +1,12 @@
 # models/hr_payslip.py
 from odoo import models, fields
 from datetime import timedelta, time, datetime
+import logging
+
+_logger = logging.getLogger(__name__)
 
 FESTIVAL_HOLIDAY_MODEL = 'hr.festival.holiday'
-import logging
-_logger = logging.getLogger(__name__)
+
 
 class HrPayslip(models.Model):
     _inherit = 'hr.payslip'
@@ -45,7 +47,6 @@ class HrPayslip(models.Model):
         return {h.date for h in holidays if h.date}
 
     def _build_attendance_map(self, employee, date_from, date_to):
-
         attendances = self.env['hr.attendance'].search([
             ('employee_id', '=', employee.id),
             ('check_in', '>=', datetime.combine(date_from, time.min)),
@@ -53,26 +54,22 @@ class HrPayslip(models.Model):
         ])
 
         att_map = {}
-
         for att in attendances:
             if not att.check_in:
                 continue
-
             work_date = att.check_in.date()
-
-            # 🔥 USE ODOO FIELD DIRECTLY
             hours = att.worked_hours or 0.0
-
-            # If multiple entries same day, keep maximum
             att_map[work_date] = max(att_map.get(work_date, 0), hours)
 
         return att_map
+
     # ─────────────────────────────────────────
     # Main Compute
     # ─────────────────────────────────────────
     def compute_sheet(self):
 
         for payslip in self:
+
             version = payslip.version_id
             employee = payslip.employee_id
 
@@ -84,14 +81,13 @@ class HrPayslip(models.Model):
 
             date_from = payslip.date_from
             date_to = payslip.date_to
-
             wage = payslip._get_contract_wage() or 0.0
 
             payslip.worked_days_line_ids.unlink()
 
-            # ----------------------------
-            # Calendar
-            # ----------------------------
+            # ────────────────────────
+            # Calendar Setup
+            # ────────────────────────
             all_days = []
             cur = date_from
             while cur <= date_to:
@@ -115,18 +111,16 @@ class HrPayslip(models.Model):
             payslip.total_festival_days_in_month = len(festival_dates)
 
             att_map = self._build_attendance_map(employee, date_from, date_to)
-            _logger.warning("Attendance Map: %s", att_map)
             attended_dates = set(att_map.keys())
 
-            # ----------------------------
-            # Count
-            # ----------------------------
+            # ────────────────────────
+            # Attendance Classification
+            # ────────────────────────
             attendance_present = 0
             absent_days = 0
 
             for d in working_days:
 
-                # Festival auto paid
                 if d in festival_dates:
                     continue
 
@@ -134,24 +128,50 @@ class HrPayslip(models.Model):
 
                 if hrs >= 6:
                     attendance_present += 1
-
                 elif 4 <= hrs < 6:
                     attendance_present += 0.5
                     absent_days += 0.5
-
                 else:
                     absent_days += 1
-            # Group 1 Casual Leave
+
+            # ────────────────────────
+            # GROUP 1
+            # ────────────────────────
             casual_leave = 0
+            paid_leave_credit = 0
+            sunday_worked = 0
+            festival_worked = 0
+            lop_compensated = 0
+            double_pay_days = 0
+
             if group == 'group_1':
                 casual_leave = min(1, absent_days)
                 absent_days -= casual_leave
 
+            # ────────────────────────
+            # GROUP 2 & 3
+            # ────────────────────────
+            if group in ('group_2', 'group_3'):
+
+                if group == 'group_2':
+                    paid_leave_credit = min(1, absent_days)
+                    absent_days -= paid_leave_credit
+
+                sunday_worked = len(sunday_days & attended_dates)
+                festival_worked = len(festival_dates & attended_dates)
+
+                total_ot_days = sunday_worked + festival_worked
+
+                lop_compensated = min(absent_days, total_ot_days)
+                absent_days -= lop_compensated
+
+                double_pay_days = total_ot_days - lop_compensated
+
             final_lop = absent_days
 
-            # ----------------------------
-            # Salary Logic
-            # ----------------------------
+            # ────────────────────────
+            # Salary Calculation
+            # ────────────────────────
             unpaid_amount = round(final_lop * per_day, 2)
             net_salary = round(wage - unpaid_amount, 2)
 
@@ -159,15 +179,19 @@ class HrPayslip(models.Model):
             payslip.unpaid_amount = unpaid_amount
             payslip.paid_amount = net_salary
 
-            # ----------------------------
+            payslip.double_pay_days = double_pay_days
+            payslip.lop_compensated_days = lop_compensated
+            payslip.sunday_worked_days = sunday_worked
+            payslip.festival_worked_days = festival_worked
+
+            # ────────────────────────
             # Build Lines
-            # ----------------------------
+            # ────────────────────────
             def wet(code, name):
                 return self._get_or_create_work_entry_type(code, name).id
 
             lines = []
 
-            # Attendance
             if attendance_present:
                 lines.append({
                     'name': 'Attendance (Mon-Sat)',
@@ -189,18 +213,16 @@ class HrPayslip(models.Model):
             })
 
             # Paid Festival
-            fest_count = len(festival_dates)
-            if fest_count:
+            if festival_dates:
                 lines.append({
                     'name': 'Paid Festival',
                     'code': 'FESTIVAL',
-                    'number_of_days': fest_count,
-                    'number_of_hours': fest_count * 8,
-                    'amount': round(fest_count * per_day, 2),
+                    'number_of_days': len(festival_dates),
+                    'number_of_hours': len(festival_dates) * 8,
+                    'amount': round(len(festival_dates) * per_day, 2),
                     'work_entry_type_id': wet('FESTIVAL', 'Paid Festival'),
                 })
 
-            # Casual Leave
             if casual_leave:
                 lines.append({
                     'name': 'Casual Leave',
@@ -211,10 +233,39 @@ class HrPayslip(models.Model):
                     'work_entry_type_id': wet('CASUAL', 'Casual Leave'),
                 })
 
-            # LOP
+            if paid_leave_credit:
+                lines.append({
+                    'name': 'Paid Leave (Group 2)',
+                    'code': 'PAIDLEAVE',
+                    'number_of_days': paid_leave_credit,
+                    'number_of_hours': paid_leave_credit * 8,
+                    'amount': round(paid_leave_credit * per_day, 2),
+                    'work_entry_type_id': wet('PAIDLEAVE', 'Paid Leave'),
+                })
+
+            if lop_compensated:
+                lines.append({
+                    'name': 'LOP Compensated (Sunday/Festival Work)',
+                    'code': 'LOPCOMP',
+                    'number_of_days': lop_compensated,
+                    'number_of_hours': lop_compensated * 8,
+                    'amount': round(lop_compensated * per_day, 2),
+                    'work_entry_type_id': wet('LOPCOMP', 'LOP Compensated'),
+                })
+
+            if double_pay_days:
+                lines.append({
+                    'name': 'Double Pay (Sunday/Festival)',
+                    'code': 'DOUBLEPAY',
+                    'number_of_days': double_pay_days,
+                    'number_of_hours': double_pay_days * 8,
+                    'amount': round(double_pay_days * per_day, 2),
+                    'work_entry_type_id': wet('DOUBLEPAY', 'Double Pay'),
+                })
+
             if final_lop:
                 lines.append({
-                    'name': f'Absent / LOP (Unpaid : {unpaid_amount})',
+                    'name': f'Absent / LOP (Unpaid: {unpaid_amount})',
                     'code': 'LOP',
                     'number_of_days': final_lop,
                     'number_of_hours': final_lop * 8,
