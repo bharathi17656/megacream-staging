@@ -25,7 +25,7 @@ class HrPayslip(models.Model):
     total_working_days_in_month = fields.Float(string="Total Working Days", readonly=True)
     total_sundays_in_month = fields.Float(string="Total Sundays", readonly=True)
     total_festival_days_in_month = fields.Float(string="Total Festival Days", readonly=True)
-
+    total_saturdays_in_month = fields.Float(string="Total Saturdays", readonly=True)
     # -------------------------------------------------------
     # Helpers
     # -------------------------------------------------------
@@ -116,6 +116,7 @@ class HrPayslip(models.Model):
             payslip.total_working_days_in_month = len(working_days)
             payslip.total_sundays_in_month = len(sunday_days)
             payslip.total_festival_days_in_month = len(festival_dates)
+            payslip.total_saturdays_in_month = len(working_days) - len(sunday_days) - len(festival_dates)
 
             # ---------------------------------------------------
             # Attendance Map
