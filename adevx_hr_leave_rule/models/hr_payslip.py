@@ -3,7 +3,8 @@ from odoo import models, fields
 from datetime import timedelta, time, datetime
 
 FESTIVAL_HOLIDAY_MODEL = 'hr.festival.holiday'
-
+import logging
+_logger = logging.getLogger(__name__)
 
 class HrPayslip(models.Model):
     _inherit = 'hr.payslip'
@@ -124,6 +125,7 @@ class HrPayslip(models.Model):
                 if hrs >= 6:
                     attendance_present += 1
                 else:
+                    _logger.warning("__________________________Absent: %s", d)
                     absent_days += 1
 
             # Group 1 Casual Leave
