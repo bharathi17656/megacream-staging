@@ -115,7 +115,7 @@ class AttendanceReportWizard(models.TransientModel):
 
         check_in_local = fields.Datetime.context_timestamp(self, att.check_in)
 
-        if check_in_local.time() > time(9, 36):
+        if check_in_local.time() >= time(9, 36):
             return "Late (LT)"
 
         return "Present (P)"
