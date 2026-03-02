@@ -115,7 +115,7 @@ class MonthlyAttendanceWizard(models.TransientModel):
 
         check_in = fields.Datetime.context_timestamp(self, att.check_in)
 
-        if check_in.time() > time(9, 36):
+        if check_in.time() >= time(9, 36):
             return "LT"
 
         return "P"
