@@ -13,10 +13,10 @@ class HrPayslip(models.Model):
 
     # inside HrPayslip model
 
-    bank_payable = fields.Float(string="Bank Payable", readonly=True)
-    cash_payable = fields.Float(string="Cash Payable", readonly=True)
-    esi_deduction = fields.Float(string="ESI Deduction", readonly=True)
-    pf_deduction = fields.Float(string="PF Deduction", readonly=True)
+    bank_payable = fields.Monetary(string="Bank Payable", readonly=True)
+    cash_payable = fields.Monetary(string="Cash Payable", readonly=True)
+    esi_deduction = fields.Monetary(string="ESI Deduction", readonly=True)
+    pf_deduction = fields.Monetary(string="PF Deduction", readonly=True)
 
     unpaid_amount = fields.Float(string="Unpaid Amount", readonly=True)
     unpaid_days = fields.Float(string="Unpaid Days", readonly=True)
