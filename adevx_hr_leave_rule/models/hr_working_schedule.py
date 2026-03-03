@@ -10,7 +10,7 @@ class ResourceCalendar(models.Model):
 
     In Odoo 19, the working schedule is linked directly on hr.employee via
     resource_calendar_id, so this is the right place for group-level rules.
-    """3
+    """
     _inherit = 'resource.calendar'
 
     employee_group_rule = fields.Selection(
