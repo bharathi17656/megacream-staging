@@ -11,6 +11,13 @@ FESTIVAL_HOLIDAY_MODEL = 'hr.festival.holiday'
 class HrPayslip(models.Model):
     _inherit = 'hr.payslip'
 
+    # inside HrPayslip model
+
+    bank_payable = fields.Float(string="Bank Payable", readonly=True)
+    cash_payable = fields.Float(string="Cash Payable", readonly=True)
+    esi_deduction = fields.Float(string="ESI Deduction", readonly=True)
+    pf_deduction = fields.Float(string="PF Deduction", readonly=True)
+
     unpaid_amount = fields.Float(string="Unpaid Amount", readonly=True)
     unpaid_days = fields.Float(string="Unpaid Days", readonly=True)
     paid_amount = fields.Float(string="Paid Amount", readonly=True)
@@ -200,6 +207,60 @@ class HrPayslip(models.Model):
             extra_ot_amount = round(double_pay_days * per_day, 2)
 
             net_salary = round(wage - unpaid_amount + extra_ot_amount,2)
+
+            # ---------------------------------------------------
+            # Bank & Cash Split Logic
+            # ---------------------------------------------------
+
+            bank_amount = employee.bank_amount or 0.0
+            cash_amount = employee.cash_amount or 0.0
+            esi = employee.esi_amount or 0.0
+            pf = employee.l10n_in_pf_employee_amount or 0.0  # assuming this exists
+
+            # If employee defined split
+            if bank_amount or cash_amount:
+
+                # Total defined split
+                total_defined = bank_amount + cash_amount
+
+                if total_defined == 0:
+                    bank_final = 0
+                    cash_final = 0
+                else:
+                    # Calculate per day split
+                    per_day_bank = bank_amount / total_days if total_days else 0
+                    per_day_cash = cash_amount / total_days if total_days else 0
+
+                    # LOP deduction from both
+                    bank_lop_deduction = round(final_lop * per_day_bank, 2)
+                    cash_lop_deduction = round(final_lop * per_day_cash, 2)
+
+                    bank_after_lop = bank_amount - bank_lop_deduction
+                    cash_after_lop = cash_amount - cash_lop_deduction
+
+                    # Deduct PF & ESI from Bank first
+                    total_stat_deduction = esi + pf
+
+                    bank_final = bank_after_lop - total_stat_deduction
+
+                    # If bank becomes negative, adjust from cash
+                    if bank_final < 0:
+                        remaining = abs(bank_final)
+                        bank_final = 0
+                        cash_after_lop -= remaining
+
+                    cash_final = cash_after_lop
+
+            else:
+                # If no split defined → entire to bank
+                bank_final = net_salary - esi - pf
+                cash_final = 0
+
+            # Store values
+            payslip.bank_payable = round(bank_final, 2)
+            payslip.cash_payable = round(cash_final, 2)
+            payslip.esi_deduction = esi
+            payslip.pf_deduction = pf
 
             payslip.unpaid_days = final_lop
             payslip.paid_days = present_days + casual_leave + paid_leave_credit + lop_compensated + double_pay_days
