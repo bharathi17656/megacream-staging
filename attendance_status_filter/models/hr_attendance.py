@@ -30,7 +30,7 @@ class HrAttendance(models.Model):
                 local_dt = fields.Datetime.context_timestamp(
                     rec, rec.check_in
                 )
-                if local_dt.time() > time(9, 30):
+                if local_dt.time() >= time(9, 36):
                     rec.status = "Late"
                     continue
 
