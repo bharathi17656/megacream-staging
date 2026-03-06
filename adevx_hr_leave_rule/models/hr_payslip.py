@@ -11,7 +11,7 @@ FESTIVAL_HOLIDAY_MODEL = 'hr.festival.holiday'
 class HrPayslip(models.Model):
     _inherit = 'hr.payslip'
 
-    # inside HrPayslip model
+    # inside HrPayslip model 
 
     bank_payable = fields.Monetary(string="Bank Payable", readonly=True)
     cash_payable = fields.Monetary(string="Cash Payable", readonly=True)
@@ -33,6 +33,11 @@ class HrPayslip(models.Model):
     total_sundays_in_month = fields.Float(string="Total Sundays", readonly=True)
     total_festival_days_in_month = fields.Float(string="Total Festival Days", readonly=True)
     total_saturdays_in_month = fields.Float(string="Total Saturdays", readonly=True)
+
+    regular_salary = fields.Monetary(string="Regular Salary", readonly=True)
+    ot_amount = fields.Monetary(string="OT / Extra Salary", readonly=True)
+    gross_salary = fields.Monetary(string="Gross Salary", readonly=True)
+    net_payable = fields.Monetary(string="Net Payable", readonly=True)
     # -------------------------------------------------------
     # Helpers
     # -------------------------------------------------------
@@ -120,10 +125,12 @@ class HrPayslip(models.Model):
                 # Mon-Sat working
                 working_days = [d for d in all_days if not is_sunday(d)]
 
+            saturday_days = {d for d in all_days if d.weekday() == 5}
+
             payslip.total_working_days_in_month = len(working_days)
             payslip.total_sundays_in_month = len(sunday_days)
             payslip.total_festival_days_in_month = len(festival_dates)
-            payslip.total_saturdays_in_month = len(working_days) - len(sunday_days) - len(festival_dates)
+            payslip.total_saturdays_in_month = len(saturday_days)
 
             # ---------------------------------------------------
             # Attendance Map
@@ -203,10 +210,11 @@ class HrPayslip(models.Model):
             # net_salary = round(wage - unpaid_amount, 2)
 
             unpaid_amount = round(final_lop * per_day, 2)
-
             extra_ot_amount = round(double_pay_days * per_day, 2)
 
-            net_salary = round(wage - unpaid_amount + extra_ot_amount,2)
+            regular_salary_val = round(wage - unpaid_amount, 2)
+            gross_salary_val = round(regular_salary_val + extra_ot_amount, 2)
+            net_salary = gross_salary_val
 
             # ---------------------------------------------------
             # Bank & Cash Split Logic
@@ -235,7 +243,7 @@ class HrPayslip(models.Model):
                     bank_lop_deduction = round(final_lop * per_day_bank, 2)
                     cash_lop_deduction = round(final_lop * per_day_cash, 2)
 
-                    bank_after_lop = bank_amount - bank_lop_deduction
+                    bank_after_lop = bank_amount - bank_lop_deduction + extra_ot_amount
                     cash_after_lop = cash_amount - cash_lop_deduction
 
                     # Deduct PF & ESI from Bank first
@@ -256,6 +264,8 @@ class HrPayslip(models.Model):
                 bank_final = net_salary - esi - pf
                 cash_final = 0
 
+            net_payable_val = round(gross_salary_val - esi - pf, 2)
+
             # Store values
             payslip.bank_payable = round(bank_final, 2)
             payslip.cash_payable = round(cash_final, 2)
@@ -265,7 +275,11 @@ class HrPayslip(models.Model):
             payslip.unpaid_days = final_lop
             payslip.paid_days = present_days + casual_leave + paid_leave_credit + lop_compensated + double_pay_days
             payslip.unpaid_amount = unpaid_amount
-            payslip.paid_amount = net_salary
+            payslip.paid_amount = gross_salary_val
+            payslip.regular_salary = regular_salary_val
+            payslip.ot_amount = extra_ot_amount
+            payslip.gross_salary = gross_salary_val
+            payslip.net_payable = net_payable_val
             payslip.double_pay_days = double_pay_days
             payslip.lop_compensated_days = lop_compensated
             payslip.sunday_worked_days = sunday_worked
@@ -311,12 +325,12 @@ class HrPayslip(models.Model):
 
             if casual_leave:
                 lines.append({
-                    'name': 'Casual Leave',
-                    'code': 'CASUAL',
+                    'name': 'Paid Leave',
+                    'code': 'PAIDLEAVE',
                     'number_of_days': casual_leave,
                     'number_of_hours': casual_leave * 8,
                     'amount': round(casual_leave * per_day, 2),
-                    'work_entry_type_id': wet('CASUAL', 'Casual Leave'),
+                    'work_entry_type_id': wet('PAIDLEAVE', 'Paid Leave'),
                 })
 
             if paid_leave_credit:
