@@ -38,6 +38,8 @@ class HrPayslip(models.Model):
     ot_amount = fields.Monetary(string="OT / Extra Salary", readonly=True)
     gross_salary = fields.Monetary(string="Gross Salary", readonly=True)
     net_payable = fields.Monetary(string="Net Payable", readonly=True)
+
+    paid_festival_days = fields.Float(string="Paid Festival Days", readonly=True)
     # -------------------------------------------------------
     # Helpers
     # -------------------------------------------------------
@@ -127,10 +129,17 @@ class HrPayslip(models.Model):
 
             saturday_days = {d for d in all_days if d.weekday() == 5}
 
+            # Festivals that fall on actual working days (Mon-Sat for Group 1-3, none for Group 4)
+            if group == 'group_4':
+                paid_festival_days_val = 0
+            else:
+                paid_festival_days_val = len(festival_dates & set(working_days))
+
             payslip.total_working_days_in_month = len(working_days)
             payslip.total_sundays_in_month = len(sunday_days)
             payslip.total_festival_days_in_month = len(festival_dates)
             payslip.total_saturdays_in_month = len(saturday_days)
+            payslip.paid_festival_days = paid_festival_days_val
 
             # ---------------------------------------------------
             # Attendance Map
