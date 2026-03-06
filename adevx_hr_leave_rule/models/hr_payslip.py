@@ -40,6 +40,7 @@ class HrPayslip(models.Model):
     net_payable = fields.Monetary(string="Net Payable", readonly=True)
 
     paid_festival_days = fields.Float(string="Paid Festival Days", readonly=True)
+    required_attendance_days = fields.Float(string="Required Attendance Days", readonly=True)
     # -------------------------------------------------------
     # Helpers
     # -------------------------------------------------------
@@ -140,6 +141,7 @@ class HrPayslip(models.Model):
             payslip.total_festival_days_in_month = len(festival_dates)
             payslip.total_saturdays_in_month = len(saturday_days)
             payslip.paid_festival_days = paid_festival_days_val
+            payslip.required_attendance_days = len(working_days) - paid_festival_days_val
 
             # ---------------------------------------------------
             # Attendance Map
