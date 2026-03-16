@@ -861,7 +861,7 @@ class BiotimeService(models.Model):
     
         all_transactions = []
         page_count = 0
-        max_pages = 6
+        max_pages = 10
         url = start_url
     
         # =====================================================
@@ -939,8 +939,8 @@ class BiotimeService(models.Model):
             ist_dt = ist.localize(local_dt)
     
             # 🔴 SKIP OLD DATES
-            if ist_dt.date() < today_ist:
-                continue
+            # if ist_dt.date() < today_ist:
+            #     continue
     
             utc_dt = ist_dt.astimezone(pytz.UTC).replace(tzinfo=None)
             punch_date = ist_dt.date()
