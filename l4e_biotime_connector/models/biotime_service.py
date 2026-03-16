@@ -1078,29 +1078,29 @@ class BiotimeService(models.Model):
                 ], order="punch_time asc")
     
                 if lines:
-    
+
                     if len(lines) == 1:
-                        # Only one punch → set 7 PM
-                        seven_pm_ist = ist.localize(
-                            datetime.combine(
-                                attendance_date,
-                                time(19, 0, 0)
+                        # Only one punch → use check_in time to decide checkout
+                        if checkin_ist.time() < time(19, 0, 0):
+                            # Check-in before 7 PM → close at 7 PM
+                            close_ist = ist.localize(
+                                datetime.combine(attendance_date, time(19, 0, 0))
                             )
-                        )
-                        checkout_time = seven_pm_ist.astimezone(
-                            pytz.UTC
-                        ).replace(tzinfo=None)
+                        else:
+                            # Check-in at or after 7 PM → close at check_in + 15 min
+                            close_ist = checkin_ist + timedelta(minutes=15)
+                        checkout_time = close_ist.astimezone(pytz.UTC).replace(tzinfo=None)
                         no_checkout_flag = True
                     else:
                         checkout_time = lines[-1].punch_time
                         no_checkout_flag = False
-    
+
                     if checkout_time > att.check_in:
                         att.write({
                             'check_out': checkout_time,
                             'x_studio_no_checkout': no_checkout_flag,
                         })
-    
+
                         _logger.info(
                             f"Closed attendance {att.id} at {checkout_time}"
                         )
@@ -1119,31 +1119,31 @@ class BiotimeService(models.Model):
                     ], order="punch_time asc")
     
                     if lines:
-    
+
                         if len(lines) == 1:
-                            # only one punch
-                            nine_pm_ist = ist.localize(
-                                datetime.combine(
-                                    attendance_date,
-                                    time(19, 0, 0)
+                            # Only one punch → use check_in time to decide checkout
+                            if checkin_ist.time() < time(19, 0, 0):
+                                # Check-in before 7 PM → close at 7 PM
+                                close_ist = ist.localize(
+                                    datetime.combine(attendance_date, time(19, 0, 0))
                                 )
-                            )
-                            checkout_time = nine_pm_ist.astimezone(
-                                pytz.UTC
-                            ).replace(tzinfo=None)
+                            else:
+                                # Check-in at or after 7 PM → close at check_in + 15 min
+                                close_ist = checkin_ist + timedelta(minutes=15)
+                            checkout_time = close_ist.astimezone(pytz.UTC).replace(tzinfo=None)
                             no_checkout_flag = True
                         else:
                             checkout_time = lines[-1].punch_time
                             no_checkout_flag = False
-    
+
                         if checkout_time > att.check_in:
                             att.write({
                                 'check_out': checkout_time,
                                 'x_studio_no_checkout': no_checkout_flag,
                             })
-    
+
                             _logger.info(
-                                f"9PM closed attendance {att.id}"
+                                f"11PM closed attendance {att.id}"
                             )
     
         _logger.info("=== AUTO CLOSE ATTENDANCE COMPLETED ===")
