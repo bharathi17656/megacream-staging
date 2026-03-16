@@ -1070,40 +1070,43 @@ class BiotimeService(models.Model):
             # CASE 1: Previous day open → close immediately
             # --------------------------------------------------
             if attendance_date < today_ist:
-    
+
                 _logger.info(f"Closing previous day attendance ID {att.id}")
-    
+
+                day_start = datetime.combine(attendance_date, time(0, 0, 0))
+                day_end = datetime.combine(attendance_date, time(23, 59, 59))
                 lines = HrAttendanceLine.search([
-                    ('attendance_id', '=', att.id)
+                    ('employee_id', '=', att.employee_id.id),
+                    ('punch_time', '>=', day_start),
+                    ('punch_time', '<=', day_end),
                 ], order="punch_time asc")
-    
-                if lines:
 
-                    if len(lines) == 1:
-                        # Only one punch → use check_in time to decide checkout
-                        if checkin_ist.time() < time(19, 0, 0):
-                            # Check-in before 7 PM → close at 7 PM
-                            close_ist = ist.localize(
-                                datetime.combine(attendance_date, time(19, 0, 0))
-                            )
-                        else:
-                            # Check-in at or after 7 PM → close at check_in + 15 min
-                            close_ist = checkin_ist + timedelta(minutes=15)
-                        checkout_time = close_ist.astimezone(pytz.UTC).replace(tzinfo=None)
-                        no_checkout_flag = True
-                    else:
-                        checkout_time = lines[-1].punch_time
-                        no_checkout_flag = False
-
-                    if checkout_time > att.check_in:
-                        att.write({
-                            'check_out': checkout_time,
-                            'x_studio_no_checkout': no_checkout_flag,
-                        })
-
-                        _logger.info(
-                            f"Closed attendance {att.id} at {checkout_time}"
+                if lines and len(lines) > 1:
+                    # Multiple punches → last punch is checkout
+                    checkout_time = lines[-1].punch_time
+                    no_checkout_flag = False
+                else:
+                    # Single punch or no lines → decide by check_in time
+                    if checkin_ist.time() < time(19, 0, 0):
+                        # Check-in before 7 PM → close at 7 PM
+                        close_ist = ist.localize(
+                            datetime.combine(attendance_date, time(19, 0, 0))
                         )
+                    else:
+                        # Check-in at or after 7 PM → close at check_in + 15 min
+                        close_ist = checkin_ist + timedelta(minutes=15)
+                    checkout_time = close_ist.astimezone(pytz.UTC).replace(tzinfo=None)
+                    no_checkout_flag = True
+
+                if checkout_time > att.check_in:
+                    att.write({
+                        'check_out': checkout_time,
+                        'x_studio_no_checkout': no_checkout_flag,
+                    })
+
+                    _logger.info(
+                        f"Closed attendance {att.id} at {checkout_time}"
+                    )
     
             # --------------------------------------------------
             # CASE 2: Today open AND time > 9 PM → auto close
@@ -1114,37 +1117,40 @@ class BiotimeService(models.Model):
     
                     _logger.info(f"9PM auto close for attendance ID {att.id}")
     
+                    day_start = datetime.combine(attendance_date, time(0, 0, 0))
+                    day_end = datetime.combine(attendance_date, time(23, 59, 59))
                     lines = HrAttendanceLine.search([
-                        ('attendance_id', '=', att.id)
+                        ('employee_id', '=', att.employee_id.id),
+                        ('punch_time', '>=', day_start),
+                        ('punch_time', '<=', day_end),
                     ], order="punch_time asc")
-    
-                    if lines:
 
-                        if len(lines) == 1:
-                            # Only one punch → use check_in time to decide checkout
-                            if checkin_ist.time() < time(19, 0, 0):
-                                # Check-in before 7 PM → close at 7 PM
-                                close_ist = ist.localize(
-                                    datetime.combine(attendance_date, time(19, 0, 0))
-                                )
-                            else:
-                                # Check-in at or after 7 PM → close at check_in + 15 min
-                                close_ist = checkin_ist + timedelta(minutes=15)
-                            checkout_time = close_ist.astimezone(pytz.UTC).replace(tzinfo=None)
-                            no_checkout_flag = True
-                        else:
-                            checkout_time = lines[-1].punch_time
-                            no_checkout_flag = False
-
-                        if checkout_time > att.check_in:
-                            att.write({
-                                'check_out': checkout_time,
-                                'x_studio_no_checkout': no_checkout_flag,
-                            })
-
-                            _logger.info(
-                                f"11PM closed attendance {att.id}"
+                    if lines and len(lines) > 1:
+                        # Multiple punches → last punch is checkout
+                        checkout_time = lines[-1].punch_time
+                        no_checkout_flag = False
+                    else:
+                        # Single punch or no lines → decide by check_in time
+                        if checkin_ist.time() < time(19, 0, 0):
+                            # Check-in before 7 PM → close at 7 PM
+                            close_ist = ist.localize(
+                                datetime.combine(attendance_date, time(19, 0, 0))
                             )
+                        else:
+                            # Check-in at or after 7 PM → close at check_in + 15 min
+                            close_ist = checkin_ist + timedelta(minutes=15)
+                        checkout_time = close_ist.astimezone(pytz.UTC).replace(tzinfo=None)
+                        no_checkout_flag = True
+
+                    if checkout_time > att.check_in:
+                        att.write({
+                            'check_out': checkout_time,
+                            'x_studio_no_checkout': no_checkout_flag,
+                        })
+
+                        _logger.info(
+                            f"11PM closed attendance {att.id}"
+                        )
     
         _logger.info("=== AUTO CLOSE ATTENDANCE COMPLETED ===")
     
