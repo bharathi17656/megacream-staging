@@ -2,7 +2,7 @@ from odoo import models, fields
 from datetime import datetime, time, timedelta
 import pytz
 
-
+ 
 class AttendanceReportWizard(models.TransientModel):
     _name = "attendance.report.wizard"
     _description = "Attendance Report Wizard"
