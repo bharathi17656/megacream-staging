@@ -462,35 +462,41 @@ class BiotimeService(models.Model):
             )
     
             # -----------------------------------------------
-            # ENTERPRISE SAFE OVERLAP CHECK
+            # FIND EXISTING ATTENDANCE FOR SAME DAY
             # -----------------------------------------------
-            overlap = HrAttendance.search([
+            day_start_utc = ist.localize(
+                datetime.combine(punch_date, time(0, 0, 0))
+            ).astimezone(pytz.UTC).replace(tzinfo=None)
+            day_end_utc = ist.localize(
+                datetime.combine(punch_date, time(23, 59, 59))
+            ).astimezone(pytz.UTC).replace(tzinfo=None)
+
+            existing = HrAttendance.search([
                 ('employee_id', '=', employee_id),
-                ('check_in', '<=', last_punch),
-                '|',
-                ('check_out', '=', False),
-                ('check_out', '>=', first_punch),
+                ('check_in', '>=', day_start_utc),
+                ('check_in', '<=', day_end_utc),
             ], limit=1)
-    
-            if overlap:
-    
-                new_checkin = min(overlap.check_in, first_punch)
+
+            if existing:
+
+                new_checkin = min(existing.check_in, first_punch)
                 new_checkout = max(
-                    overlap.check_out or last_punch,
+                    existing.check_out or last_punch,
                     last_punch
                 )
-    
-                overlap.write({
+                has_checkout = new_checkout != new_checkin
+
+                existing.write({
                     'check_in': new_checkin,
-                    'check_out': new_checkout,
-                    'x_studio_no_checkout': False,
+                    'check_out': new_checkout if has_checkout else False,
+                    'x_studio_no_checkout': not has_checkout,
                 })
-    
-                attendance = overlap
+
+                attendance = existing
                 _logger.info(f"Updated existing attendance ID {attendance.id}")
-    
+
             else:
-    
+
                 has_checkout = len(punches) > 1 and last_punch != first_punch
                 attendance = HrAttendance.create({
                     'employee_id': employee_id,
@@ -498,7 +504,7 @@ class BiotimeService(models.Model):
                     'check_out': last_punch if has_checkout else False,
                     'x_studio_no_checkout': not has_checkout,
                 })
-    
+
                 _logger.info(f"Created attendance ID {attendance.id}")
     
             # -----------------------------------------------
