@@ -497,6 +497,34 @@ class BiotimeService(models.Model):
 
             else:
 
+                # Close any open previous-day record before creating new one
+                open_prev = HrAttendance.search([
+                    ('employee_id', '=', employee_id),
+                    ('check_out', '=', False),
+                    ('check_in', '<', day_start_utc),
+                ], limit=1)
+
+                if open_prev:
+                    prev_checkin_ist = pytz.UTC.localize(
+                        open_prev.check_in
+                    ).astimezone(ist)
+                    prev_date = prev_checkin_ist.date()
+                    if prev_checkin_ist.time() < time(19, 0, 0):
+                        close_ist = ist.localize(
+                            datetime.combine(prev_date, time(19, 0, 0))
+                        )
+                    else:
+                        close_ist = prev_checkin_ist + timedelta(minutes=15)
+                    close_utc = close_ist.astimezone(pytz.UTC).replace(tzinfo=None)
+                    open_prev.write({
+                        'check_out': close_utc,
+                        'x_studio_no_checkout': True,
+                    })
+                    _logger.info(
+                        f"Auto-closed previous open attendance ID {open_prev.id} "
+                        f"at {close_ist.strftime('%Y-%m-%d %H:%M')} IST"
+                    )
+
                 has_checkout = len(punches) > 1 and last_punch != first_punch
                 attendance = HrAttendance.create({
                     'employee_id': employee_id,
