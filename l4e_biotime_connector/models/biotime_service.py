@@ -344,8 +344,19 @@ class BiotimeService(models.Model):
                 f"  → Resetting {len(entries)} validated work entry(ies) to draft "
                 f"for Employee {employee_id}"
             )
-            entries.action_draft()
+            entries.write({'state': 'draft'})
         return entries
+
+    def _revalidate_work_entries(self, entries):
+        """Re-validate work entries after attendance update."""
+        _logger = logging.getLogger(__name__)
+        if not entries:
+            return
+        try:
+            entries.action_validate()
+        except AttributeError:
+            entries.write({'state': 'validated'})
+        _logger.info(f"  → Re-validated {len(entries)} work entry(ies) ✓")
 
     def sync_attendance(self):
     
@@ -549,9 +560,7 @@ class BiotimeService(models.Model):
                         _logger.warning(f"  → SKIPPED attendance ID {existing.id} even after reset: {e2}")
                         attendance = existing
                     finally:
-                        if work_entries:
-                            work_entries.action_validate()
-                            _logger.info(f"  → Re-validated {len(work_entries)} work entry(ies) ✓")
+                        self._revalidate_work_entries(work_entries)
 
             else:
 
@@ -608,9 +617,7 @@ class BiotimeService(models.Model):
                         except Exception as e2:
                             _logger.warning(f"  → SKIPPED closing attendance ID {open_prev.id} even after reset: {e2}")
                         finally:
-                            if work_entries:
-                                work_entries.action_validate()
-                                _logger.info(f"  → Re-validated {len(work_entries)} work entry(ies) ✓")
+                            self._revalidate_work_entries(work_entries)
 
                 has_checkout = len(punches) > 1 and last_punch != first_punch
                 first_ist = pytz.UTC.localize(first_punch).astimezone(ist).strftime("%H:%M")
@@ -645,13 +652,10 @@ class BiotimeService(models.Model):
                             f"  → SKIPPED creating attendance for Employee {employee_id} on {punch_date} "
                             f"even after work entry reset: {e2}"
                         )
-                        if work_entries:
-                            work_entries.action_validate()
+                        self._revalidate_work_entries(work_entries)
                         continue
                     finally:
-                        if work_entries:
-                            work_entries.action_validate()
-                            _logger.info(f"  → Re-validated {len(work_entries)} work entry(ies) ✓")
+                        self._revalidate_work_entries(work_entries)
 
             # -----------------------------------------------
             # CREATE PUNCH LINES
