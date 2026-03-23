@@ -330,21 +330,19 @@ class BiotimeService(models.Model):
 
 
 
-    def _reset_and_revalidate_work_entries(self, employee_id, date_from, date_to):
-        """Reset validated work entries for employee in date range to draft,
+    def _reset_and_revalidate_work_entries(self, employee_id):
+        """Reset all validated work entries for employee to draft,
         return them so caller can re-validate after attendance is updated."""
         _logger = logging.getLogger(__name__)
         WorkEntry = self.env['hr.work.entry']
         entries = WorkEntry.search([
             ('employee_id', '=', employee_id),
-            ('date_start', '<=', date_to),
-            ('date_stop', '>=', date_from),
             ('state', '=', 'validated'),
         ])
         if entries:
             _logger.info(
                 f"  → Resetting {len(entries)} validated work entry(ies) to draft "
-                f"for Employee {employee_id} ({date_from} to {date_to})"
+                f"for Employee {employee_id}"
             )
             entries.action_draft()
         return entries
@@ -537,9 +535,7 @@ class BiotimeService(models.Model):
                     _logger.info(f"  → Updated existing attendance ID {attendance.id} ✓")
                 except Exception:
                     # Reset validated work entries, retry, then re-validate
-                    work_entries = self._reset_and_revalidate_work_entries(
-                        employee_id, new_checkin, new_checkout or new_checkin
-                    )
+                    work_entries = self._reset_and_revalidate_work_entries(employee_id)
                     try:
                         with self.env.cr.savepoint():
                             existing.write({
@@ -598,9 +594,7 @@ class BiotimeService(models.Model):
                             f"at {close_ist.strftime('%Y-%m-%d %H:%M')} IST ✓"
                         )
                     except Exception:
-                        work_entries = self._reset_and_revalidate_work_entries(
-                            employee_id, open_prev.check_in, close_utc
-                        )
+                        work_entries = self._reset_and_revalidate_work_entries(employee_id)
                         try:
                             with self.env.cr.savepoint():
                                 open_prev.write({
@@ -636,9 +630,7 @@ class BiotimeService(models.Model):
                         })
                     _logger.info(f"  → Created attendance ID {attendance.id} ✓")
                 except Exception:
-                    work_entries = self._reset_and_revalidate_work_entries(
-                        employee_id, first_punch, last_punch
-                    )
+                    work_entries = self._reset_and_revalidate_work_entries(employee_id)
                     try:
                         with self.env.cr.savepoint():
                             attendance = HrAttendance.create({
