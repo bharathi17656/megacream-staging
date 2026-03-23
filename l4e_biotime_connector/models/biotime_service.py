@@ -539,14 +539,20 @@ class BiotimeService(models.Model):
                         )
 
                 has_checkout = len(punches) > 1 and last_punch != first_punch
-                attendance = HrAttendance.create({
-                    'employee_id': employee_id,
-                    'check_in': first_punch,
-                    'check_out': last_punch if has_checkout else False,
-                    'x_studio_no_checkout': not has_checkout,
-                })
-
-                _logger.info(f"Created attendance ID {attendance.id}")
+                try:
+                    attendance = HrAttendance.create({
+                        'employee_id': employee_id,
+                        'check_in': first_punch,
+                        'check_out': last_punch if has_checkout else False,
+                        'x_studio_no_checkout': not has_checkout,
+                    })
+                    _logger.info(f"Created attendance ID {attendance.id}")
+                except Exception as e:
+                    _logger.warning(
+                        f"Skipped creating attendance for Employee {employee_id} "
+                        f"on {punch_date} (overtime recalculation blocked by validated work entry): {e}"
+                    )
+                    continue
     
             # -----------------------------------------------
             # CREATE PUNCH LINES
