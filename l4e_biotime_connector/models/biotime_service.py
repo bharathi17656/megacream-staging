@@ -456,11 +456,15 @@ class BiotimeService(models.Model):
             first_punch = punches[0]["punch_time"]
             last_punch = punches[-1]["punch_time"]
     
+            punch_times_ist = [
+                pytz.UTC.localize(p["punch_time"]).astimezone(ist).strftime("%H:%M")
+                for p in punches
+            ]
             _logger.info(
                 f"Processing Employee {employee_id} "
-                f"{punch_date} | Punches: {len(punches)}"
+                f"{punch_date} | Punches: {len(punches)} | Times(IST): {punch_times_ist}"
             )
-    
+
             # -----------------------------------------------
             # FIND EXISTING ATTENDANCE FOR SAME DAY
             # -----------------------------------------------
@@ -471,7 +475,6 @@ class BiotimeService(models.Model):
                 datetime.combine(punch_date, time(23, 59, 59))
             ).astimezone(pytz.UTC).replace(tzinfo=None)
 
-                                    
             existing = HrAttendance.search([
                 ('employee_id', '=', employee_id),
                 ('check_in', '>=', day_start_utc),
@@ -480,13 +483,30 @@ class BiotimeService(models.Model):
 
             if existing:
 
+                existing_in_ist = pytz.UTC.localize(existing.check_in).astimezone(ist).strftime("%H:%M")
+                existing_out_ist = (
+                    pytz.UTC.localize(existing.check_out).astimezone(ist).strftime("%H:%M")
+                    if existing.check_out else "None"
+                )
+                _logger.info(
+                    f"  → Found existing attendance ID {existing.id} | "
+                    f"check_in={existing_in_ist} check_out={existing_out_ist} IST"
+                )
+
                 new_checkin = min(existing.check_in, first_punch)
                 new_checkout = max(
                     existing.check_out or last_punch,
                     last_punch
                 )
                 has_checkout = new_checkout != new_checkin
-                
+
+                new_in_ist = pytz.UTC.localize(new_checkin).astimezone(ist).strftime("%H:%M")
+                new_out_ist = pytz.UTC.localize(new_checkout).astimezone(ist).strftime("%H:%M") if has_checkout else "None"
+                _logger.info(
+                    f"  → Will write: check_in={new_in_ist} check_out={new_out_ist} IST "
+                    f"no_checkout={not has_checkout}"
+                )
+
                 try:
                     with self.env.cr.savepoint():
                         existing.write({
@@ -495,14 +515,16 @@ class BiotimeService(models.Model):
                             'x_studio_no_checkout': not has_checkout,
                         })
                     attendance = existing
-                    _logger.info(f"Updated existing attendance ID {attendance.id}")
+                    _logger.info(f"  → Updated existing attendance ID {attendance.id} ✓")
                 except Exception as e:
                     _logger.warning(
-                        f"Skipped attendance ID {existing.id} (locked by validated work entry): {e}"
+                        f"  → SKIPPED attendance ID {existing.id} — locked by validated work entry: {e}"
                     )
                     attendance = existing
 
             else:
+
+                _logger.info(f"  → No existing attendance found for Employee {employee_id} on {punch_date}")
 
                 # Close any open previous-day record before creating new one
                 open_prev = HrAttendance.search([
@@ -523,8 +545,13 @@ class BiotimeService(models.Model):
                     else:
                         close_ist = prev_checkin_ist + timedelta(minutes=15)
                     close_utc = close_ist.astimezone(pytz.UTC).replace(tzinfo=None)
-                    
-                 
+
+                    _logger.info(
+                        f"  → Open previous attendance ID {open_prev.id} found "
+                        f"(check_in={prev_checkin_ist.strftime('%Y-%m-%d %H:%M')} IST) — "
+                        f"will close at {close_ist.strftime('%H:%M')} IST"
+                    )
+
                     try:
                         with self.env.cr.savepoint():
                             open_prev.write({
@@ -532,15 +559,22 @@ class BiotimeService(models.Model):
                                 'x_studio_no_checkout': True,
                             })
                         _logger.info(
-                            f"Auto-closed previous open attendance ID {open_prev.id} "
-                            f"at {close_ist.strftime('%Y-%m-%d %H:%M')} IST"
+                            f"  → Auto-closed attendance ID {open_prev.id} "
+                            f"at {close_ist.strftime('%Y-%m-%d %H:%M')} IST ✓"
                         )
                     except Exception as e:
                         _logger.warning(
-                            f"Skipped closing attendance ID {open_prev.id} (locked by validated work entry): {e}"
+                            f"  → SKIPPED closing attendance ID {open_prev.id} — locked by validated work entry: {e}"
                         )
 
                 has_checkout = len(punches) > 1 and last_punch != first_punch
+                first_ist = pytz.UTC.localize(first_punch).astimezone(ist).strftime("%H:%M")
+                last_ist = pytz.UTC.localize(last_punch).astimezone(ist).strftime("%H:%M")
+                _logger.info(
+                    f"  → Creating attendance: check_in={first_ist} "
+                    f"check_out={last_ist if has_checkout else 'None'} IST "
+                    f"no_checkout={not has_checkout}"
+                )
                 try:
                     with self.env.cr.savepoint():
                         attendance = HrAttendance.create({
@@ -549,23 +583,25 @@ class BiotimeService(models.Model):
                             'check_out': last_punch if has_checkout else False,
                             'x_studio_no_checkout': not has_checkout,
                         })
-                    _logger.info(f"Created attendance ID {attendance.id}")
+                    _logger.info(f"  → Created attendance ID {attendance.id} ✓")
                 except Exception as e:
                     _logger.warning(
-                        f"Skipped creating attendance for Employee {employee_id} "
-                        f"on {punch_date} (overtime recalculation blocked by validated work entry): {e}"
+                        f"  → SKIPPED creating attendance for Employee {employee_id} on {punch_date} "
+                        f"— overtime recalculation blocked by validated work entry: {e}"
                     )
                     continue
-    
+
             # -----------------------------------------------
             # CREATE PUNCH LINES
             # -----------------------------------------------
             for p in punches:
-    
+
+                p_ist = pytz.UTC.localize(p["punch_time"]).astimezone(ist).strftime("%H:%M")
                 if HrAttendanceLine.search(
                     [('biotime_transaction_id', '=', p["tx_id"])],
                     limit=1
                 ):
+                    _logger.info(f"  → Punch line tx_id={p['tx_id']} ({p_ist} IST) already exists, skipping")
                     continue
     
                 HrAttendanceLine.create({
@@ -577,9 +613,10 @@ class BiotimeService(models.Model):
                     'terminal_alias': p["terminal_alias"],
                     'biotime_transaction_id': p["tx_id"],
                 })
-    
+                _logger.info(f"  → Punch line created: tx_id={p['tx_id']} ({p_ist} IST)")
+
             _logger.info(
-                f"Punch lines created for Employee {employee_id}"
+                f"  === Done Employee {employee_id} {punch_date} ==="
             )
     
         _logger.info("=== BIOTIME SYNC COMPLETED ===")
