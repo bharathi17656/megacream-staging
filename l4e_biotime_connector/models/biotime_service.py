@@ -350,7 +350,7 @@ class BiotimeService(models.Model):
     
         all_transactions = []
         page_count = 0
-        max_pages = 10
+        max_pages = 25
         url = start_url
     
         # =====================================================
