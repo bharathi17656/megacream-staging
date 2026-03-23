@@ -471,6 +471,7 @@ class BiotimeService(models.Model):
                 datetime.combine(punch_date, time(23, 59, 59))
             ).astimezone(pytz.UTC).replace(tzinfo=None)
 
+                                    
             existing = HrAttendance.search([
                 ('employee_id', '=', employee_id),
                 ('check_in', '>=', day_start_utc),
@@ -485,7 +486,7 @@ class BiotimeService(models.Model):
                     last_punch
                 )
                 has_checkout = new_checkout != new_checkin
-
+                
                 existing.write({
                     'check_in': new_checkin,
                     'check_out': new_checkout if has_checkout else False,
@@ -516,6 +517,10 @@ class BiotimeService(models.Model):
                     else:
                         close_ist = prev_checkin_ist + timedelta(minutes=15)
                     close_utc = close_ist.astimezone(pytz.UTC).replace(tzinfo=None)
+                    
+                    if open_prev.overtime_status != 'to_approve':
+                        continue
+                        
                     open_prev.write({
                         'check_out': close_utc,
                         'x_studio_no_checkout': True,
