@@ -487,14 +487,19 @@ class BiotimeService(models.Model):
                 )
                 has_checkout = new_checkout != new_checkin
                 
-                existing.write({
-                    'check_in': new_checkin,
-                    'check_out': new_checkout if has_checkout else False,
-                    'x_studio_no_checkout': not has_checkout,
-                })
-
-                attendance = existing
-                _logger.info(f"Updated existing attendance ID {attendance.id}")
+                try:
+                    existing.write({
+                        'check_in': new_checkin,
+                        'check_out': new_checkout if has_checkout else False,
+                        'x_studio_no_checkout': not has_checkout,
+                    })
+                    attendance = existing
+                    _logger.info(f"Updated existing attendance ID {attendance.id}")
+                except Exception as e:
+                    _logger.warning(
+                        f"Skipped attendance ID {existing.id} (locked by validated work entry): {e}"
+                    )
+                    attendance = existing
 
             else:
 
@@ -518,17 +523,20 @@ class BiotimeService(models.Model):
                         close_ist = prev_checkin_ist + timedelta(minutes=15)
                     close_utc = close_ist.astimezone(pytz.UTC).replace(tzinfo=None)
                     
-                    if open_prev.overtime_status != 'to_approve':
-                        continue
-                        
-                    open_prev.write({
-                        'check_out': close_utc,
-                        'x_studio_no_checkout': True,
-                    })
-                    _logger.info(
-                        f"Auto-closed previous open attendance ID {open_prev.id} "
-                        f"at {close_ist.strftime('%Y-%m-%d %H:%M')} IST"
-                    )
+                 
+                    try:
+                        open_prev.write({
+                            'check_out': close_utc,
+                            'x_studio_no_checkout': True,
+                        })
+                        _logger.info(
+                            f"Auto-closed previous open attendance ID {open_prev.id} "
+                            f"at {close_ist.strftime('%Y-%m-%d %H:%M')} IST"
+                        )
+                    except Exception as e:
+                        _logger.warning(
+                            f"Skipped closing attendance ID {open_prev.id} (locked by validated work entry): {e}"
+                        )
 
                 has_checkout = len(punches) > 1 and last_punch != first_punch
                 attendance = HrAttendance.create({
@@ -628,24 +636,28 @@ class BiotimeService(models.Model):
                     no_checkout_flag = True
 
                 if checkout_time > att.check_in:
-                    att.write({
-                        'check_out': checkout_time,
-                        'x_studio_no_checkout': no_checkout_flag,
-                    })
+                    try:
+                        att.write({
+                            'check_out': checkout_time,
+                            'x_studio_no_checkout': no_checkout_flag,
+                        })
+                        _logger.info(
+                            f"Closed attendance {att.id} at {checkout_time}"
+                        )
+                    except Exception as e:
+                        _logger.warning(
+                            f"Skipped attendance ID {att.id} (locked by validated work entry): {e}"
+                        )
 
-                    _logger.info(
-                        f"Closed attendance {att.id} at {checkout_time}"
-                    )
-    
             # --------------------------------------------------
             # CASE 2: Today open AND time > 9 PM → auto close
             # --------------------------------------------------
             elif attendance_date == today_ist:
-    
+
                 if now_ist.time() >= time(19, 0, 0):
-    
+
                     _logger.info(f"9PM auto close for attendance ID {att.id}")
-    
+
                     day_start = datetime.combine(attendance_date, time(0, 0, 0))
                     day_end = datetime.combine(attendance_date, time(23, 59, 59))
                     lines = HrAttendanceLine.search([
@@ -655,31 +667,31 @@ class BiotimeService(models.Model):
                     ], order="punch_time asc")
 
                     if lines and len(lines) > 1:
-                        # Multiple punches → last punch is checkout
                         checkout_time = lines[-1].punch_time
                         no_checkout_flag = False
                     else:
-                        # Single punch or no lines → decide by check_in time
                         if checkin_ist.time() < time(19, 0, 0):
-                            # Check-in before 7 PM → close at 7 PM
                             close_ist = ist.localize(
                                 datetime.combine(attendance_date, time(19, 0, 0))
                             )
                         else:
-                            # Check-in at or after 7 PM → close at check_in + 15 min
                             close_ist = checkin_ist + timedelta(minutes=15)
                         checkout_time = close_ist.astimezone(pytz.UTC).replace(tzinfo=None)
                         no_checkout_flag = True
 
                     if checkout_time > att.check_in:
-                        att.write({
-                            'check_out': checkout_time,
-                            'x_studio_no_checkout': no_checkout_flag,
-                        })
-
-                        _logger.info(
-                            f"11PM closed attendance {att.id}"
-                        )
+                        try:
+                            att.write({
+                                'check_out': checkout_time,
+                                'x_studio_no_checkout': no_checkout_flag,
+                            })
+                            _logger.info(
+                                f"11PM closed attendance {att.id}"
+                            )
+                        except Exception as e:
+                            _logger.warning(
+                                f"Skipped attendance ID {att.id} (locked by validated work entry): {e}"
+                            )
     
         _logger.info("=== AUTO CLOSE ATTENDANCE COMPLETED ===")
     
