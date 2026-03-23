@@ -387,16 +387,23 @@ class BiotimeService(models.Model):
         while url and page_count < max_pages:
     
             _logger.info(f"Fetching page {page_count + 1}")
-    
-            res = requests.get(url, auth=(username, password), timeout=30)
-            res.raise_for_status()
-    
+
+            try:
+                res = requests.get(url, auth=(username, password), timeout=60)
+                res.raise_for_status()
+            except requests.exceptions.Timeout:
+                _logger.warning(f"BioTime API timed out on page {page_count + 1}, stopping fetch with {len(all_transactions)} transactions so far")
+                break
+            except requests.exceptions.RequestException as e:
+                _logger.warning(f"BioTime API error on page {page_count + 1}: {e}, stopping fetch")
+                break
+
             payload = res.json()
             data = payload.get("data", [])
-    
+
             if not data:
                 break
-    
+
             all_transactions.extend(data)
     
             url = payload.get("next")
