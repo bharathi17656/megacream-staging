@@ -488,11 +488,12 @@ class BiotimeService(models.Model):
                 has_checkout = new_checkout != new_checkin
                 
                 try:
-                    existing.write({
-                        'check_in': new_checkin,
-                        'check_out': new_checkout if has_checkout else False,
-                        'x_studio_no_checkout': not has_checkout,
-                    })
+                    with self.env.cr.savepoint():
+                        existing.write({
+                            'check_in': new_checkin,
+                            'check_out': new_checkout if has_checkout else False,
+                            'x_studio_no_checkout': not has_checkout,
+                        })
                     attendance = existing
                     _logger.info(f"Updated existing attendance ID {attendance.id}")
                 except Exception as e:
@@ -525,10 +526,11 @@ class BiotimeService(models.Model):
                     
                  
                     try:
-                        open_prev.write({
-                            'check_out': close_utc,
-                            'x_studio_no_checkout': True,
-                        })
+                        with self.env.cr.savepoint():
+                            open_prev.write({
+                                'check_out': close_utc,
+                                'x_studio_no_checkout': True,
+                            })
                         _logger.info(
                             f"Auto-closed previous open attendance ID {open_prev.id} "
                             f"at {close_ist.strftime('%Y-%m-%d %H:%M')} IST"
@@ -540,12 +542,13 @@ class BiotimeService(models.Model):
 
                 has_checkout = len(punches) > 1 and last_punch != first_punch
                 try:
-                    attendance = HrAttendance.create({
-                        'employee_id': employee_id,
-                        'check_in': first_punch,
-                        'check_out': last_punch if has_checkout else False,
-                        'x_studio_no_checkout': not has_checkout,
-                    })
+                    with self.env.cr.savepoint():
+                        attendance = HrAttendance.create({
+                            'employee_id': employee_id,
+                            'check_in': first_punch,
+                            'check_out': last_punch if has_checkout else False,
+                            'x_studio_no_checkout': not has_checkout,
+                        })
                     _logger.info(f"Created attendance ID {attendance.id}")
                 except Exception as e:
                     _logger.warning(
@@ -643,10 +646,11 @@ class BiotimeService(models.Model):
 
                 if checkout_time > att.check_in:
                     try:
-                        att.write({
-                            'check_out': checkout_time,
-                            'x_studio_no_checkout': no_checkout_flag,
-                        })
+                        with self.env.cr.savepoint():
+                            att.write({
+                                'check_out': checkout_time,
+                                'x_studio_no_checkout': no_checkout_flag,
+                            })
                         _logger.info(
                             f"Closed attendance {att.id} at {checkout_time}"
                         )
@@ -687,10 +691,11 @@ class BiotimeService(models.Model):
 
                     if checkout_time > att.check_in:
                         try:
-                            att.write({
-                                'check_out': checkout_time,
-                                'x_studio_no_checkout': no_checkout_flag,
-                            })
+                            with self.env.cr.savepoint():
+                                att.write({
+                                    'check_out': checkout_time,
+                                    'x_studio_no_checkout': no_checkout_flag,
+                                })
                             _logger.info(
                                 f"11PM closed attendance {att.id}"
                             )
