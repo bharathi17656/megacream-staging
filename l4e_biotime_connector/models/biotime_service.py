@@ -330,6 +330,25 @@ class BiotimeService(models.Model):
 
 
 
+    def _reset_and_revalidate_work_entries(self, employee_id, date_from, date_to):
+        """Reset validated work entries for employee in date range to draft,
+        return them so caller can re-validate after attendance is updated."""
+        _logger = logging.getLogger(__name__)
+        WorkEntry = self.env['hr.work.entry']
+        entries = WorkEntry.search([
+            ('employee_id', '=', employee_id),
+            ('date_start', '<=', date_to),
+            ('date_stop', '>=', date_from),
+            ('state', '=', 'validated'),
+        ])
+        if entries:
+            _logger.info(
+                f"  → Resetting {len(entries)} validated work entry(ies) to draft "
+                f"for Employee {employee_id} ({date_from} to {date_to})"
+            )
+            entries.action_draft()
+        return entries
+
     def sync_attendance(self):
     
         _logger = logging.getLogger(__name__)
@@ -516,11 +535,27 @@ class BiotimeService(models.Model):
                         })
                     attendance = existing
                     _logger.info(f"  → Updated existing attendance ID {attendance.id} ✓")
-                except Exception as e:
-                    _logger.warning(
-                        f"  → SKIPPED attendance ID {existing.id} — locked by validated work entry: {e}"
+                except Exception:
+                    # Reset validated work entries, retry, then re-validate
+                    work_entries = self._reset_and_revalidate_work_entries(
+                        employee_id, new_checkin, new_checkout or new_checkin
                     )
-                    attendance = existing
+                    try:
+                        with self.env.cr.savepoint():
+                            existing.write({
+                                'check_in': new_checkin,
+                                'check_out': new_checkout if has_checkout else False,
+                                'x_studio_no_checkout': not has_checkout,
+                            })
+                        attendance = existing
+                        _logger.info(f"  → Updated existing attendance ID {attendance.id} ✓ (after work entry reset)")
+                    except Exception as e2:
+                        _logger.warning(f"  → SKIPPED attendance ID {existing.id} even after reset: {e2}")
+                        attendance = existing
+                    finally:
+                        if work_entries:
+                            work_entries.action_validate()
+                            _logger.info(f"  → Re-validated {len(work_entries)} work entry(ies) ✓")
 
             else:
 
@@ -562,10 +597,26 @@ class BiotimeService(models.Model):
                             f"  → Auto-closed attendance ID {open_prev.id} "
                             f"at {close_ist.strftime('%Y-%m-%d %H:%M')} IST ✓"
                         )
-                    except Exception as e:
-                        _logger.warning(
-                            f"  → SKIPPED closing attendance ID {open_prev.id} — locked by validated work entry: {e}"
+                    except Exception:
+                        work_entries = self._reset_and_revalidate_work_entries(
+                            employee_id, open_prev.check_in, close_utc
                         )
+                        try:
+                            with self.env.cr.savepoint():
+                                open_prev.write({
+                                    'check_out': close_utc,
+                                    'x_studio_no_checkout': True,
+                                })
+                            _logger.info(
+                                f"  → Auto-closed attendance ID {open_prev.id} "
+                                f"at {close_ist.strftime('%Y-%m-%d %H:%M')} IST ✓ (after work entry reset)"
+                            )
+                        except Exception as e2:
+                            _logger.warning(f"  → SKIPPED closing attendance ID {open_prev.id} even after reset: {e2}")
+                        finally:
+                            if work_entries:
+                                work_entries.action_validate()
+                                _logger.info(f"  → Re-validated {len(work_entries)} work entry(ies) ✓")
 
                 has_checkout = len(punches) > 1 and last_punch != first_punch
                 first_ist = pytz.UTC.localize(first_punch).astimezone(ist).strftime("%H:%M")
@@ -584,12 +635,31 @@ class BiotimeService(models.Model):
                             'x_studio_no_checkout': not has_checkout,
                         })
                     _logger.info(f"  → Created attendance ID {attendance.id} ✓")
-                except Exception as e:
-                    _logger.warning(
-                        f"  → SKIPPED creating attendance for Employee {employee_id} on {punch_date} "
-                        f"— overtime recalculation blocked by validated work entry: {e}"
+                except Exception:
+                    work_entries = self._reset_and_revalidate_work_entries(
+                        employee_id, first_punch, last_punch
                     )
-                    continue
+                    try:
+                        with self.env.cr.savepoint():
+                            attendance = HrAttendance.create({
+                                'employee_id': employee_id,
+                                'check_in': first_punch,
+                                'check_out': last_punch if has_checkout else False,
+                                'x_studio_no_checkout': not has_checkout,
+                            })
+                        _logger.info(f"  → Created attendance ID {attendance.id} ✓ (after work entry reset)")
+                    except Exception as e2:
+                        _logger.warning(
+                            f"  → SKIPPED creating attendance for Employee {employee_id} on {punch_date} "
+                            f"even after work entry reset: {e2}"
+                        )
+                        if work_entries:
+                            work_entries.action_validate()
+                        continue
+                    finally:
+                        if work_entries:
+                            work_entries.action_validate()
+                            _logger.info(f"  → Re-validated {len(work_entries)} work entry(ies) ✓")
 
             # -----------------------------------------------
             # CREATE PUNCH LINES
