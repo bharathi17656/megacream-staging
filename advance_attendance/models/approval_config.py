@@ -1,5 +1,5 @@
 from odoo import api, fields, models
-
+ 
  
 class AttendanceApprovalConfig(models.Model):
     _name = 'attendance_advance.approval_config'
