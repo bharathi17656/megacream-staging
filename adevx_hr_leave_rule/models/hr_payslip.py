@@ -225,7 +225,6 @@ class HrPayslip(models.Model):
 
             regular_salary_val = round(wage - unpaid_amount, 2)
             gross_salary_val = round(regular_salary_val + extra_ot_amount, 2)
-            net_salary = gross_salary_val
 
             # ---------------------------------------------------
             # Bank & Cash Split Logic
@@ -233,49 +232,46 @@ class HrPayslip(models.Model):
 
             bank_amount = employee.bank_amount or 0.0
             cash_amount = employee.cash_amount or 0.0
-            esi = employee.esi_amount or 0.0
-            pf = employee.l10n_in_pf_employee_amount or 0.0  # assuming this exists
 
             # If employee defined split
             if bank_amount or cash_amount:
 
-                # Total defined split
                 total_defined = bank_amount + cash_amount
 
                 if total_defined == 0:
                     bank_final = 0
                     cash_final = 0
+                    pf = 0.0
+                    esi = 0.0
                 else:
-                    # Calculate per day split
+                    # LOP deducted proportionally from bank and cash
                     per_day_bank = bank_amount / total_days if total_days else 0
                     per_day_cash = cash_amount / total_days if total_days else 0
 
-                    # LOP deduction from both
                     bank_lop_deduction = round(final_lop * per_day_bank, 2)
                     cash_lop_deduction = round(final_lop * per_day_cash, 2)
 
                     bank_after_lop = bank_amount - bank_lop_deduction + extra_ot_amount
                     cash_after_lop = cash_amount - cash_lop_deduction
 
-                    # Deduct PF & ESI from Bank first
-                    total_stat_deduction = esi + pf
+                    # PF = 12% of 70% of bank after LOP
+                    # ESI = 12% of PF
+                    pf_base = round(bank_after_lop * 0.70, 2)
+                    pf = round(pf_base * 0.12, 2)
+                    esi = round(pf * 0.12, 2)
 
-                    bank_final = bank_after_lop - total_stat_deduction
-
-                    # If bank becomes negative, adjust from cash
-                    if bank_final < 0:
-                        remaining = abs(bank_final)
-                        bank_final = 0
-                        cash_after_lop -= remaining
-
-                    cash_final = cash_after_lop
+                    bank_final = round(bank_after_lop - pf - esi, 2)
+                    cash_final = round(cash_after_lop, 2)
 
             else:
-                # If no split defined → entire to bank
-                bank_final = net_salary - esi - pf
+                # No split defined → entire salary to bank
+                pf_base = round(gross_salary_val * 0.70, 2)
+                pf = round(pf_base * 0.12, 2)
+                esi = round(pf * 0.12, 2)
+                bank_final = round(gross_salary_val - pf - esi, 2)
                 cash_final = 0
 
-            net_payable_val = round(gross_salary_val - esi - pf, 2)
+            net_payable_val = round(gross_salary_val - pf - esi, 2)
 
             # Store values
             payslip.bank_payable = round(bank_final, 2)
