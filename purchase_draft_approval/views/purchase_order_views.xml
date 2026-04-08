@@ -1,0 +1,198 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ============================================================
+         Purchase Order Form View - Inherit to add Draft state UI
+         ============================================================ -->
+    <record id="purchase_order_form_draft_inherit" model="ir.ui.view">
+        <field name="name">purchase.order.form.draft.approval</field>
+        <field name="model">purchase.order</field>
+        <field name="inherit_id" ref="purchase.purchase_order_form"/>
+        <field name="arch" type="xml">
+
+            <!-- 1. Inject 'draft_indent' into the status bar widget -->
+            <xpath expr="//field[@name='state'][@widget='statusbar']" position="attributes">
+                <attribute name="statusbar_visible">draft_indent,draft,purchase,done</attribute>
+            </xpath>
+
+            <!-- 2. Override state field options to include our new state label -->
+            <xpath expr="//field[@name='state'][@widget='statusbar']" position="replace">
+                <field name="state" widget="statusbar"
+                       statusbar_visible="draft_indent,draft,purchase,done"
+                       options="{'fold_field': 'state'}"/>
+            </xpath>
+
+            <!-- 3. Add the approval status badge next to the status bar -->
+<!--            <xpath expr="//field[@name='state'][@widget='statusbar']" position="after">-->
+<!--                <field name="approval_state" widget="badge"-->
+<!--                       decoration-warning="approval_state == 'pending'"-->
+<!--                       decoration-success="approval_state == 'approved'"-->
+<!--                       decoration-danger="approval_state == 'refused'"-->
+<!--                       invisible="not approval_state"/>-->
+<!--            </xpath>-->
+
+            <!-- 4. Add our new buttons in the header -->
+            <xpath expr="//header/button[@name='button_confirm']" position="before">
+
+<!--                 "Send to RFQ" button: shown in draft_indent, not yet pending -->
+                <button name="button_request_rfq_approval"
+                        string="Send to RFQ"
+                        type="object"
+                        class="btn-primary"
+                        icon="fa-paper-plane"
+                        invisible="state != 'draft_indent' or approval_state in ['pending', 'approved','refused']"
+                        confirm="Are you sure you want to request RFQ approval for this Purchase Order?"/>
+
+                <!-- "Approve RFQ" button: shown only to Purchase Admins when pending -->
+                <button name="button_approve_rfq"
+                        string="Approve RFQ"
+                        type="object"
+                        class="btn-success"
+                        icon="fa-check"
+                        groups="purchase.group_purchase_manager"
+                        invisible="state != 'draft_indent' or approval_state != 'pending'"
+                        confirm="Approve this order and move it to RFQ state?"/>
+
+                <!-- "Refuse RFQ" button: shown only to Purchase Admins when pending -->
+                <button name="button_refuse_rfq"
+                        string="Refuse RFQ"
+                        type="object"
+                        class="btn-danger"
+                        icon="fa-times"
+                        groups="purchase.group_purchase_manager"
+                        invisible="state != 'draft_indent' or approval_state != 'pending'"
+                        confirm="Refuse this RFQ request? The order will remain in Draft state."/>
+
+                <!-- "Re-Request Approval" button after refusal -->
+                <button name="button_reset_to_draft"
+                        string="Re-Request Approval"
+                        type="object"
+                        class="btn-warning"
+                        icon="fa-refresh"
+                        invisible="state != 'draft_indent' or approval_state != 'refused'"
+                        />
+
+            </xpath>
+
+            <!-- 5. Hide standard "Confirm Order" button when in draft_indent -->
+            <xpath expr="//button[@name='button_confirm']" position="attributes">
+                <attribute name="invisible">
+                    state in ['draft_indent', 'purchase', 'done', 'cancel']
+                </attribute>
+            </xpath>
+
+            <!-- 6. Approval info group - show approved by / date after approval -->
+            <xpath expr="//sheet/group" position="inside">
+                <group name="approval_info"
+                       string="Approval Information"
+                       invisible="not approval_state">
+
+                    <field name="approval_state" string="Approval Status" readonly="1"/>
+
+                    <field name="approved_by"
+                           invisible="approval_state != 'approved'"/>
+
+                    <field name="approval_date"
+                           invisible="approval_state != 'approved'"/>
+
+                </group>
+            </xpath>
+
+            <!-- 7. Make vendor optional in draft_indent for store_indent users -->
+            <xpath expr="//field[@name='partner_id']" position="attributes">
+                <attribute name="required">
+                    not user_has_store_indent and state == 'draft_indent'
+                </attribute>
+                <attribute name="readonly">
+                    state in ['purchase', 'done', 'cancel']
+                </attribute>
+            </xpath>
+
+            <!-- 8. Store Indent notice banner in draft state -->
+<!--            <xpath expr="//field[@name='partner_id']" position="before">-->
+<!--                <div class="alert alert-info mb-0"-->
+<!--                     role="alert"-->
+<!--                     invisible="state != 'draft_indent' or not user_has_store_indent">-->
+<!--                    <i class="fa fa-info-circle me-1"/>-->
+<!--                    <strong>Store Indent Mode:</strong>-->
+<!--                </div>-->
+<!--            </xpath>-->
+
+            <!-- 9. Add user_has_store_indent as invisible field for attrs -->
+            <xpath expr="//field[@name='partner_id']" position="before">
+                <field name="user_has_store_indent" invisible="1"/>
+            </xpath>
+
+        </field>
+    </record>
+
+    <!-- ============================================================
+         Purchase Order List View - Add Draft state + approval badge
+         ============================================================ -->
+<!--    <record id="purchase_order_list_draft_inherit" model="ir.ui.view">-->
+<!--        <field name="name">purchase.order.list.draft.approval</field>-->
+<!--        <field name="model">purchase.order</field>-->
+<!--        <field name="inherit_id" ref="purchase.purchase_order_kpis_tree"/>-->
+<!--        <field name="arch" type="xml">-->
+<!--            <xpath expr="//field[@name='state']" position="after">-->
+<!--                <field name="approval_state" optional="show"-->
+<!--                       widget="badge"-->
+<!--                       decoration-warning="approval_state == 'pending'"-->
+<!--                       decoration-success="approval_state == 'approved'"-->
+<!--                       decoration-danger="approval_state == 'refused'"-->
+<!--                       string="Approval Status"/>-->
+<!--            </xpath>-->
+<!--        </field>-->
+<!--    </record>-->
+
+    <!-- ============================================================
+         RFQ List View - Add Draft state
+         ============================================================ -->
+    <record id="purchase_rfq_list_draft_inherit" model="ir.ui.view">
+        <field name="name">purchase.rfq.list.draft.approval</field>
+        <field name="model">purchase.order</field>
+        <field name="inherit_id" ref="purchase.purchase_order_kpis_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='state']" position="after">
+                <field name="approval_state" optional="show"
+                       widget="badge"
+                       decoration-warning="approval_state == 'pending'"
+                       decoration-success="approval_state == 'approved'"
+                       decoration-danger="approval_state == 'refused'"
+                       string="Approval Status"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- ============================================================
+         Action: Pending Approvals - for Procurement Managers
+         ============================================================ -->
+    <record id="action_purchase_draft_pending_approval" model="ir.actions.act_window">
+        <field name="name">Pending RFQ Approvals</field>
+        <field name="type">ir.actions.act_window</field>
+        <field name="res_model">purchase.order</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('state', '=', 'draft_indent'), ('approval_state', '=', 'pending')]</field>
+        <field name="context">{'default_state': 'draft_indent'}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No pending RFQ approvals!
+            </p>
+            <p>
+                Purchase orders awaiting RFQ approval will appear here.
+            </p>
+        </field>
+    </record>
+
+    <!-- ============================================================
+         Menu: Pending Approvals under Orders menu
+         ============================================================ -->
+    <menuitem
+        id="menu_purchase_draft_pending_approval"
+        name="Pending RFQ Approvals"
+        parent="purchase.menu_purchase_root"
+        action="action_purchase_draft_pending_approval"
+        groups="purchase.group_purchase_manager"
+        sequence="15"/>
+
+</odoo>
