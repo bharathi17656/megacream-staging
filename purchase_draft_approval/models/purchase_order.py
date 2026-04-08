@@ -19,7 +19,7 @@ class PurchaseOrder(models.Model):
     partner_id = fields.Many2one(
         'res.partner',
         string="Vendor",
-        # required=False
+        required=False
     )
     state = fields.Selection([
         ('draft_indent', 'Draft'),
