@@ -2,7 +2,7 @@ import requests
 from odoo import models, fields , api
 from odoo.exceptions import UserError
 import logging
-
+ 
 from datetime import datetime,timedelta , time
 import pytz 
 from urllib.parse import urlencode, urlparse, parse_qs
