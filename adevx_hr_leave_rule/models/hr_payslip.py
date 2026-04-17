@@ -163,7 +163,7 @@ class HrPayslip(models.Model):
 
                 hrs = att_map.get(d, 0)
 
-                if hrs >= 6:
+                if hrs >= 6:                                                              
                     present_days += 1
                 elif 4 <= hrs < 6:
                     present_days += 0.5
@@ -258,7 +258,7 @@ class HrPayslip(models.Model):
                     # ESI = 0.75% of PF base
                     pf_base = round(bank_after_lop * 0.70, 2)
                     pf = round(pf_base * 0.12, 2)
-                    esi = round(pf_base * 0.0075, 2)
+                    esi = round(bank_after_lop * 0.0075, 2)
 
                     bank_final = round(bank_after_lop - pf - esi, 2)
                     cash_final = round(cash_after_lop, 2)
