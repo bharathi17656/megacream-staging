@@ -5,7 +5,7 @@
     "category": "Human Resources",
     "author": "Custom",
     "license": "LGPL-3",
-    "depends": ["hr", "hr_attendance"],
+    "depends": ["hr", "hr_attendance"],   
     
     "data": [
         "security/ir.model.access.csv",
