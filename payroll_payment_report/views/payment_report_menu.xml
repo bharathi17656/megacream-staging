@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Add under Payroll > Reporting -->
+    <menuitem
+        id="menu_payment_report"
+        name="Payment Report"
+        parent="hr_payroll.menu_hr_payroll_report"
+        action="action_payment_report_wizard"
+        groups="hr_payroll.group_hr_payroll_user"
+        sequence="20"/>
+</odoo> 

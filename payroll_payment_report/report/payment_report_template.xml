@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_payment_report" model="ir.actions.report">
+        <field name="name">Payment Report</field>
+        <field name="model">payment.report.wizard</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">payroll_payment_report.payment_report_template</field>
+        <field name="report_file">payroll_payment_report.payment_report_template</field>
+    </record>
+
+    <template id="payment_report_template">
+        <t t-call="web.html_container">
+            <t t-call="web.external_layout">
+                <div class="page">
+                    <h2>Payment Report</h2>
+
+                    <div class="row mt16 mb16">
+                        <div class="col-4">
+                            <strong>From Date:</strong>
+                            <span t-esc="date_from"/>
+                        </div>
+                        <div class="col-4">
+                            <strong>To Date:</strong>
+                            <span t-esc="date_to"/>
+                        </div>
+                        <div class="col-4">
+                            <strong>Payment Filter:</strong>
+                            <span t-esc="payment_type"/>
+                        </div>
+                    </div>
+
+                    <table class="table table-sm table-bordered">
+                        <thead>
+                            <tr>
+                                <th>Employee</th>
+                                <th>Department</th>
+                                <th>Payslip</th>
+                                <th class="text-end">Net Wage</th>
+                                <th class="text-end">Cash Amount</th>
+                                <th class="text-end">Bank Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <t t-if="lines">
+                                <tr t-foreach="lines" t-as="line">
+                                    <td t-esc="line['employee_name']"/>
+                                    <td t-esc="line['department']"/>
+                                    <td t-esc="line['payslip_ref']"/>
+                                    <td class="text-end" t-esc="'%.2f' % line['net_wage']"/>
+                                    <td class="text-end" t-esc="'%.2f' % line['cash_amount']"/>
+                                    <td class="text-end" t-esc="'%.2f' % line['bank_amount']"/>
+                                </tr>
+                            </t>
+                            <t t-else="">
+                                <tr>
+                                    <td colspan="6" class="text-center">No payslips found for the selected filters.</td>
+                                </tr>
+                            </t>
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <th colspan="3">Total</th>
+                                <th class="text-end" t-esc="'%.2f' % totals['net_wage']"/>
+                                <th class="text-end" t-esc="'%.2f' % totals['cash_amount']"/>
+                                <th class="text-end" t-esc="'%.2f' % totals['bank_amount']"/>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </t>
+        </t>
+    </template>
+</odoo>
