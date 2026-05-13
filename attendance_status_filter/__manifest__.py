@@ -6,6 +6,7 @@
     "author": "Custom",
     "license": "LGPL-3",
     "depends": ["hr", "hr_attendance"],
+    
     "data": [
         "security/ir.model.access.csv",
         "views/attendance_report_wizard_view.xml",
