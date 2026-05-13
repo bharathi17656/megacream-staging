@@ -7,3 +7,4 @@ class HrAttendance(models.Model):
     eligibled = fields.Boolean(string='Eligible for Payroll', default=False)
     eligibility_note = fields.Char(string='Eligibility Note')
   
+ 
