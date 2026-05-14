@@ -73,11 +73,14 @@ class PaymentReportController(http.Controller):
         # Column widths
         worksheet.set_column(0, 0, 30)  # Employee
         worksheet.set_column(1, 1, 20)  #Contract Date
-        worksheet.set_column(1, 1, 20)  #Cash Amount
-        worksheet.set_column(2, 2, 20)  #Bank Amount
+        worksheet.set_column(2, 2, 20)  #Cash Amount
+        worksheet.set_column(3, 3, 20)  #Bank Amount
 
         # Row 1 - Title
-        worksheet.merge_range('A1:C1', 'Payment Report', title_fmt)
+        if payment_type == 'all':
+            worksheet.merge_range('A1:D1', 'Payment Report', title_fmt)
+        else:
+            worksheet.merge_range('A1:C1', 'Payment Report', title_fmt)
 
         # Row 2 - Period
         worksheet.write('A2', 'Period :', label_fmt)
@@ -91,23 +94,38 @@ class PaymentReportController(http.Controller):
         # Row 5 - Headers
         worksheet.write(4, 0, 'Employee',     header_fmt)
         worksheet.write(4, 1, 'Contract Date',  header_fmt)
-        worksheet.write(4, 1, 'Cash Amount',  header_fmt)
-        worksheet.write(4, 2, 'Bank Amount',  header_fmt)
+        if payment_type == 'all':
+            worksheet.write(4, 2, 'Cash Amount',  header_fmt)
+            worksheet.write(4, 3, 'Bank Amount',  header_fmt)
+        elif payment_type == 'cash':
+            worksheet.write(4, 2, 'Cash Amount',  header_fmt)
+        elif payment_type == 'bank':
+            worksheet.write(4, 2, 'Bank Amount',  header_fmt)
 
         # Row 6 onwards - Data
         row = 5
         for line in lines:
             worksheet.write(row, 0, line['name'], cell_fmt)
             worksheet.write(row, 1, line['contract_date'], cell_fmt)
-            worksheet.write(row, 1, line['cash'],  money_fmt)
-            worksheet.write(row, 2, line['bank'],  money_fmt)
+            if payment_type == 'all':
+                worksheet.write(row, 2, line['cash'],  money_fmt)
+                worksheet.write(row, 3, line['bank'],  money_fmt)
+            elif payment_type == 'cash':
+                worksheet.write(row, 2, line['cash'],  money_fmt)
+            elif payment_type == 'bank':
+                worksheet.write(row, 2, line['bank'],  money_fmt)
             row += 1
 
         # Total row
         worksheet.write(row, 0, 'TOTAL',                       total_label_fmt)
         worksheet.write(row, 1, '',                            total_label_fmt)
-        worksheet.write(row, 1, sum(l['cash'] for l in lines), total_money_fmt)
-        worksheet.write(row, 2, sum(l['bank'] for l in lines), total_money_fmt)
+        if payment_type == 'all':
+            worksheet.write(row, 2, sum(l['cash'] for l in lines), total_money_fmt)
+            worksheet.write(row, 3, sum(l['bank'] for l in lines), total_money_fmt)
+        elif payment_type == 'cash':
+            worksheet.write(row, 2, sum(l['cash'] for l in lines), total_money_fmt)
+        elif payment_type == 'bank':
+            worksheet.write(row, 2, sum(l['bank'] for l in lines), total_money_fmt)
 
         workbook.close()
         output.seek(0)
