@@ -1,7 +1,7 @@
 from odoo import api, fields, models
  
   
-class AttendanceApprovalConfig(models.Model): 
+class AttendanceApprovalConfig(models.Model):  
     _name = 'attendance_advance.approval_config' 
     _description = 'Approval mapping: request department -> approver department/employees'
 
