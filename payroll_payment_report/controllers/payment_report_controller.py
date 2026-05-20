@@ -204,7 +204,13 @@ class PaymentReportController(http.Controller):
             adj     = get_worked_days(slip, 'PAIDLEAVE')
             work100 = get_worked_days(slip, 'WORK100')
             sunday  = get_worked_days(slip, 'SUNDAY')
-            present = work100 + sunday
+            festival = get_worked_days(slip, 'FESTIVAL')
+            lop_comp  = get_worked_days(slip, 'LOPCOMP')
+            paidleave = get_worked_days(slip, 'PAIDLEAVE')
+            unpaid    = get_worked_days(slip, 'LOP')
+            ab      = unpaid   # AB column = absent/LOP days
+            adj     = paidleave  # ADJ column = paid leave days
+            present = work100 + sunday + festival + lop_comp - paidleave - unpaid
 
             cash_amt = get_line_total(slip, 'cash')
             bank_amt = get_line_total(slip, 'bank')
