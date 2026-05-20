@@ -362,16 +362,10 @@ class PaymentReportController(http.Controller):
             adj = adj_raw if adj_raw % 1 == 0.5 else int(adj_raw)
 
             # Total of all worked day lines
-            total_all_lines = sum(wd.number_of_days for wd in slip.worked_days_line_ids)
-            # present = work100 + sunday + festival + lop_comp - paidleave - unpaid
-            # present_raw  = days - (paidleave + unpaid)
-            # Present = total all lines - LOP only (paid leave not subtracted)
-            # present_raw = total_all_lines - unpaid
-            # Effective absent after adjustment
-            effective_unpaid = max(unpaid - paidleave, 0)
+            unpaid_after_compensation = max(unpaid - paidleave, 0)
 
-            # Present days after compensation
-            present_raw = total_all_lines - effective_unpaid
+            # Present = Total days in month - Unpaid LOP (after compensation)
+            present_raw = days - unpaid_after_compensation
             present = present_raw if present_raw % 1 == 0.5 else int(present_raw)
             cash_amt = get_line_total(slip, 'cash')
             bank_amt = get_line_total(slip, 'bank')
