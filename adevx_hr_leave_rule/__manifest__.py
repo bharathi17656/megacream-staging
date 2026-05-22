@@ -2,7 +2,6 @@
     "name": "HR Leave Rule",
     "summary": "HR Leave Rule",
     "description": "HR Leave Rule",
-
     'author': 'Links4Engg',
     'category': 'Generic Modules/Human Resources',
     "license": "OPL-1",
