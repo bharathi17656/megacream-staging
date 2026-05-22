@@ -1,4 +1,4 @@
-###############---------------------------------------------
+
 # import io
 # import xlsxwriter
 # from calendar import monthrange
@@ -63,10 +63,16 @@
 
             
 #             ab      = unpaid if unpaid % 1 == 0.5 else int(unpaid)# AB column = absent/LOP days
-#             adj     = paidleave if paidleave % 1 == 0.5 else int(paidleave) # ADJ column = paid leave days
-            
-#             # present = work100 + sunday + festival + lop_comp - paidleave - unpaid
-#             present_raw  = days - (paidleave + unpaid)
+#             # adj     = paidleave if paidleave % 1 == 0.5 else int(paidleave) # ADJ column = paid leave days
+#             # ADJ = paid leave ONLY shown if employee had LOP (used to compensate)
+#             adj_raw = paidleave if unpaid > 0 else 0.0
+#             adj = adj_raw if adj_raw % 1 == 0.5 else int(adj_raw)
+
+#             # Total of all worked day lines
+#             unpaid_after_compensation = max(unpaid - paidleave, 0)
+
+#             # Present = Total days in month - Unpaid LOP (after compensation)
+#             present_raw = days - unpaid_after_compensation
 #             present = present_raw if present_raw % 1 == 0.5 else int(present_raw)
 #             cash_amt = get_line_total(slip, 'cash')
 #             bank_amt = get_line_total(slip, 'bank')
@@ -285,11 +291,6 @@
 #                 ('Content-Disposition', content_disposition(filename)),
 #             ]
 #         )
-
-
-
-
-
 #####################---------------------------------------------------
 
 import io
@@ -330,6 +331,12 @@ class PaymentReportController(http.Controller):
                     return line.total
             return 0.0
 
+        # Helper: get worked days amount by code
+        def get_worked_days_amount(slip, code):
+            for wd in slip.worked_days_line_ids:
+                if wd.code == code:
+                    return wd.amount
+            return 0.0
         # Build report lines
         cash_lines = []
         bank_lines = []
@@ -356,8 +363,7 @@ class PaymentReportController(http.Controller):
 
             
             ab      = unpaid if unpaid % 1 == 0.5 else int(unpaid)# AB column = absent/LOP days
-            # adj     = paidleave if paidleave % 1 == 0.5 else int(paidleave) # ADJ column = paid leave days
-            # ADJ = paid leave ONLY shown if employee had LOP (used to compensate)
+            
             adj_raw = paidleave if unpaid > 0 else 0.0
             adj = adj_raw if adj_raw % 1 == 0.5 else int(adj_raw)
 
@@ -369,26 +375,32 @@ class PaymentReportController(http.Controller):
             present = present_raw if present_raw % 1 == 0.5 else int(present_raw)
             cash_amt = get_line_total(slip, 'cash')
             bank_amt = get_line_total(slip, 'bank')
+
+            if payment_type == 'cash':
+                gross_display = cash_amt        # cash payable
+            elif payment_type == 'bank':
+                gross_display = bank_amt        # bank payable
+            else:
+                gross_display = emp.wage or 0.0 # full gross for 'all
+                
+            amt_calculated = round(per_day * present_raw, 2)
+
             esic     = get_line_total(slip, 'ESI')
             epfo     = get_line_total(slip, 'PF_DED')
-            net      = get_line_total(slip, 'NET')
-
-            # sunday_work_amt = round(sunday * per_day, 2)
-            # Get employee working hours calendar name
-            calendar_name = emp.resource_calendar_id.name or ''
-
-            # Double pay for Group 2 and Group 3 (7-Day = Double Pay)
-            if 'Group 2' in calendar_name or 'Group 3' in calendar_name:
-                sunday_multiplier = 2
-            else:
-                sunday_multiplier = 1
-
-            sunday_work_amt = round(sunday * per_day * sunday_multiplier, 2)
+            
+            sunday_work_amt = get_worked_days_amount(slip, 'DOUBLEPAY')
             esic_epfo_total = round(esic + epfo, 2)
+
+            # NET PAID calculation based on payment type
+            if payment_type == 'bank':
+                net = round(amt_calculated - esic_epfo_total, 2)  # AMT - total deduction
+            else:
+                # cash or all: AMT + sunday work amount
+                net = round(amt_calculated + sunday_work_amt, 2)
 
             base = {
                 'name'       : emp.name,
-                'gross'      : gross,
+                'gross'      : gross_display,
                 'days'       : days,
                 'per_day'    : per_day,
                 'ab'         : ab,
@@ -402,10 +414,10 @@ class PaymentReportController(http.Controller):
             }
 
             if payment_type in ('cash', 'all') and cash_amt > 0:
-                cash_lines.append({**base, 'amt': cash_amt})
+                cash_lines.append({**base, 'amt': amt_calculated})
 
             if payment_type in ('bank', 'all') and bank_amt > 0:
-                bank_lines.append({**base, 'amt': bank_amt})
+                bank_lines.append({**base, 'amt': amt_calculated})
 
         # ── XLSX generation ───────────────────────────────────────────
         output   = io.BytesIO()
@@ -533,7 +545,7 @@ class PaymentReportController(http.Controller):
             ws2.set_row(2, 30)
             for col, h in enumerate(['S NO', 'NAME', 'GROSS', 'DAYS', '/DAY',
                                      'AB', 'ADJ', 'PRE', 'AMT',
-                                     'ESIC', 'EPFO', 'TOTAL\nDED', 'ADV', 'NET PAID']):
+                                     'ESIC', 'EPFO', 'ADV', 'TOTAL\nDED', 'NET PAID']):
                 ws2.write(2, col, h, header_fmt)
 
             # Data rows
@@ -550,8 +562,8 @@ class PaymentReportController(http.Controller):
                 ws2.write(row2, 8,  line['amt'],        num_fmt)
                 ws2.write(row2, 9,  line['esic'],       num_fmt)
                 ws2.write(row2, 10, line['epfo'],       num_fmt)
-                ws2.write(row2, 11, line['esic_epfo'],  num_fmt)
-                ws2.write(row2, 12, '',                 cell_fmt)  # ADV - manual
+                ws2.write(row2, 11,  '',                 cell_fmt)  # ADV - manual
+                ws2.write(row2, 12, line['esic_epfo'],  num_fmt)
                 ws2.write(row2, 13, line['net'],        num_fmt)
                 row2 += 1
 
@@ -567,8 +579,8 @@ class PaymentReportController(http.Controller):
             ws2.write(row2, 8,  sum(l['amt']       for l in bank_lines),     total_num_fmt)
             ws2.write(row2, 9,  sum(l['esic']      for l in bank_lines),     total_num_fmt)
             ws2.write(row2, 10, sum(l['epfo']      for l in bank_lines),     total_num_fmt)
-            ws2.write(row2, 11, sum(l['esic_epfo'] for l in bank_lines),     total_num_fmt)
-            ws2.write(row2, 12, '',                                          total_label_fmt)
+            ws2.write(row2, 11,  '',                                          total_label_fmt)  # ADV total blank
+            ws2.write(row2, 12, sum(l['esic_epfo'] for l in bank_lines),     total_num_fmt)
             ws2.write(row2, 13, sum(l['net']       for l in bank_lines),     total_num_fmt)
 
         workbook.close()
