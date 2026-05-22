@@ -37,6 +37,12 @@
 #                     return line.total
 #             return 0.0
 
+#         # Helper: get worked days amount by code
+#         def get_worked_days_amount(slip, code):
+#             for wd in slip.worked_days_line_ids:
+#                 if wd.code == code:
+#                     return wd.amount
+#             return 0.0
 #         # Build report lines
 #         cash_lines = []
 #         bank_lines = []
@@ -63,8 +69,7 @@
 
             
 #             ab      = unpaid if unpaid % 1 == 0.5 else int(unpaid)# AB column = absent/LOP days
-#             # adj     = paidleave if paidleave % 1 == 0.5 else int(paidleave) # ADJ column = paid leave days
-#             # ADJ = paid leave ONLY shown if employee had LOP (used to compensate)
+            
 #             adj_raw = paidleave if unpaid > 0 else 0.0
 #             adj = adj_raw if adj_raw % 1 == 0.5 else int(adj_raw)
 
@@ -76,26 +81,32 @@
 #             present = present_raw if present_raw % 1 == 0.5 else int(present_raw)
 #             cash_amt = get_line_total(slip, 'cash')
 #             bank_amt = get_line_total(slip, 'bank')
+
+#             if payment_type == 'cash':
+#                 gross_display = cash_amt        # cash payable
+#             elif payment_type == 'bank':
+#                 gross_display = bank_amt        # bank payable
+#             else:
+#                 gross_display = emp.wage or 0.0 # full gross for 'all
+                
+#             amt_calculated = round(per_day * present_raw, 2)
+
 #             esic     = get_line_total(slip, 'ESI')
 #             epfo     = get_line_total(slip, 'PF_DED')
-#             net      = get_line_total(slip, 'NET')
-
-#             # sunday_work_amt = round(sunday * per_day, 2)
-#             # Get employee working hours calendar name
-#             calendar_name = emp.resource_calendar_id.name or ''
-
-#             # Double pay for Group 2 and Group 3 (7-Day = Double Pay)
-#             if 'Group 2' in calendar_name or 'Group 3' in calendar_name:
-#                 sunday_multiplier = 2
-#             else:
-#                 sunday_multiplier = 1
-
-#             sunday_work_amt = round(sunday * per_day * sunday_multiplier, 2)
+            
+#             sunday_work_amt = get_worked_days_amount(slip, 'DOUBLEPAY')
 #             esic_epfo_total = round(esic + epfo, 2)
+
+#             # NET PAID calculation based on payment type
+#             if payment_type == 'bank':
+#                 net = round(amt_calculated - esic_epfo_total, 2)  # AMT - total deduction
+#             else:
+#                 # cash or all: AMT + sunday work amount
+#                 net = round(amt_calculated + sunday_work_amt, 2)
 
 #             base = {
 #                 'name'       : emp.name,
-#                 'gross'      : gross,
+#                 'gross'      : gross_display,
 #                 'days'       : days,
 #                 'per_day'    : per_day,
 #                 'ab'         : ab,
@@ -109,10 +120,10 @@
 #             }
 
 #             if payment_type in ('cash', 'all') and cash_amt > 0:
-#                 cash_lines.append({**base, 'amt': cash_amt})
+#                 cash_lines.append({**base, 'amt': amt_calculated})
 
 #             if payment_type in ('bank', 'all') and bank_amt > 0:
-#                 bank_lines.append({**base, 'amt': bank_amt})
+#                 bank_lines.append({**base, 'amt': amt_calculated})
 
 #         # ── XLSX generation ───────────────────────────────────────────
 #         output   = io.BytesIO()
@@ -240,7 +251,7 @@
 #             ws2.set_row(2, 30)
 #             for col, h in enumerate(['S NO', 'NAME', 'GROSS', 'DAYS', '/DAY',
 #                                      'AB', 'ADJ', 'PRE', 'AMT',
-#                                      'ESIC', 'EPFO', 'TOTAL\nDED', 'ADV', 'NET PAID']):
+#                                      'ESIC', 'EPFO', 'ADV', 'TOTAL\nDED', 'NET PAID']):
 #                 ws2.write(2, col, h, header_fmt)
 
 #             # Data rows
@@ -257,8 +268,8 @@
 #                 ws2.write(row2, 8,  line['amt'],        num_fmt)
 #                 ws2.write(row2, 9,  line['esic'],       num_fmt)
 #                 ws2.write(row2, 10, line['epfo'],       num_fmt)
-#                 ws2.write(row2, 11, line['esic_epfo'],  num_fmt)
-#                 ws2.write(row2, 12, '',                 cell_fmt)  # ADV - manual
+#                 ws2.write(row2, 11,  '',                 cell_fmt)  # ADV - manual
+#                 ws2.write(row2, 12, line['esic_epfo'],  num_fmt)
 #                 ws2.write(row2, 13, line['net'],        num_fmt)
 #                 row2 += 1
 
@@ -274,8 +285,8 @@
 #             ws2.write(row2, 8,  sum(l['amt']       for l in bank_lines),     total_num_fmt)
 #             ws2.write(row2, 9,  sum(l['esic']      for l in bank_lines),     total_num_fmt)
 #             ws2.write(row2, 10, sum(l['epfo']      for l in bank_lines),     total_num_fmt)
-#             ws2.write(row2, 11, sum(l['esic_epfo'] for l in bank_lines),     total_num_fmt)
-#             ws2.write(row2, 12, '',                                          total_label_fmt)
+#             ws2.write(row2, 11,  '',                                          total_label_fmt)  # ADV total blank
+#             ws2.write(row2, 12, sum(l['esic_epfo'] for l in bank_lines),     total_num_fmt)
 #             ws2.write(row2, 13, sum(l['net']       for l in bank_lines),     total_num_fmt)
 
 #         workbook.close()
@@ -350,7 +361,15 @@ class PaymentReportController(http.Controller):
 
             gross   = emp.wage or 0.0
             days    = slip.total_days_in_month or monthrange(slip.date_from.year, slip.date_from.month)[1]
-            per_day = round(gross / 31, 2) if days else 0.0
+            
+            if payment_type == 'cash':
+                gross_display = emp.cash_amount or 0.0   # Cash Salary Amount from employee
+            elif payment_type == 'bank':
+                gross_display = emp.bank_amount or 0.0   # Bank Salary Amount from employee
+            else:
+                gross_display = emp.wage or 0.0    
+            
+            per_day = round(gross_display  / 31, 2)
 
             ab      = get_worked_days(slip, 'LOP')
             adj     = get_worked_days(slip, 'PAIDLEAVE')
@@ -376,12 +395,7 @@ class PaymentReportController(http.Controller):
             cash_amt = get_line_total(slip, 'cash')
             bank_amt = get_line_total(slip, 'bank')
 
-            if payment_type == 'cash':
-                gross_display = cash_amt        # cash payable
-            elif payment_type == 'bank':
-                gross_display = bank_amt        # bank payable
-            else:
-                gross_display = emp.wage or 0.0 # full gross for 'all
+      # Wage from employee
                 
             amt_calculated = round(per_day * present_raw, 2)
 
@@ -391,12 +405,13 @@ class PaymentReportController(http.Controller):
             sunday_work_amt = get_worked_days_amount(slip, 'DOUBLEPAY')
             esic_epfo_total = round(esic + epfo, 2)
 
-            # NET PAID calculation based on payment type
+            # NET PAID directly from payslip fields
             if payment_type == 'bank':
-                net = round(amt_calculated - esic_epfo_total, 2)  # AMT - total deduction
+                net = slip.bank_payable or 0.0
+            elif payment_type == 'cash':
+                net = slip.cash_payable or 0.0
             else:
-                # cash or all: AMT + sunday work amount
-                net = round(amt_calculated + sunday_work_amt, 2)
+                net = slip.paid_amount or 0.0   # total paid amount for 'all'
 
             base = {
                 'name'       : emp.name,
