@@ -56,7 +56,15 @@
 
 #             gross   = emp.wage or 0.0
 #             days    = slip.total_days_in_month or monthrange(slip.date_from.year, slip.date_from.month)[1]
-#             per_day = round(gross / 31, 2) if days else 0.0
+            
+#             if payment_type == 'cash':
+#                 gross_display = emp.cash_amount or 0.0   # Cash Salary Amount from employee
+#             elif payment_type == 'bank':
+#                 gross_display = emp.bank_amount or 0.0   # Bank Salary Amount from employee
+#             else:
+#                 gross_display = emp.wage or 0.0    
+            
+#             per_day = round(gross_display  / 31, 2)
 
 #             ab      = get_worked_days(slip, 'LOP')
 #             adj     = get_worked_days(slip, 'PAIDLEAVE')
@@ -82,12 +90,7 @@
 #             cash_amt = get_line_total(slip, 'cash')
 #             bank_amt = get_line_total(slip, 'bank')
 
-#             if payment_type == 'cash':
-#                 gross_display = cash_amt        # cash payable
-#             elif payment_type == 'bank':
-#                 gross_display = bank_amt        # bank payable
-#             else:
-#                 gross_display = emp.wage or 0.0 # full gross for 'all
+#       # Wage from employee
                 
 #             amt_calculated = round(per_day * present_raw, 2)
 
@@ -97,12 +100,13 @@
 #             sunday_work_amt = get_worked_days_amount(slip, 'DOUBLEPAY')
 #             esic_epfo_total = round(esic + epfo, 2)
 
-#             # NET PAID calculation based on payment type
+#             # NET PAID directly from payslip fields
 #             if payment_type == 'bank':
-#                 net = round(amt_calculated - esic_epfo_total, 2)  # AMT - total deduction
+#                 net = slip.bank_payable or 0.0
+#             elif payment_type == 'cash':
+#                 net = round((slip.cash_payable or 0.0) + sunday_work_amt, 2)
 #             else:
-#                 # cash or all: AMT + sunday work amount
-#                 net = round(amt_calculated + sunday_work_amt, 2)
+#                 net = round((slip.paid_amount or 0.0) + sunday_work_amt, 2)
 
 #             base = {
 #                 'name'       : emp.name,
@@ -397,7 +401,7 @@ class PaymentReportController(http.Controller):
 
       # Wage from employee
                 
-            amt_calculated = round(per_day * present_raw, 2)
+            amt_calculated = round(per_day * present_raw)
 
             esic     = get_line_total(slip, 'ESI')
             epfo     = get_line_total(slip, 'PF_DED')
@@ -409,9 +413,9 @@ class PaymentReportController(http.Controller):
             if payment_type == 'bank':
                 net = slip.bank_payable or 0.0
             elif payment_type == 'cash':
-                net = slip.cash_payable or 0.0
+                net = round((slip.cash_payable or 0.0) + sunday_work_amt, 2)
             else:
-                net = slip.paid_amount or 0.0   # total paid amount for 'all'
+                net = round((slip.paid_amount or 0.0) + sunday_work_amt, 2)
 
             base = {
                 'name'       : emp.name,
@@ -483,25 +487,32 @@ class PaymentReportController(http.Controller):
             ws.set_column(6,  6,  5)
             ws.set_column(7,  7,  8)
             ws.set_column(8,  8,  10)
-            ws.set_column(9,  9,  12)
+            ws.set_column(9,  9,  10)
             ws.set_column(10, 10, 10)
-            ws.set_column(11, 11, 10)
 
             # Row 1 - Company name
-            ws.merge_range(0, 0, 0, 11, company_name, company_fmt)
+            # ws.merge_range(0, 0, 0, 11, company_name, company_fmt)
+            # ws.set_row(0, 22)
+
+            # # Row 2 - Report title
+            # ws.merge_range(1, 0, 1, 11, 'CASH SALARY %s' % month_label, title_fmt)
+            # ws.set_row(1, 18)
+
+            # # Row 3 - Headers
+            # ws.set_row(2, 30)
+            # for col, h in enumerate(['S NO', 'NAME', 'GROSS', 'DAYS', 'PER DAY',
+            #                          'AB', 'ADJ', 'PRESENT', 'AMT',
+            #                          'SALARY\nADVANCE', 'SUNDAY\nWORK', 'NET PAID']):
+            #     ws.write(2, col, h, header_fmt)
+            ws.merge_range(0, 0, 0, 10, company_name, company_fmt)
             ws.set_row(0, 22)
-
-            # Row 2 - Report title
-            ws.merge_range(1, 0, 1, 11, 'CASH SALARY %s' % month_label, title_fmt)
+            ws.merge_range(1, 0, 1, 10, 'CASH SALARY %s' % month_label, title_fmt)
             ws.set_row(1, 18)
-
-            # Row 3 - Headers
             ws.set_row(2, 30)
             for col, h in enumerate(['S NO', 'NAME', 'GROSS', 'DAYS', 'PER DAY',
-                                     'AB', 'ADJ', 'PRESENT', 'AMT',
-                                     'SALARY\nADVANCE', 'SUNDAY\nWORK', 'NET PAID']):
+                                    'AB', 'ADJ', 'PRESENT', 'AMT',
+                                    'SUNDAY\nWORK', 'NET PAID']):
                 ws.write(2, col, h, header_fmt)
-
             # Data rows
             row = 3
             for i, line in enumerate(cash_lines, start=1):
@@ -514,18 +525,18 @@ class PaymentReportController(http.Controller):
                 ws.write(row, 6,  line['adj'],         sno_fmt)
                 ws.write(row, 7,  line['present'],     sno_fmt)
                 ws.write(row, 8,  line['amt'],         num_fmt)
-                ws.write(row, 9,  '',                  cell_fmt)   # Salary Advance - manual
-                ws.write(row, 10, line['sunday_amt'],  num_fmt)
-                ws.write(row, 11, line['net'],         num_fmt)
+                ws.write(row, 9,  line['sunday_amt'],  cell_fmt)   # Salary Advance - manual
+                ws.write(row, 10, line['net'],         num_fmt)
+                
                 row += 1
 
             # Total row
             for col in range(8):
                 ws.write(row, col, 'TOTAL' if col == 7 else '', total_label_fmt)
             ws.write(row, 8,  sum(l['amt']        for l in cash_lines), total_num_fmt)
-            ws.write(row, 9,  '',                                        total_label_fmt)
-            ws.write(row, 10, sum(l['sunday_amt'] for l in cash_lines), total_num_fmt)
-            ws.write(row, 11, sum(l['net']        for l in cash_lines), total_num_fmt)
+           
+            ws.write(row, 9, sum(l['sunday_amt'] for l in cash_lines), total_num_fmt)
+            ws.write(row, 10, sum(l['net']        for l in cash_lines), total_num_fmt)
 
         # ══════════════════════════════════════════════════════════════
         # BANK SHEET
