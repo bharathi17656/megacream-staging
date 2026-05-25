@@ -217,8 +217,6 @@ class HrPayslip(models.Model):
             # ---------------------------------------------------
             # Salary
             # ---------------------------------------------------
-            # unpaid_amount = round(final_lop * per_day, 2)
-            # net_salary = round(wage - unpaid_amount, 2)
 
             unpaid_amount = round(final_lop * per_day, 2)
             extra_ot_amount = round(double_pay_days * per_day, 2)
@@ -232,7 +230,7 @@ class HrPayslip(models.Model):
 
             bank_amount = employee.bank_amount or 0.0
             cash_amount = employee.cash_amount or 0.0
-
+            
             # If employee defined split
             if bank_amount or cash_amount:
 
@@ -250,17 +248,23 @@ class HrPayslip(models.Model):
 
                     bank_lop_deduction = round(final_lop * per_day_bank, 2)
                     cash_lop_deduction = round(final_lop * per_day_cash, 2)
+                    
+                    salary_advance   = sum(l.amount for l in payslip.input_line_ids if l.code == 'ADVANCE')
+                    salary_deduction = sum(l.amount for l in payslip.input_line_ids if l.code == 'DEDUCTION')
 
-                    bank_after_lop = bank_amount - bank_lop_deduction + extra_ot_amount
-                    cash_after_lop = cash_amount - cash_lop_deduction
-
+                    bank_after_lop = bank_amount - bank_lop_deduction
+                    
+                    cash_after_lop = cash_amount - cash_lop_deduction + extra_ot_amount
+                   
+                    
                     # PF = 12% of 70% of bank after LOP
                     # ESI = 0.75% of PF base
                     pf_base = round(bank_after_lop * 0.70, 2)
                     pf = round(pf_base * 0.12, 2)
                     esi = round(bank_after_lop * 0.0075, 2)
-
-                    bank_final = round(bank_after_lop - pf - esi, 2)
+                    print(f"pf_base = {pf_base}; pf = {pf}; esi = {esi}")
+                    bank_final = round(bank_after_lop - pf - esi + salary_advance - salary_deduction, 2)
+                    print(f"bank_final = {bank_final}")
                     cash_final = round(cash_after_lop, 2)
 
             else:
