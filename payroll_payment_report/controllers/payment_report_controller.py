@@ -92,7 +92,7 @@
 
 #       # Wage from employee
                 
-#             amt_calculated = round(per_day * present_raw, 2)
+#             amt_calculated = round(per_day * present_raw)
 
 #             esic     = get_line_total(slip, 'ESI')
 #             epfo     = get_line_total(slip, 'PF_DED')
@@ -178,25 +178,32 @@
 #             ws.set_column(6,  6,  5)
 #             ws.set_column(7,  7,  8)
 #             ws.set_column(8,  8,  10)
-#             ws.set_column(9,  9,  12)
+#             ws.set_column(9,  9,  10)
 #             ws.set_column(10, 10, 10)
-#             ws.set_column(11, 11, 10)
 
 #             # Row 1 - Company name
-#             ws.merge_range(0, 0, 0, 11, company_name, company_fmt)
+#             # ws.merge_range(0, 0, 0, 11, company_name, company_fmt)
+#             # ws.set_row(0, 22)
+
+#             # # Row 2 - Report title
+#             # ws.merge_range(1, 0, 1, 11, 'CASH SALARY %s' % month_label, title_fmt)
+#             # ws.set_row(1, 18)
+
+#             # # Row 3 - Headers
+#             # ws.set_row(2, 30)
+#             # for col, h in enumerate(['S NO', 'NAME', 'GROSS', 'DAYS', 'PER DAY',
+#             #                          'AB', 'ADJ', 'PRESENT', 'AMT',
+#             #                          'SALARY\nADVANCE', 'SUNDAY\nWORK', 'NET PAID']):
+#             #     ws.write(2, col, h, header_fmt)
+#             ws.merge_range(0, 0, 0, 10, company_name, company_fmt)
 #             ws.set_row(0, 22)
-
-#             # Row 2 - Report title
-#             ws.merge_range(1, 0, 1, 11, 'CASH SALARY %s' % month_label, title_fmt)
+#             ws.merge_range(1, 0, 1, 10, 'CASH SALARY %s' % month_label, title_fmt)
 #             ws.set_row(1, 18)
-
-#             # Row 3 - Headers
 #             ws.set_row(2, 30)
 #             for col, h in enumerate(['S NO', 'NAME', 'GROSS', 'DAYS', 'PER DAY',
-#                                      'AB', 'ADJ', 'PRESENT', 'AMT',
-#                                      'SALARY\nADVANCE', 'SUNDAY\nWORK', 'NET PAID']):
+#                                     'AB', 'ADJ', 'PRESENT', 'AMT',
+#                                     'SUNDAY\nWORK', 'NET PAID']):
 #                 ws.write(2, col, h, header_fmt)
-
 #             # Data rows
 #             row = 3
 #             for i, line in enumerate(cash_lines, start=1):
@@ -209,18 +216,18 @@
 #                 ws.write(row, 6,  line['adj'],         sno_fmt)
 #                 ws.write(row, 7,  line['present'],     sno_fmt)
 #                 ws.write(row, 8,  line['amt'],         num_fmt)
-#                 ws.write(row, 9,  '',                  cell_fmt)   # Salary Advance - manual
-#                 ws.write(row, 10, line['sunday_amt'],  num_fmt)
-#                 ws.write(row, 11, line['net'],         num_fmt)
+#                 ws.write(row, 9,  line['sunday_amt'],  cell_fmt)   # Salary Advance - manual
+#                 ws.write(row, 10, line['net'],         num_fmt)
+                
 #                 row += 1
 
 #             # Total row
 #             for col in range(8):
 #                 ws.write(row, col, 'TOTAL' if col == 7 else '', total_label_fmt)
 #             ws.write(row, 8,  sum(l['amt']        for l in cash_lines), total_num_fmt)
-#             ws.write(row, 9,  '',                                        total_label_fmt)
-#             ws.write(row, 10, sum(l['sunday_amt'] for l in cash_lines), total_num_fmt)
-#             ws.write(row, 11, sum(l['net']        for l in cash_lines), total_num_fmt)
+           
+#             ws.write(row, 9, sum(l['sunday_amt'] for l in cash_lines), total_num_fmt)
+#             ws.write(row, 10, sum(l['net']        for l in cash_lines), total_num_fmt)
 
 #         # ══════════════════════════════════════════════════════════════
 #         # BANK SHEET
@@ -407,7 +414,11 @@ class PaymentReportController(http.Controller):
             epfo     = get_line_total(slip, 'PF_DED')
             
             sunday_work_amt = get_worked_days_amount(slip, 'DOUBLEPAY')
-            esic_epfo_total = round(esic + epfo, 2)
+            # Salary inputs from Salary Inputs tab
+            salary_advance = sum(l.amount for l in slip.input_line_ids if l.input_type_id.code == 'SAL-ADV')
+            salary_ded     = sum(l.amount for l in slip.input_line_ids if l.input_type_id.code == 'SAL-ADV-DED')
+
+            esic_epfo_total = round(esic + epfo + salary_ded, 2)
 
             # NET PAID directly from payslip fields
             if payment_type == 'bank':
@@ -428,6 +439,8 @@ class PaymentReportController(http.Controller):
                 'sunday_amt' : sunday_work_amt,
                 'esic'       : esic,
                 'epfo'       : epfo,
+                'salary_advance' : salary_advance,
+                'salary_ded'     : salary_ded,
                 'esic_epfo'  : esic_epfo_total,
                 'net'        : net,
             }
@@ -553,25 +566,26 @@ class PaymentReportController(http.Controller):
             ws2.set_column(6,  6,  5)
             ws2.set_column(7,  7,  8)
             ws2.set_column(8,  8,  10)
-            ws2.set_column(9,  9,  8)
+            ws2.set_column(9,  9,  12)  #Salary Advance
             ws2.set_column(10, 10, 8)
-            ws2.set_column(11, 11, 10)
-            ws2.set_column(12, 12, 10)
+            ws2.set_column(11, 11, 8)
+            ws2.set_column(12, 12, 12)  #Salary Deduction
             ws2.set_column(13, 13, 10)
+            ws2.set_column(14, 14, 10)
 
             # Row 1 - Company name
-            ws2.merge_range(0, 0, 0, 13, company_name, company_fmt)
+            ws2.merge_range(0, 0, 0, 14, company_name, company_fmt)
             ws2.set_row(0, 22)
 
             # Row 2 - Report title
-            ws2.merge_range(1, 0, 1, 13, 'BANK SALARY %s' % month_label, title_fmt)
+            ws2.merge_range(1, 0, 1, 14, 'BANK SALARY %s' % month_label, title_fmt)
             ws2.set_row(1, 18)
 
             # Row 3 - Headers
             ws2.set_row(2, 30)
             for col, h in enumerate(['S NO', 'NAME', 'GROSS', 'DAYS', '/DAY',
-                                     'AB', 'ADJ', 'PRE', 'AMT',
-                                     'ESIC', 'EPFO', 'ADV', 'TOTAL\nDED', 'NET PAID']):
+                                     'AB', 'ADJ', 'PRE', 'AMT', 'SALARY\nADV',
+                                     'ESIC', 'EPFO', 'SALARY\nDED', 'TOTAL\nDED', 'NET PAID']):
                 ws2.write(2, col, h, header_fmt)
 
             # Data rows
@@ -586,11 +600,12 @@ class PaymentReportController(http.Controller):
                 ws2.write(row2, 6,  line['adj'],        sno_fmt)
                 ws2.write(row2, 7,  line['present'],    sno_fmt)
                 ws2.write(row2, 8,  line['amt'],        num_fmt)
-                ws2.write(row2, 9,  line['esic'],       num_fmt)
-                ws2.write(row2, 10, line['epfo'],       num_fmt)
-                ws2.write(row2, 11,  '',                 cell_fmt)  # ADV - manual
-                ws2.write(row2, 12, line['esic_epfo'],  num_fmt)
-                ws2.write(row2, 13, line['net'],        num_fmt)
+                ws2.write(row2, 9,  line['salary_advance'], num_fmt)  # Salary Advance
+                ws2.write(row2, 10, line['esic'],       num_fmt)
+                ws2.write(row2, 11, line['epfo'],       num_fmt)
+                ws2.write(row2, 12, line['salary_ded'],     num_fmt)  # Salary Ded
+                ws2.write(row2, 13, line['esic_epfo'],      num_fmt)  # Total Ded = ESIC+EPFO+Sal Ded
+                ws2.write(row2, 14, line['net'],        num_fmt)
                 row2 += 1
 
             # Total row
@@ -603,11 +618,12 @@ class PaymentReportController(http.Controller):
             ws2.write(row2, 6,  '',                                          total_label_fmt)
             ws2.write(row2, 7,  '',                                          total_label_fmt)
             ws2.write(row2, 8,  sum(l['amt']       for l in bank_lines),     total_num_fmt)
-            ws2.write(row2, 9,  sum(l['esic']      for l in bank_lines),     total_num_fmt)
-            ws2.write(row2, 10, sum(l['epfo']      for l in bank_lines),     total_num_fmt)
-            ws2.write(row2, 11,  '',                                          total_label_fmt)  # ADV total blank
-            ws2.write(row2, 12, sum(l['esic_epfo'] for l in bank_lines),     total_num_fmt)
-            ws2.write(row2, 13, sum(l['net']       for l in bank_lines),     total_num_fmt)
+            ws2.write(row2, 9,  sum(l['salary_advance'] for l in bank_lines), total_num_fmt)
+            ws2.write(row2, 10,  sum(l['esic']      for l in bank_lines),     total_num_fmt)
+            ws2.write(row2, 11, sum(l['epfo']      for l in bank_lines),     total_num_fmt)
+            ws2.write(row2, 12, sum(l['salary_ded']     for l in bank_lines), total_num_fmt)
+            ws2.write(row2, 13, sum(l['esic_epfo'] for l in bank_lines),     total_num_fmt)
+            ws2.write(row2, 14, sum(l['net']       for l in bank_lines),     total_num_fmt)
 
         workbook.close()
         output.seek(0)
