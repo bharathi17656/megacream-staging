@@ -249,8 +249,8 @@ class HrPayslip(models.Model):
                     bank_lop_deduction = round(final_lop * per_day_bank, 2)
                     cash_lop_deduction = round(final_lop * per_day_cash, 2)
                     
-                    salary_advance   = sum(l.amount for l in payslip.input_line_ids if l.code == 'ADVANCE')
-                    salary_deduction = sum(l.amount for l in payslip.input_line_ids if l.code == 'DEDUCTION')
+                    salary_advance   = sum(l.amount for l in payslip.input_line_ids if l.code == 'SAL-ADV')
+                    salary_deduction = sum(l.amount for l in payslip.input_line_ids if l.code == 'SAL-ADV-DED')
 
                     bank_after_lop = bank_amount - bank_lop_deduction
                     
