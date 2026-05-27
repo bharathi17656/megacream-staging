@@ -130,7 +130,7 @@ class HrPayslip(models.Model):
 
             saturday_days = {d for d in all_days if d.weekday() == 5}
 
-            # Festivals that fall on actual working days (Mon-Sat for Group 1, 2, 3, 5; none for Group 4)
+            # Festivals that fall on actual working days (Mon-Sat for Group 1-3, none for Group 4)
             if group == 'group_4':
                 paid_festival_days_val = 0
             else:
@@ -147,6 +147,7 @@ class HrPayslip(models.Model):
             # Attendance Map
             # ---------------------------------------------------
             att_map = self._build_attendance_map(employee, date_from, date_to)
+            attended_dates = set(att_map.keys())
 
             # ---------------------------------------------------
             # Attendance Classification
@@ -156,15 +157,13 @@ class HrPayslip(models.Model):
 
             for d in working_days:
 
-                # Festival auto paid ONLY for Group 1, 2, 3, 5
-                if group in ('group_1', 'group_2', 'group_3', 'group_5') and d in festival_dates:
+                # Festival auto paid ONLY for Group 1-3
+                if group in ('group_1', 'group_2', 'group_3') and d in festival_dates:
                     continue
 
                 hrs = att_map.get(d, 0)
 
-                if group in ('group_2', 'group_3') and hrs > 0 and (d in sunday_days or d in festival_dates):
-                    present_days += 1
-                elif hrs >= 6:
+                if hrs >= 6:                                                              
                     present_days += 1
                 elif 4 <= hrs < 6:
                     present_days += 0.5
@@ -195,8 +194,8 @@ class HrPayslip(models.Model):
                     paid_leave_credit = min(1, absent_days)
                     absent_days -= paid_leave_credit
 
-                sunday_worked = len({d for d in sunday_days if att_map.get(d, 0) > 0})
-                festival_worked = len({d for d in festival_dates if att_map.get(d, 0) > 0})
+                sunday_worked = len(sunday_days & attended_dates)
+                festival_worked = len(festival_dates & attended_dates)
 
                 total_ot = sunday_worked + festival_worked
 
@@ -264,6 +263,7 @@ class HrPayslip(models.Model):
                     pf = round(pf_base * 0.12, 2)
                     esi = round(bank_after_lop * 0.0075, 2)
                     print(f"pf_base = {pf_base}; pf = {pf}; esi = {esi}")
+                    # Subtract employee deductions (PF and ESI) from bank payable.
                     bank_final = round(bank_after_lop - pf - esi + salary_advance - salary_deduction, 2)
                     print(f"bank_final = {bank_final}")
                     cash_final = round(cash_after_lop, 2)
@@ -273,10 +273,12 @@ class HrPayslip(models.Model):
                 pf_base = round(gross_salary_val * 0.70, 2)
                 pf = round(pf_base * 0.12, 2)
                 esi = round(pf_base * 0.0075, 2)
+                # Subtract employee deductions (PF and ESI) from bank payable.
                 bank_final = round(gross_salary_val - pf - esi, 2)
                 cash_final = 0
 
-            net_payable_val = round(gross_salary_val - pf - esi, 2)
+            # Net payable is the sum of net bank and net cash payables
+            net_payable_val = round(bank_final + cash_final, 2)
 
             # Store values
             payslip.bank_payable = round(bank_final, 2)
@@ -287,7 +289,8 @@ class HrPayslip(models.Model):
             payslip.unpaid_days = final_lop
             payslip.paid_days = present_days + casual_leave + paid_leave_credit + lop_compensated + double_pay_days
             payslip.unpaid_amount = unpaid_amount
-            payslip.paid_amount = gross_salary_val
+            # Total Paid Amount = net paid to employee (gross payables - employee deductions).
+            payslip.paid_amount = net_payable_val
             payslip.regular_salary = regular_salary_val
             payslip.ot_amount = extra_ot_amount
             payslip.gross_salary = gross_salary_val

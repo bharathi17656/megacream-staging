@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_employee_form_inherit_pf_esi" model="ir.ui.view">
+        <field name="name">hr.employee.form.inherit.pf.esi</field>
+        <field name="model">hr.employee</field>
+        <field name="inherit_id" ref="studio_customization.odoo_studio_hr_emplo_9e57cb7c-2b17-449b-a1a3-c69e3c6f097d"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='bank_amount']" position="after">
+                <field name="pf_eligible" string="PF"/>
+                <field name="esi_eligible" string="ESI"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>
