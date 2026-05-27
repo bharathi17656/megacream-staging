@@ -130,7 +130,7 @@ class HrPayslip(models.Model):
 
             saturday_days = {d for d in all_days if d.weekday() == 5}
 
-            # Festivals that fall on actual working days (Mon-Sat for Group 1-3, none for Group 4)
+            # Festivals that fall on actual working days (Mon-Sat for Group 1, 2, 3, 5; none for Group 4)
             if group == 'group_4':
                 paid_festival_days_val = 0
             else:
@@ -156,8 +156,8 @@ class HrPayslip(models.Model):
 
             for d in working_days:
 
-                # Festival auto paid ONLY for Group 1-3
-                if group in ('group_1', 'group_2', 'group_3') and d in festival_dates:
+                # Festival auto paid ONLY for Group 1, 2, 3, 5
+                if group in ('group_1', 'group_2', 'group_3', 'group_5') and d in festival_dates:
                     continue
 
                 hrs = att_map.get(d, 0)
