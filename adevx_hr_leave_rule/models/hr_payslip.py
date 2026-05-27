@@ -147,7 +147,6 @@ class HrPayslip(models.Model):
             # Attendance Map
             # ---------------------------------------------------
             att_map = self._build_attendance_map(employee, date_from, date_to)
-            attended_dates = set(att_map.keys())
 
             # ---------------------------------------------------
             # Attendance Classification
@@ -163,7 +162,9 @@ class HrPayslip(models.Model):
 
                 hrs = att_map.get(d, 0)
 
-                if hrs >= 6:                                                              
+                if group in ('group_2', 'group_3') and hrs > 0 and (d in sunday_days or d in festival_dates):
+                    present_days += 1
+                elif hrs >= 6:
                     present_days += 1
                 elif 4 <= hrs < 6:
                     present_days += 0.5
@@ -194,8 +195,8 @@ class HrPayslip(models.Model):
                     paid_leave_credit = min(1, absent_days)
                     absent_days -= paid_leave_credit
 
-                sunday_worked = len(sunday_days & attended_dates)
-                festival_worked = len(festival_dates & attended_dates)
+                sunday_worked = len({d for d in sunday_days if att_map.get(d, 0) > 0})
+                festival_worked = len({d for d in festival_dates if att_map.get(d, 0) > 0})
 
                 total_ot = sunday_worked + festival_worked
 
