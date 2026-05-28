@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Increment tab on employee form -->
+    <record id="hr_employee_increment_tab_view" model="ir.ui.view">
+        <field name="name">hr.employee.increment.tab</field>
+        <field name="model">hr.employee</field>
+        <field name="inherit_id" ref="hr.view_employee_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//page[@name='resume']" position="after">
+                <page string="Increment" name="increment_tab">
+                    <field name="increment_ids">
+                        <list editable="bottom">
+                            <field name="allowance_type" required="1"
+                                   readonly="status in ('approved', 'applied')"/>
+                            <field name="is_increment" widget="boolean_toggle"
+                                   readonly="status in ('approved', 'applied')"/>
+                            <field name="applicable_date"
+                                   readonly="status in ('approved', 'applied')"/>
+                            <field name="approver_ids" widget="many2many_tags"
+                                   readonly="status in ('approved', 'applied')"/>
+                            <field name="amount"
+                                   readonly="status in ('approved', 'applied')"/>
+                            <field name="currency_id" column_invisible="1"
+                                   readonly="status in ('approved', 'applied')"/>
+                            <field name="status" readonly="1"/>
+                            <field name="is_current_user_approver" column_invisible="1"/>
+                            <button
+                                name="action_approve"
+                                string="✔ Approve"
+                                type="object"
+                                class="btn-success"
+                                invisible="status in ('approved', 'applied') or not is_current_user_approver"
+                            />
+                        </list>
+                    </field>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>
