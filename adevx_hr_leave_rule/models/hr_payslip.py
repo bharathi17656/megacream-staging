@@ -158,7 +158,7 @@ class HrPayslip(models.Model):
             for d in working_days:
 
                 # Festival auto paid ONLY for Group 1-3
-                if group in ('group_1', 'group_2', 'group_3') and d in festival_dates:
+                if group in ('group_1', 'group_2', 'group_3', 'group_5') and d in festival_dates:
                     continue
 
                 hrs = att_map.get(d, 0)
