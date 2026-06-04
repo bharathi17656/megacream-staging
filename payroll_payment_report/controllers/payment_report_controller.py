@@ -46,6 +46,96 @@ class PaymentReportController(http.Controller):
         cash_lines = []
         bank_lines = []
 
+    #     for slip in payslips:
+    #         emp = slip.employee_id
+
+    #         # Skip inactive employees
+    #         if not emp.active:
+    #             continue
+
+    #         gross   = emp.wage or 0.0
+    #         days    = slip.total_days_in_month or monthrange(slip.date_from.year, slip.date_from.month)[1]
+            
+    #         if payment_type == 'cash':
+    #             gross_display = emp.cash_amount or 0.0   # Cash Salary Amount from employee
+    #         elif payment_type == 'bank':
+    #             gross_display = emp.bank_amount or 0.0   # Bank Salary Amount from employee
+    #         else:
+    #             gross_display = emp.wage or 0.0    
+            
+    #         per_day = round(gross_display  / 31, 2)
+
+    #         ab      = get_worked_days(slip, 'LOP')
+    #         adj     = get_worked_days(slip, 'PAIDLEAVE')
+    #         work100 = get_worked_days(slip, 'WORK100')
+    #         sunday  = get_worked_days(slip, 'SUNDAY')
+    #         festival = get_worked_days(slip, 'FESTIVAL')
+    #         lop_comp  = get_worked_days(slip, 'LOPCOMP')
+    #         paidleave = get_worked_days(slip, 'PAIDLEAVE')
+    #         unpaid    = get_worked_days(slip, 'LOP')
+
+            
+    #         ab      = unpaid if unpaid % 1 == 0.5 else int(unpaid)# AB column = absent/LOP days
+            
+    #         adj_raw = paidleave if unpaid > 0 else 0.0
+    #         adj = adj_raw if adj_raw % 1 == 0.5 else int(adj_raw)
+
+    #         # Total of all worked day lines
+    #         unpaid_after_compensation = max(unpaid - paidleave, 0)
+
+    #         # Present = Total days in month - Unpaid LOP (after compensation)
+    #         present_raw = days - unpaid_after_compensation
+    #         present = present_raw if present_raw % 1 == 0.5 else int(present_raw)
+    #         cash_amt = get_line_total(slip, 'cash')
+    #         bank_amt = get_line_total(slip, 'bank')
+
+    #   # Wage from employee
+                
+    #         amt_calculated = round(per_day * present_raw)
+
+    #         esic     = get_line_total(slip, 'ESI')
+    #         epfo     = get_line_total(slip, 'PF_DED')
+            
+    #         sunday_work_amt = get_worked_days_amount(slip, 'DOUBLEPAY')
+
+    #         # Salary inputs from Salary Inputs tab
+    #         salary_advance = sum(l.amount for l in slip.input_line_ids if l.input_type_id.code == 'SAL-ADV')
+    #         salary_ded     = sum(l.amount for l in slip.input_line_ids if l.input_type_id.code == 'SAL-ADV-DED')
+
+    #         esic_epfo_total = round(esic + epfo + salary_ded, 2)
+
+    #         # NET PAID directly from payslip fields
+    #         if payment_type == 'bank':
+    #             net = slip.bank_payable or 0.0
+    #         elif payment_type == 'cash':
+    #             net = round(slip.cash_payable or 0.0, 2)
+
+    #         else:
+    #             net = round(slip.paid_amount or 0.0, 2)
+
+    #         base = {
+    #             'name'       : emp.name,
+    #             'gross'      : gross_display,
+    #             'days'       : days,
+    #             'per_day'    : per_day,
+    #             'ab'         : ab,
+    #             'adj'        : adj,
+    #             'present'    : present,
+    #             'sunday_amt' : sunday_work_amt,
+    #             'esic'       : esic,
+    #             'epfo'       : epfo,
+    #             'salary_advance' : salary_advance,
+    #             'salary_ded'     : salary_ded,
+    #             'esic_epfo'  : esic_epfo_total,
+    #             'net'        : net,
+    #         }
+
+    #         if payment_type in ('cash', 'all') and cash_amt > 0:
+    #             cash_lines.append({**base, 'amt': amt_calculated})
+
+    #         if payment_type in ('bank', 'all') and bank_amt > 0:
+    #             bank_lines.append({**base, 'amt': amt_calculated})
+
         for slip in payslips:
             emp = slip.employee_id
 
@@ -53,81 +143,76 @@ class PaymentReportController(http.Controller):
             if not emp.active:
                 continue
 
-            gross   = emp.wage or 0.0
             days    = slip.total_days_in_month or monthrange(slip.date_from.year, slip.date_from.month)[1]
-            
-            if payment_type == 'cash':
-                gross_display = emp.cash_amount or 0.0   # Cash Salary Amount from employee
-            elif payment_type == 'bank':
-                gross_display = emp.bank_amount or 0.0   # Bank Salary Amount from employee
-            else:
-                gross_display = emp.wage or 0.0    
-            
-            per_day = round(gross_display  / 31, 2)
 
-            ab      = get_worked_days(slip, 'LOP')
-            adj     = get_worked_days(slip, 'PAIDLEAVE')
-            work100 = get_worked_days(slip, 'WORK100')
-            sunday  = get_worked_days(slip, 'SUNDAY')
-            festival = get_worked_days(slip, 'FESTIVAL')
-            lop_comp  = get_worked_days(slip, 'LOPCOMP')
+            if payment_type == 'cash':
+                gross_display = emp.cash_amount or 0.0
+            elif payment_type == 'bank':
+                gross_display = emp.bank_amount or 0.0
+            else:
+                gross_display = emp.wage or 0.0
+
+            per_day = round(gross_display / days, 2) if days else 0.0
+
+            # Get employee group
+            calendar_name    = emp.resource_calendar_id.name or ''
+            is_group1_or_5   = 'Group 1' in calendar_name or 'Group 5' in calendar_name
+
             paidleave = get_worked_days(slip, 'PAIDLEAVE')
             unpaid    = get_worked_days(slip, 'LOP')
 
-            
-            ab      = unpaid if unpaid % 1 == 0.5 else int(unpaid)# AB column = absent/LOP days
-            
-            adj_raw = paidleave if unpaid > 0 else 0.0
+            # AB = total absent days (LOP + paid leave)
+            ab_raw = unpaid + paidleave
+            ab = ab_raw if ab_raw % 1 == 0.5 else int(ab_raw)
+
+            # ADJ = casual leave / paid leave shown
+            if is_group1_or_5:
+                adj_raw = paidleave  # always show CL taken
+            else:
+                adj_raw = paidleave if unpaid > 0 else 0.0
             adj = adj_raw if adj_raw % 1 == 0.5 else int(adj_raw)
 
-            # Total of all worked day lines
-            unpaid_after_compensation = max(unpaid - paidleave, 0)
-
-            # Present = Total days in month - Unpaid LOP (after compensation)
-            present_raw = days - unpaid_after_compensation
+            # Present = days - LOP only (CL/paid leave does not reduce present)
+            present_raw = days - unpaid
             present = present_raw if present_raw % 1 == 0.5 else int(present_raw)
+
             cash_amt = get_line_total(slip, 'cash')
             bank_amt = get_line_total(slip, 'bank')
 
-      # Wage from employee
-                
-            amt_calculated = round(per_day * present_raw)
+            amt_calculated = round(per_day * present_raw, 2)
 
             esic     = get_line_total(slip, 'ESI')
             epfo     = get_line_total(slip, 'PF_DED')
-            
+
             sunday_work_amt = get_worked_days_amount(slip, 'DOUBLEPAY')
 
-            # Salary inputs from Salary Inputs tab
             salary_advance = sum(l.amount for l in slip.input_line_ids if l.input_type_id.code == 'SAL-ADV')
             salary_ded     = sum(l.amount for l in slip.input_line_ids if l.input_type_id.code == 'SAL-ADV-DED')
 
             esic_epfo_total = round(esic + epfo + salary_ded, 2)
 
-            # NET PAID directly from payslip fields
             if payment_type == 'bank':
                 net = slip.bank_payable or 0.0
             elif payment_type == 'cash':
                 net = round(slip.cash_payable or 0.0, 2)
-
             else:
                 net = round(slip.paid_amount or 0.0, 2)
 
             base = {
-                'name'       : emp.name,
-                'gross'      : gross_display,
-                'days'       : days,
-                'per_day'    : per_day,
-                'ab'         : ab,
-                'adj'        : adj,
-                'present'    : present,
-                'sunday_amt' : sunday_work_amt,
-                'esic'       : esic,
-                'epfo'       : epfo,
+                'name'           : emp.name,
+                'gross'          : gross_display,
+                'days'           : days,
+                'per_day'        : per_day,
+                'ab'             : ab,
+                'adj'            : adj,
+                'present'        : present,
+                'sunday_amt'     : sunday_work_amt,
+                'esic'           : esic,
+                'epfo'           : epfo,
                 'salary_advance' : salary_advance,
                 'salary_ded'     : salary_ded,
-                'esic_epfo'  : esic_epfo_total,
-                'net'        : net,
+                'esic_epfo'      : esic_epfo_total,
+                'net'            : net,
             }
 
             if payment_type in ('cash', 'all') and cash_amt > 0:
@@ -136,6 +221,7 @@ class PaymentReportController(http.Controller):
             if payment_type in ('bank', 'all') and bank_amt > 0:
                 bank_lines.append({**base, 'amt': amt_calculated})
 
+                
         # ── XLSX generation ───────────────────────────────────────────
         output   = io.BytesIO()
         workbook = xlsxwriter.Workbook(output, {'in_memory': True})
