@@ -194,8 +194,16 @@ class HrPayslip(models.Model):
                     paid_leave_credit = min(1, absent_days)
                     absent_days -= paid_leave_credit
 
-                sunday_worked = len(sunday_days & attended_dates)
-                festival_worked = len(festival_dates & attended_dates)
+                def day_fraction(d):
+                    hrs = att_map.get(d, 0)
+                    if hrs >= 6:
+                        return 1.0
+                    elif hrs >= 4:
+                        return 0.5
+                    return 0.0
+
+                sunday_worked = sum(day_fraction(d) for d in sunday_days if d in attended_dates)
+                festival_worked = sum(day_fraction(d) for d in festival_dates if d in attended_dates)
 
                 total_ot = sunday_worked + festival_worked
 
