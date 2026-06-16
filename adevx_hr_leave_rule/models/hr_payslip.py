@@ -206,7 +206,8 @@ class HrPayslip(models.Model):
                         return 0.5
                     return 0.0
 
-                sunday_worked = sum(day_fraction(d) for d in sunday_days if d in attended_dates)
+                sunday_worked = sum(day_fraction(d) for d in sunday_days
+                                    if d in attended_dates and d not in festival_dates)
                 festival_worked = sum(day_fraction(d) for d in festival_dates if d in attended_dates)
 
                 total_ot = sunday_worked + festival_worked
@@ -274,10 +275,10 @@ class HrPayslip(models.Model):
                     pf_base = round(bank_after_lop * 0.70, 2)
                     pf = round(pf_base * 0.12, 2)
                     esi = round(bank_after_lop * 0.0075, 2)
-                    print(f"pf_base = {pf_base}; pf = {pf}; esi = {esi}")
+                    _logger.debug("pf_base = %s; pf = %s; esi = %s", pf_base, pf, esi)
                     # Subtract employee deductions (PF and ESI) from bank payable.
                     bank_final = round(bank_after_lop - pf - esi + salary_advance - salary_deduction, 2)
-                    print(f"bank_final = {bank_final}")
+                    _logger.debug("bank_final = %s", bank_final)
                     cash_final = round(cash_after_lop, 2)
 
             else:
