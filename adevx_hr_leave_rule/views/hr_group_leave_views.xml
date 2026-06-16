@@ -86,27 +86,72 @@
         <field name="arch" type="xml">
             <xpath expr="//notebook" position="inside">
                 <page string="Group LOP Summary" name="group_lop_summary">
-                    <group string="Group-Based Payroll Breakdown">
-                        <group string="Days">
-                            <field name="total_working_days_in_month"/>
-                            <field name="paid_days"/>
-                            <field name="unpaid_days"/>
+
+                    <!-- STEP 1: Calendar -->
+                    <group string="Step 1 — Calendar">
+                        <group>
+                            <field name="total_days_in_month" string="Total Days in Month"/>
+                            <field name="total_sundays_in_month" string="Total Sundays (Auto-Paid)"/>
+                            <field name="total_saturdays_in_month" string="Total Saturdays"/>
                         </group>
-                        <group string="Amounts">
-                            <field name="paid_amount"/>
-                            <field name="unpaid_amount"/>
+                        <group>
+                            <field name="total_working_days_in_month" string="Working Days (Mon–Sat)"/>
+                            <field name="paid_festival_days" string="Festival Days on Working Days (Auto-Paid)"/>
+                            <field name="required_attendance_days" string="Required Attendance Days (Working − Festival)"/>
                         </group>
                     </group>
-                    <group string="Overtime / Compensation (Group 2 &amp; 3 Only)">
+
+                    <!-- STEP 2: Attendance -->
+                    <group string="Step 2 — Attendance Classification">
+                        <group>
+                            <field name="present_days" string="Days Present (≥6 hrs = 1, 4–6 hrs = 0.5)"/>
+                            <field name="absent_days_before_comp" string="Days Absent / LOP (Before Compensation)"/>
+                        </group>
+                        <group>
+                            <field name="paid_days" string="Final Paid Days (After Compensation)"/>
+                            <field name="unpaid_days" string="Final Unpaid Days (LOP)"/>
+                        </group>
+                    </group>
+
+                    <!-- STEP 3: OT Compensation (Group 2 & 3) -->
+                    <group string="Step 3 — OT / LOP Compensation (Group 2 &amp; 3 Only)">
                         <group>
                             <field name="sunday_worked_days" string="Sundays Worked"/>
                             <field name="festival_worked_days" string="Festival Days Worked"/>
+                            <field name="total_ot_days" string="Total OT Days (Sun + Festival)"/>
                         </group>
                         <group>
-                            <field name="lop_compensated_days" string="LOP Offset (Sunday Work)"/>
-                            <field name="double_pay_days" string="Double Pay Days"/>
+                            <field name="lop_compensated_days" string="LOP Offset ← min(Absent, OT)"/>
+                            <field name="double_pay_days" string="Double Pay Days ← OT − LOP Offset"/>
                         </group>
                     </group>
+
+                    <!-- STEP 4: Salary -->
+                    <group string="Step 4 — Salary Calculation">
+                        <group>
+                            <field name="regular_salary" string="Regular Salary (Wage − LOP Deduction)"/>
+                            <field name="ot_amount" string="OT Amount (Double Pay Days × Per Day)"/>
+                            <field name="gross_salary" string="Gross Salary (Regular + OT)"/>
+                        </group>
+                        <group>
+                            <field name="pf_deduction" string="PF Deduction (12% of 70% of Bank)"/>
+                            <field name="esi_deduction" string="ESI Deduction (0.75% of Bank)"/>
+                            <field name="net_payable" string="Net Payable (Gross − PF − ESI)"/>
+                        </group>
+                    </group>
+
+                    <!-- STEP 5: Payment Split -->
+                    <group string="Step 5 — Payment Split">
+                        <group>
+                            <field name="bank_payable" string="Bank Payable"/>
+                            <field name="cash_payable" string="Cash Payable"/>
+                        </group>
+                        <group>
+                            <field name="paid_amount" string="Total Paid Amount"/>
+                            <field name="unpaid_amount" string="Unpaid / LOP Amount Deducted"/>
+                        </group>
+                    </group>
+
                 </page>
             </xpath>
         </field>

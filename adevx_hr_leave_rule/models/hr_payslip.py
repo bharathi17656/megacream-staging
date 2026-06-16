@@ -41,6 +41,10 @@ class HrPayslip(models.Model):
 
     paid_festival_days = fields.Float(string="Paid Festival Days", readonly=True)
     required_attendance_days = fields.Float(string="Required Attendance Days", readonly=True)
+
+    present_days = fields.Float(string="Present Days", readonly=True)
+    absent_days_before_comp = fields.Float(string="Absent Days (Before Compensation)", readonly=True)
+    total_ot_days = fields.Float(string="Total OT Days", readonly=True)
     # -------------------------------------------------------
     # Helpers
     # -------------------------------------------------------
@@ -307,6 +311,9 @@ class HrPayslip(models.Model):
             payslip.lop_compensated_days = lop_compensated
             payslip.sunday_worked_days = sunday_worked
             payslip.festival_worked_days = festival_worked
+            payslip.present_days = present_days
+            payslip.absent_days_before_comp = lop_compensated + final_lop
+            payslip.total_ot_days = sunday_worked + festival_worked
 
             # ---------------------------------------------------
             # Build Lines
