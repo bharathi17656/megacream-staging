@@ -70,9 +70,9 @@ class HrPayslip(models.Model):
         for att in attendances:
             if not att.check_in:
                 continue
-            work_date = att.check_in.date()
+            work_date = fields.Datetime.context_timestamp(att, att.check_in).date()
             hours = att.worked_hours or 0.0
-            att_map[work_date] = max(att_map.get(work_date, 0), hours)
+            att_map[work_date] = att_map.get(work_date, 0) + hours
 
         return att_map
 
