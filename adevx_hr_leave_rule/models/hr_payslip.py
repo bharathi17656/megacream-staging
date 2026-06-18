@@ -169,7 +169,7 @@ class HrPayslip(models.Model):
 
                 if hrs >= 6:                                                              
                     present_days += 1
-                elif 4 <= hrs < 6:
+                elif 3 <= hrs < 6:
                     present_days += 0.5
                     absent_days += 0.5
                 else:
@@ -202,7 +202,7 @@ class HrPayslip(models.Model):
                     hrs = att_map.get(d, 0)
                     if hrs >= 6:
                         return 1.0
-                    elif hrs >= 4:
+                    elif hrs >= 3:
                         return 0.5
                     return 0.0
 
