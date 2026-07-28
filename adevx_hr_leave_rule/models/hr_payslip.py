@@ -45,6 +45,65 @@ class HrPayslip(models.Model):
             else:
                 slip.print_net_salary = 0.0
 
+    def get_worked_days_line_amount(self, line):
+        """
+        Returns the worked days line amount based on selected cash_print / bank_print flags.
+        If both selected -> returns full line amount.
+        If cash_print only -> returns cash portion of line amount.
+        If bank_print only -> returns bank portion of line amount.
+        """
+        self.ensure_one()
+        if self.cash_print and self.bank_print:
+            return line.amount
+
+        employee = self.employee_id
+        bank_amount = employee.bank_amount or 0.0
+        cash_amount = employee.cash_amount or 0.0
+        total_defined = bank_amount + cash_amount
+
+        if not total_defined or line.amount == 0.0:
+            return line.amount
+
+        if self.cash_print:
+            return round(line.amount * (cash_amount / total_defined), 2)
+        elif self.bank_print:
+            return round(line.amount * (bank_amount / total_defined), 2)
+
+        return line.amount
+
+    def get_worked_days_total_amount(self):
+        """
+        Returns total worked days earnings amount based on selected cash_print / bank_print flags.
+        """
+        self.ensure_one()
+        return sum(self.get_worked_days_line_amount(line) for line in self.worked_days_line_ids)
+
+    def get_print_footer_text(self):
+        """
+        Returns the formatted footer text based on selected print flags.
+        """
+        self.ensure_one()
+        emp_name = self.employee_id.name or ''
+        acc_num = self.employee_id.bank_account_id.acc_number or ''
+
+        if self.cash_print and self.bank_print:
+            amount_str = f"₹ {self.net_payable:,.2f}"
+            if acc_num:
+                return f"To pay on {acc_num} of {emp_name}: {amount_str}"
+            return f"To pay to {emp_name}: {amount_str}"
+
+        elif self.cash_print:
+            amount_str = f"₹ {self.cash_payable:,.2f}"
+            return f"To pay in Cash to {emp_name}: {amount_str}"
+
+        elif self.bank_print:
+            amount_str = f"₹ {self.bank_payable:,.2f}"
+            if acc_num:
+                return f"To pay on {acc_num} of {emp_name}: {amount_str}"
+            return f"To pay to {emp_name}: {amount_str}"
+
+        return ""
+
     def action_print_payslip(self):
         for payslip in self:
             if not payslip.cash_print and not payslip.bank_print:
