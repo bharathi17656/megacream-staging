@@ -53,23 +53,26 @@ class HrPayslip(models.Model):
         If bank_print only -> returns bank portion of line amount.
         """
         self.ensure_one()
+        if not line:
+            return 0.0
+        amount = getattr(line, 'amount', 0.0) or 0.0
         if self.cash_print and self.bank_print:
-            return line.amount
+            return amount
 
         employee = self.employee_id
-        bank_amount = employee.bank_amount or 0.0
-        cash_amount = employee.cash_amount or 0.0
+        bank_amount = (employee.bank_amount if employee else 0.0) or 0.0
+        cash_amount = (employee.cash_amount if employee else 0.0) or 0.0
         total_defined = bank_amount + cash_amount
 
-        if not total_defined or line.amount == 0.0:
-            return line.amount
+        if not total_defined or amount == 0.0:
+            return amount
 
         if self.cash_print:
-            return round(line.amount * (cash_amount / total_defined), 2)
+            return round(amount * (cash_amount / total_defined), 2)
         elif self.bank_print:
-            return round(line.amount * (bank_amount / total_defined), 2)
+            return round(amount * (bank_amount / total_defined), 2)
 
-        return line.amount
+        return amount
 
     def get_worked_days_total_amount(self):
         """
@@ -83,8 +86,10 @@ class HrPayslip(models.Model):
         Determines whether a salary line should be shown based on cash_print / bank_print.
         """
         self.ensure_one()
-        code = (line.code or '').upper()
-        name = (line.name or '').upper()
+        if not line:
+            return False
+        code = (getattr(line, 'code', '') or '').upper()
+        name = (getattr(line, 'name', '') or '').upper()
 
         if code == 'CASH' or 'CASH' in name:
             return bool(self.cash_print)
@@ -99,7 +104,7 @@ class HrPayslip(models.Model):
         Returns payslip lines filtered by cash_print and bank_print options.
         """
         self.ensure_one()
-        lines = self.line_ids.filtered(lambda l: l.appears_on_payslip)
+        lines = self.line_ids.filtered(lambda l: l and getattr(l, 'appears_on_payslip', True))
         return lines.filtered(lambda l: self.should_show_payslip_line(l))
 
     def get_payslip_line_total(self, line):
@@ -107,21 +112,24 @@ class HrPayslip(models.Model):
         Returns line total for payslip summary lines based on cash_print and bank_print options.
         """
         self.ensure_one()
-        code = (line.code or '').upper()
-        name = (line.name or '').upper()
+        if not line:
+            return 0.0
+        code = (getattr(line, 'code', '') or '').upper()
+        name = (getattr(line, 'name', '') or '').upper()
+        total = getattr(line, 'total', 0.0) or 0.0
 
         if code == 'CASH' or 'CASH' in name:
-            return self.cash_payable
+            return self.cash_payable or 0.0
         elif code == 'BANK' or 'BANK' in name:
-            return self.print_bank_amount
+            return self.print_bank_amount or 0.0
         elif code == 'ESI' or 'ESI' in name:
-            return self.esi_deduction
+            return self.esi_deduction or 0.0
         elif code in ('PF', 'PF_DED') or 'PF' in name:
-            return self.pf_deduction
+            return self.pf_deduction or 0.0
         elif code == 'NET' or 'NET' in name or 'NET SALARY' in name:
-            return self.print_net_salary
+            return self.print_net_salary or 0.0
 
-        return line.total
+        return total
 
     def get_print_footer_text(self):
         """
