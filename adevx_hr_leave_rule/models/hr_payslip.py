@@ -74,16 +74,31 @@ class HrPayslip(models.Model):
 
         return amount
 
-    def get_worked_days_total_amount(self):
+    def get_filtered_worked_days_line_ids(self):
         """
-        Returns total worked days earnings amount based on selected cash_print / bank_print flags.
+        Returns worked_days_line_ids filtered by print flags.
+        - Excludes Double Pay lines when ONLY Bank Print is selected.
         """
         self.ensure_one()
-        return sum(self.get_worked_days_line_amount(line) for line in self.worked_days_line_ids)
+        lines = self.worked_days_line_ids.filtered(lambda l: l.code != 'OUT')
+        if self.bank_print and not self.cash_print:
+            lines = lines.filtered(lambda l: not ('DOUBLE' in (l.code or '').upper() or 'DOUBLE' in (l.name or '').upper()))
+        return lines
+
+    def get_worked_days_total_amount(self):
+        """
+        Returns total worked days earnings amount based on filtered worked days lines.
+        """
+        self.ensure_one()
+        return sum(self.get_worked_days_line_amount(line) for line in self.get_filtered_worked_days_line_ids())
 
     def should_show_payslip_line(self, line):
         """
         Determines whether a salary line should be shown based on cash_print / bank_print.
+        - Salary inputs (advance, travel, allowance, deduction, etc.): Shown ONLY in Bank Print or Both (hidden in Cash Print ONLY).
+        - Double Pay lines: Shown ONLY in Cash Print or Both (hidden in Bank Print ONLY).
+        - Cash line: Shown ONLY if cash_print is enabled.
+        - Bank, ESI, PF lines: Shown ONLY if bank_print is enabled.
         """
         self.ensure_one()
         if not line:
@@ -96,6 +111,18 @@ class HrPayslip(models.Model):
 
         if code in ('BANK', 'ESI', 'PF', 'PF_DED') or any(k in name for k in ('BANK', 'ESI', 'PF')):
             return bool(self.bank_print)
+
+        # Double Pay -> Show only in Cash Print or Both (hide in Bank Print ONLY)
+        if 'DOUBLE' in code or 'DOUBLE' in name or 'DOUBLE PAY' in name:
+            if self.bank_print and not self.cash_print:
+                return False
+            return True
+
+        # Salary Inputs (Advance, Travel, Allowance, Deduction, Input) -> Show only in Bank Print or Both (hide in Cash Print ONLY)
+        if any(k in name for k in ('ADVANCE', 'TRAVEL', 'ALLOWANCE', 'INPUT', 'DEDUCTION')) or any(k in code for k in ('ADV', 'TRAV', 'INPUT', 'DED')):
+            if self.cash_print and not self.bank_print:
+                return False
+            return True
 
         return True
 
