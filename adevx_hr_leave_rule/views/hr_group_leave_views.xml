@@ -84,7 +84,7 @@
         <field name="model">hr.payslip</field>
         <field name="inherit_id" ref="hr_payroll.view_hr_payslip_form"/>
         <field name="arch" type="xml">
-            <xpath expr="//sheet/group/group[2]" position="inside">
+            <xpath expr="//field[@name='paid_festival_days']" position="before">
                 <field name="cash_print"/>
                 <field name="bank_print"/>
             </xpath>
