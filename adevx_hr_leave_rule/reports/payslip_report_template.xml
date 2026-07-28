@@ -46,7 +46,7 @@
                     <t t-if="o.cash_print and o.bank_print">
                         <p t-if="(o.net_payable or 0.0) &gt;= 0">
                             To pay on 
-                            <span class="fw-bold" t-esc="(o.employee_id.bank_account_id.acc_number if o.employee_id and o.employee_id.bank_account_id else 'N/A')"/>
+                            <span class="fw-bold" t-esc="o._get_employee_bank_account_number()"/>
                             of <span class="fst-italic" t-field="o.employee_id.legal_name"/>: 
                             <span t-esc="o.net_payable" class="fw-bold" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
                         </p>
@@ -64,7 +64,7 @@
                     <t t-elif="o.bank_print">
                         <p t-if="(o.print_net_salary or 0.0) &gt;= 0">
                             To pay on 
-                            <span class="fw-bold" t-esc="(o.employee_id.bank_account_id.acc_number if o.employee_id and o.employee_id.bank_account_id else 'N/A')"/>
+                            <span class="fw-bold" t-esc="o._get_employee_bank_account_number()"/>
                             of <span class="fst-italic" t-field="o.employee_id.legal_name"/>: 
                             <span t-esc="o.print_net_salary" class="fw-bold" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
                         </p>

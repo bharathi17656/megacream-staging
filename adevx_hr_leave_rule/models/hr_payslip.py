@@ -131,17 +131,40 @@ class HrPayslip(models.Model):
 
         return total
 
+    def _get_employee_bank_account_number(self):
+        """
+        Retrieves bank account number from bank_account_ids (or bank_account_id / primary_bank_account_id).
+        """
+        self.ensure_one()
+        emp = self.employee_id
+        if not emp:
+            return 'N/A'
+        
+        # Check bank_account_ids (Many2many)
+        if hasattr(emp, 'bank_account_ids') and emp.bank_account_ids:
+            return emp.bank_account_ids[0].acc_number or 'N/A'
+        
+        # Check primary_bank_account_id
+        if hasattr(emp, 'primary_bank_account_id') and emp.primary_bank_account_id:
+            return emp.primary_bank_account_id.acc_number or 'N/A'
+
+        # Check bank_account_id (Many2one fallback)
+        if hasattr(emp, 'bank_account_id') and emp.bank_account_id:
+            return emp.bank_account_id.acc_number or 'N/A'
+
+        return 'N/A'
+
     def get_print_footer_text(self):
         """
         Returns the formatted footer text based on selected print flags.
         """
         self.ensure_one()
-        emp_name = self.employee_id.name or ''
-        acc_num = self.employee_id.bank_account_id.acc_number or ''
+        emp_name = self.employee_id.legal_name or self.employee_id.name or ''
+        acc_num = self._get_employee_bank_account_number()
 
         if self.cash_print and self.bank_print:
             amount_str = f"₹ {self.net_payable:,.2f}"
-            if acc_num:
+            if acc_num and acc_num != 'N/A':
                 return f"To pay on {acc_num} of {emp_name}: {amount_str}"
             return f"To pay to {emp_name}: {amount_str}"
 
@@ -151,7 +174,7 @@ class HrPayslip(models.Model):
 
         elif self.bank_print:
             amount_str = f"₹ {self.bank_payable:,.2f}"
-            if acc_num:
+            if acc_num and acc_num != 'N/A':
                 return f"To pay on {acc_num} of {emp_name}: {amount_str}"
             return f"To pay to {emp_name}: {amount_str}"
 
