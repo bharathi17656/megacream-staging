@@ -78,6 +78,51 @@ class HrPayslip(models.Model):
         self.ensure_one()
         return sum(self.get_worked_days_line_amount(line) for line in self.worked_days_line_ids)
 
+    def should_show_payslip_line(self, line):
+        """
+        Determines whether a salary line should be shown based on cash_print / bank_print.
+        """
+        self.ensure_one()
+        code = (line.code or '').upper()
+        name = (line.name or '').upper()
+
+        if code == 'CASH' or 'CASH' in name:
+            return bool(self.cash_print)
+
+        if code in ('BANK', 'ESI', 'PF', 'PF_DED') or any(k in name for k in ('BANK', 'ESI', 'PF')):
+            return bool(self.bank_print)
+
+        return True
+
+    def get_filtered_print_line_ids(self):
+        """
+        Returns payslip lines filtered by cash_print and bank_print options.
+        """
+        self.ensure_one()
+        lines = self.line_ids.filtered(lambda l: l.appears_on_payslip)
+        return lines.filtered(lambda l: self.should_show_payslip_line(l))
+
+    def get_payslip_line_total(self, line):
+        """
+        Returns line total for payslip summary lines based on cash_print and bank_print options.
+        """
+        self.ensure_one()
+        code = (line.code or '').upper()
+        name = (line.name or '').upper()
+
+        if code == 'CASH' or 'CASH' in name:
+            return self.cash_payable
+        elif code == 'BANK' or 'BANK' in name:
+            return self.print_bank_amount
+        elif code == 'ESI' or 'ESI' in name:
+            return self.esi_deduction
+        elif code in ('PF', 'PF_DED') or 'PF' in name:
+            return self.pf_deduction
+        elif code == 'NET' or 'NET' in name or 'NET SALARY' in name:
+            return self.print_net_salary
+
+        return line.total
+
     def get_print_footer_text(self):
         """
         Returns the formatted footer text based on selected print flags.
