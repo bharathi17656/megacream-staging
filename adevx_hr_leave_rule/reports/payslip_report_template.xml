@@ -17,28 +17,19 @@
                 </td>
             </xpath>
 
-            <!-- 3. Summary Lines Table (Filter Cash/Bank/ESI/PF/Net) -->
-            <xpath expr="//tbody[@id='payslip_lines']" position="replace">
-                <tbody id="payslip_lines">
-                    <span t-foreach="o.get_filtered_print_line_ids()" t-as="line">
-                        <t t-set="line_styling" t-value="line.get_payslip_styling_dict() if hasattr(line, 'get_payslip_styling_dict') else {'line_style': '', 'line_class': '', 'o_title': ''}"/>
-                        <t t-set="line_style" t-value="line_styling.get('line_style', '')"/>
-                        <t t-set="line_class" t-value="line_styling.get('line_class', '')"/>
-                        <t t-set="o_title" t-value="line_styling.get('o_title', '')"/>
-                        <tr id="line_display">
-                            <td id="payslip_line_name" t-att-class="line_class" t-attf-style="#{line_style} #{'border-right: none;' if line.salary_rule_id and line.salary_rule_id.title else ''}" t-att-colspan="99 if line.salary_rule_id and line.salary_rule_id.title else 1">
-                                <span t-field="line.name" class="d-block"/>
-                                <span t-if="line.salary_rule_id and line.salary_rule_id.note" t-field="line.salary_rule_id.note" t-attf-class="#{line_class} d-inline-block text-truncate pb-0 mb-0 ps-1" style="max-width: 500px; font-size: 0.875em;"/>
-                            </td>
-                            <td id="payslip_line_total" t-attf-class="#{line_class} text-end #{o_title}" t-att-style="line_style">
-                                <span t-out="o.get_payslip_line_total(line)" t-options='{"widget": "monetary", "display_currency": o.company_id.currency_id}'/>
-                            </td>
-                        </tr>
-                    </span>
-                </tbody>
+            <!-- 3. Change loop to filter Cash/Bank/ESI/PF/Net lines -->
+            <xpath expr="//tbody[@id='payslip_lines']/span" position="attributes">
+                <attribute name="t-foreach">o.get_filtered_print_line_ids()</attribute>
             </xpath>
 
-            <!-- 4. To Pay Section (Dynamic Footer) -->
+            <!-- 4. Update payslip line total amount based on selection -->
+            <xpath expr="//td[@id='payslip_line_total']" position="replace">
+                <td id="payslip_line_total" t-attf-class="#{line_class} text-end #{o_title}" t-att-style="line_style">
+                    <span t-out="o.get_payslip_line_total(line)" t-options='{"widget": "monetary", "display_currency": o.company_id.currency_id}'/>
+                </td>
+            </xpath>
+
+            <!-- 5. To Pay Section (Dynamic Footer) -->
             <xpath expr="//div[@id='to_pay']" position="replace">
                 <div id="to_pay">
                     <t t-if="(o.print_net_salary or 0.0) &gt;= 0">
