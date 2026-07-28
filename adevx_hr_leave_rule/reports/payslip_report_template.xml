@@ -4,17 +4,13 @@
         <!-- Payslip Report Customization for Cash Print and Bank Print Options -->
         <template id="report_payslip_inherit_cash_bank" inherit_id="hr_payroll.report_payslip" priority="99">
             <!-- 1. Worked Days Line Amount -->
-            <xpath expr="//td[@id='worked_days_amount']" position="replace">
-                <td id="worked_days_amount" class="text-end">
-                    <span t-out="o.get_worked_days_line_amount(worked_days)" digits="[42, 2]" t-options='{"widget": "monetary", "display_currency": o.company_id.currency_id}'/>
-                </td>
+            <xpath expr="//td[@id='worked_days_amount']/span" position="replace">
+                <span t-out="o.get_worked_days_line_amount(worked_days)" digits="[42, 2]" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
             </xpath>
 
             <!-- 2. Worked Days Total Amount -->
-            <xpath expr="//td[@id='worked_days_total_amount']" position="replace">
-                <td id="worked_days_total_amount" class="o_total o_border_bottom fw-bold text-end">
-                    <span t-out="o.get_worked_days_total_amount()" digits="[42, 2]" t-options='{"widget": "monetary", "display_currency": o.company_id.currency_id}'/>
-                </td>
+            <xpath expr="//td[@id='worked_days_total_amount']/span" position="replace">
+                <span t-out="o.get_worked_days_total_amount()" digits="[42, 2]" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
             </xpath>
 
             <!-- 3. Change loop to filter Cash/Bank/ESI/PF/Net lines -->
@@ -23,10 +19,8 @@
             </xpath>
 
             <!-- 4. Update payslip line total amount based on selection -->
-            <xpath expr="//td[@id='payslip_line_total']" position="replace">
-                <td id="payslip_line_total" t-attf-class="#{line_class} text-end #{o_title}" t-att-style="line_style">
-                    <span t-out="o.get_payslip_line_total(line)" t-options='{"widget": "monetary", "display_currency": o.company_id.currency_id}'/>
-                </td>
+            <xpath expr="//td[@id='payslip_line_total']/span" position="replace">
+                <span t-out="o.get_payslip_line_total(line)" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
             </xpath>
 
             <!-- 5. To Pay Section (Dynamic Footer) -->
