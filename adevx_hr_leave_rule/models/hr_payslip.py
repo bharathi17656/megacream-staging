@@ -48,15 +48,22 @@ class HrPayslip(models.Model):
     def get_worked_days_line_amount(self, line):
         """
         Returns the worked days line amount based on selected cash_print / bank_print flags.
-        If both selected -> returns full line amount.
-        If cash_print only -> returns cash portion of line amount.
-        If bank_print only -> returns bank portion of line amount.
+        - If both selected -> returns full line amount.
+        - If line is Double Pay (only shown in Cash Print) -> returns full line amount.
+        - Otherwise -> returns proportional split amount based on cash / bank ratio.
         """
         self.ensure_one()
         if not line:
             return 0.0
         amount = getattr(line, 'amount', 0.0) or 0.0
         if self.cash_print and self.bank_print:
+            return amount
+
+        code = (getattr(line, 'code', '') or '').upper()
+        name = (getattr(line, 'name', '') or '').upper()
+
+        # Double Pay is exclusive to Cash Print -> show full amount!
+        if 'DOUBLE' in code or 'DOUBLE' in name:
             return amount
 
         employee = self.employee_id
