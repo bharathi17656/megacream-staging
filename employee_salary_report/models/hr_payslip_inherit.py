@@ -54,11 +54,12 @@ class HrPayslip(models.Model):
             # ✅ Create fresh report
             SalaryReport.create({
                 'employee_id': slip.employee_id.id,
-                'contract_id': slip.version_id.id if slip.version_id else False,
+                'contract_id': slip.version_id.id if hasattr(slip, 'version_id') and slip.version_id else False,
                 'payslip_id': slip.id,
                 'date_from': slip.date_from,
                 'date_to': slip.date_to,
             })
+        return res
             
     def unlink(self):
         self.env['employee.salary.report'].search([
