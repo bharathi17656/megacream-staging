@@ -12,7 +12,7 @@
 
             <!-- 2. Worked Days Total Amount -->
             <xpath expr="//td[@id='worked_days_total_amount']" position="replace">
-                <td id="worked_days_total_amount" t-attf-class="#{line_class} text-end">
+                <td id="worked_days_total_amount" class="o_total o_border_bottom fw-bold text-end">
                     <span t-out="o.get_worked_days_total_amount()" digits="[42, 2]" t-options='{"widget": "monetary", "display_currency": o.company_id.currency_id}'/>
                 </td>
             </xpath>
@@ -21,14 +21,14 @@
             <xpath expr="//tbody[@id='payslip_lines']" position="replace">
                 <tbody id="payslip_lines">
                     <span t-foreach="o.get_filtered_print_line_ids()" t-as="line">
-                        <t t-set="line_styling" t-value="line.get_payslip_styling_dict()"/>
-                        <t t-set="line_style" t-value="line_styling['line_style']"/>
-                        <t t-set="line_class" t-value="line_styling['line_class']"/>
-                        <t t-set="o_title" t-value="line_styling['o_title']"/>
+                        <t t-set="line_styling" t-value="line.get_payslip_styling_dict() if hasattr(line, 'get_payslip_styling_dict') else {'line_style': '', 'line_class': '', 'o_title': ''}"/>
+                        <t t-set="line_style" t-value="line_styling.get('line_style', '')"/>
+                        <t t-set="line_class" t-value="line_styling.get('line_class', '')"/>
+                        <t t-set="o_title" t-value="line_styling.get('o_title', '')"/>
                         <tr id="line_display">
-                            <td id="payslip_line_name" t-att-class="line_class" t-attf-style="#{line_style} #{'border-right: none;' if line.salary_rule_id.title else ''}" t-att-colspan="99 if line.salary_rule_id.title else 1">
+                            <td id="payslip_line_name" t-att-class="line_class" t-attf-style="#{line_style} #{'border-right: none;' if line.salary_rule_id and line.salary_rule_id.title else ''}" t-att-colspan="99 if line.salary_rule_id and line.salary_rule_id.title else 1">
                                 <span t-field="line.name" class="d-block"/>
-                                <span t-field="line.salary_rule_id.note" t-attf-class="#{line_class} d-inline-block text-truncate pb-0 mb-0 ps-1" style="max-width: 500px; font-size: 0.875em;"/>
+                                <span t-if="line.salary_rule_id and line.salary_rule_id.note" t-field="line.salary_rule_id.note" t-attf-class="#{line_class} d-inline-block text-truncate pb-0 mb-0 ps-1" style="max-width: 500px; font-size: 0.875em;"/>
                             </td>
                             <td id="payslip_line_total" t-attf-class="#{line_class} text-end #{o_title}" t-att-style="line_style">
                                 <span t-out="o.get_payslip_line_total(line)" t-options='{"widget": "monetary", "display_currency": o.company_id.currency_id}'/>
@@ -43,7 +43,7 @@
                 <div id="to_pay">
                     <t t-if="(o.print_net_salary or 0.0) &gt;= 0">
                         <p>
-                            <t t-if="o.bank_print and o.employee_id.bank_account_id">
+                            <t t-if="o.bank_print and o.employee_id and o.employee_id.bank_account_id">
                                 To pay on 
                                 <span class="fw-bold" t-esc="o.employee_id.bank_account_id.acc_number or 'N/A'"/>
                                 of <span class="fst-italic" t-field="o.employee_id.legal_name"/>: 
