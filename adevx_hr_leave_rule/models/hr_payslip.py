@@ -1,5 +1,6 @@
 # models/hr_payslip.py
-from odoo import models, fields
+from odoo import models, fields, _
+from odoo.exceptions import UserError
 from datetime import timedelta, datetime, time
 import logging
 
@@ -15,6 +16,14 @@ class HrPayslip(models.Model):
 
     bank_payable = fields.Monetary(string="Bank Payable", readonly=True)
     cash_payable = fields.Monetary(string="Cash Payable", readonly=True)
+    cash_print = fields.Boolean(string="Cash Print", default=True)
+    bank_print = fields.Boolean(string="Bank Print", default=True)
+
+    def action_print_payslip(self):
+        for payslip in self:
+            if not payslip.cash_print and not payslip.bank_print:
+                raise UserError(_("Please select at least one print option: Cash Print or Bank Print."))
+        return super().action_print_payslip()
     esi_deduction = fields.Monetary(string="ESI Deduction", readonly=True)
     pf_deduction = fields.Monetary(string="PF Deduction", readonly=True)
 
