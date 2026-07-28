@@ -466,22 +466,22 @@ class HrPayslip(models.Model):
                     bank_lop_deduction = round(final_lop * per_day_bank, 2)
                     cash_lop_deduction = round(final_lop * per_day_cash, 2)
                     
-                    salary_advance   = sum(l.amount for l in payslip.input_line_ids if l.code == 'SAL-ADV')
-                    salary_deduction = sum(l.amount for l in payslip.input_line_ids if l.code == 'SAL-ADV-DED')
+                    # Calculate all positive allowance inputs (Salary Advance, Travel Allowance, etc.) and deduction inputs
+                    salary_inputs_allowances = sum(l.amount for l in payslip.input_line_ids if l.amount > 0 and 'DED' not in (l.code or '').upper() and not (l.input_type_id and 'DED' in (l.input_type_id.code or '').upper()))
+                    salary_inputs_deductions = sum(l.amount for l in payslip.input_line_ids if l.amount > 0 and ('DED' in (l.code or '').upper() or (l.input_type_id and 'DED' in (l.input_type_id.code or '').upper())))
 
                     bank_after_lop = bank_amount - bank_lop_deduction
                     
                     cash_after_lop = cash_amount - cash_lop_deduction + extra_ot_amount
                    
-                    
                     # PF = 12% of 70% of bank after LOP
                     # ESI = 0.75% of PF base
                     pf_base = round(bank_after_lop * 0.70, 2)
                     pf = round(pf_base * 0.12, 2)
                     esi = round(bank_after_lop * 0.0075, 2)
                     _logger.debug("pf_base = %s; pf = %s; esi = %s", pf_base, pf, esi)
-                    # Subtract employee deductions (PF and ESI) from bank payable.
-                    bank_final = round(bank_after_lop - pf - esi + salary_advance - salary_deduction, 2)
+                    # Subtract employee deductions (PF and ESI) and add salary inputs (Travel Allowance, Advances) to bank payable.
+                    bank_final = round(bank_after_lop - pf - esi + salary_inputs_allowances - salary_inputs_deductions, 2)
                     _logger.debug("bank_final = %s", bank_final)
                     cash_final = round(cash_after_lop, 2)
 
@@ -610,4 +610,44 @@ class HrPayslip(models.Model):
 
             payslip.worked_days_line_ids = [(0, 0, v) for v in lines]
 
-        return super().compute_sheet()
+        res = super().compute_sheet()
+
+        for payslip in self:
+            # Sync Net Salary and Bank Payable with Salary Inputs after standard salary rules calculation
+            salary_inputs_allowances = sum(l.amount for l in payslip.input_line_ids if l.amount > 0 and 'DED' not in (l.code or '').upper() and not (l.input_type_id and 'DED' in (l.input_type_id.code or '').upper()))
+            salary_inputs_deductions = sum(l.amount for l in payslip.input_line_ids if l.amount > 0 and ('DED' in (l.code or '').upper() or (l.input_type_id and 'DED' in (l.input_type_id.code or '').upper())))
+
+            # 1. Update Bank Payable & Cash Payable
+            bank_val = payslip.bank_payable
+            if salary_inputs_allowances or salary_inputs_deductions:
+                # Recalculate bank_payable with latest allowances and deductions
+                employee = payslip.employee_id
+                bank_amount = (employee.bank_amount if employee else 0.0) or 0.0
+                cash_amount = (employee.cash_amount if employee else 0.0) or 0.0
+                total_defined = bank_amount + cash_amount
+                
+                if total_defined:
+                    per_day_bank = bank_amount / payslip.total_days_in_month if payslip.total_days_in_month else 0
+                    bank_lop = round(payslip.unpaid_days * per_day_bank, 2)
+                    bank_after_lop = bank_amount - bank_lop
+                    pf = payslip.pf_deduction or 0.0
+                    esi = payslip.esi_deduction or 0.0
+                    bank_val = round(bank_after_lop - pf - esi + salary_inputs_allowances - salary_inputs_deductions, 2)
+                    payslip.bank_payable = bank_val
+
+            # 2. Update Net Salary line and Net Payable
+            net_line = payslip.line_ids.filtered(lambda l: (l.code or '').upper() == 'NET' or 'NET' in (l.name or '').upper())
+            if net_line:
+                base_net = sum(l.total for l in payslip.line_ids if l.code != 'NET' and getattr(l, 'appears_on_payslip', True))
+                # If Net Salary rule is present, ensure net_payable reflects total gross + allowances - deductions
+                total_net = payslip.cash_payable + bank_val
+                payslip.net_payable = total_net
+                payslip.paid_amount = total_net
+                net_line.write({'total': total_net, 'amount': total_net})
+
+            # 3. Update Bank line total in line_ids
+            bank_line = payslip.line_ids.filtered(lambda l: (l.code or '').upper() == 'BANK' or 'BANK' in (l.name or '').upper())
+            if bank_line:
+                bank_line.write({'total': bank_val, 'amount': bank_val})
+
+        return res
