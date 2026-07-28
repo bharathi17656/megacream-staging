@@ -121,7 +121,7 @@ class HrPayslip(models.Model):
         if code == 'CASH' or 'CASH' in name:
             return self.cash_payable or 0.0
         elif code == 'BANK' or 'BANK' in name:
-            return self.print_bank_amount or 0.0
+            return self.bank_payable or 0.0
         elif code == 'ESI' or 'ESI' in name:
             return self.esi_deduction or 0.0
         elif code in ('PF', 'PF_DED') or 'PF' in name:
