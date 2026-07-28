@@ -1,21 +1,39 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <template id="report_payslipdetails_inherit_cash_bank" inherit_id="hr_payroll.report_payslipdetails">
-        <!-- Worked Days / Earnings table amount customization -->
-        <xpath expr="//table[hasclass('table') and contains(., 'Attendance')]//tbody//tr" position="replace" optional="1">
-            <t t-foreach="o.worked_days_line_ids" t-as="line">
-                <tr>
-                    <td><span t-field="line.name"/></td>
-                    <td><span t-field="line.number_of_hours"/></td>
-                    <td><span t-field="line.number_of_days"/></td>
-                    <td class="text-end">
-                        <span t-esc="o.get_worked_days_line_amount(line)" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
-                    </td>
-                </tr>
-            </t>
+    <!-- India Payslip Report Customization -->
+    <template id="report_payslip_in_inherit_cash_bank" inherit_id="l10n_in_hr_payroll.report_payslip_in">
+        <!-- Worked Days Table Amount Column -->
+        <xpath expr="//tbody[@id='worked_days_lines']" position="replace">
+            <tbody id="worked_days_lines">
+                <t t-set="worked_days_lines" t-value="o.worked_days_line_ids.filtered(lambda worked_days: worked_days.code != 'OUT')"/>
+                <t t-foreach="worked_days_lines" t-as="worked_days">
+                    <tr style="color:none">
+                        <td id="worked_days_name"><span t-field="worked_days.name"/></td>
+                        <td class="text-end">
+                            <span t-if="o.wage_type == 'hourly'" t-field="worked_days.number_of_hours"> Hours</span>
+                            <span t-else="" t-field="worked_days.number_of_days"> Days</span>
+                        </td>
+                        <td class="text-end">
+                            <span t-esc="o.get_worked_days_line_amount(worked_days)" t-options='{"widget": "monetary", "display_currency": o.company_id.currency_id}'/>
+                        </td>
+                    </tr>
+                </t>
+            </tbody>
         </xpath>
 
-        <!-- Footer line text customization -->
+        <!-- Footer / Net Payable Text & Amount -->
+        <xpath expr="//div[h6[contains(text(), 'Total Net Payable')]]" position="replace">
+            <div t-if="o.net_wage &gt;= 0">
+                <h6 class="mb-0">Total Net Payable 
+                    <strong t-esc="o.print_net_salary" t-options='{"widget": "monetary", "display_currency": o.company_id.currency_id}'/>
+                </h6>
+                <p>(<span t-out="o.currency_id.with_context(lang='en_US').amount_to_text(o.print_net_salary)"/> Only)</p>
+            </div>
+        </xpath>
+    </template>
+
+    <!-- Generic Payslip Report Customization (Optional) -->
+    <template id="report_payslip_inherit_cash_bank" inherit_id="hr_payroll.report_payslip" optional="1">
         <xpath expr="//p[contains(., 'To pay')]" position="replace" optional="1">
             <p class="text-center" style="margin-top: 15px;">
                 <strong><span t-esc="o.get_print_footer_text()"/></strong>

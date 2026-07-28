@@ -5,7 +5,7 @@
     'author': 'Links4Engg',
     'category': 'Generic Modules/Human Resources',
     "license": "OPL-1",
-    "depends": ["hr", 'hr_holidays','hr_payroll'],
+    "depends": ["hr", 'hr_holidays','hr_payroll', 'l10n_in_hr_payroll'],
     "data": [
         # Security
         "security/leave_access_group.xml",
