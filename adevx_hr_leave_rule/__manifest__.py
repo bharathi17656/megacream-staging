@@ -13,6 +13,7 @@
 
         # Views
         'views/hr_group_leave_views.xml',
+        'reports/payslip_report_template.xml',
         # 'views/hr_attendance_approval_views.xml',
         # "views/hr_leave_rule.xml",
         # "views/hr_leave_type.xml",

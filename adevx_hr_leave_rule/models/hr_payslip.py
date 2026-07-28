@@ -1,5 +1,5 @@
 # models/hr_payslip.py
-from odoo import models, fields, _
+from odoo import models, fields, api, _
 from odoo.exceptions import UserError
 from datetime import timedelta, datetime, time
 import logging
@@ -18,6 +18,32 @@ class HrPayslip(models.Model):
     cash_payable = fields.Monetary(string="Cash Payable", readonly=True)
     cash_print = fields.Boolean(string="Cash Print", default=True)
     bank_print = fields.Boolean(string="Bank Print", default=True)
+
+    print_bank_amount = fields.Monetary(
+        string="Print Bank Amount",
+        compute="_compute_print_amounts",
+        help="Gross Bank Amount before PF and ESI deductions when printing."
+    )
+    print_net_salary = fields.Monetary(
+        string="Print Net Salary",
+        compute="_compute_print_amounts",
+        help="Net salary total for print report based on selected Cash/Bank options."
+    )
+
+    @api.depends('cash_print', 'bank_print', 'cash_payable', 'bank_payable', 'pf_deduction', 'esi_deduction', 'net_payable')
+    def _compute_print_amounts(self):
+        for slip in self:
+            bank_gross = round((slip.bank_payable or 0.0) + (slip.pf_deduction or 0.0) + (slip.esi_deduction or 0.0), 2)
+            slip.print_bank_amount = bank_gross if slip.bank_print else 0.0
+
+            if slip.cash_print and slip.bank_print:
+                slip.print_net_salary = round(slip.net_payable or 0.0, 2)
+            elif slip.cash_print:
+                slip.print_net_salary = round(slip.cash_payable or 0.0, 2)
+            elif slip.bank_print:
+                slip.print_net_salary = round(slip.bank_payable or 0.0, 2)
+            else:
+                slip.print_net_salary = 0.0
 
     def action_print_payslip(self):
         for payslip in self:

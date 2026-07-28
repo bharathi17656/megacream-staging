@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="report_payslipdetails_inherit_cash_bank" inherit_id="hr_payroll.report_payslipdetails">
+        <xpath expr="//div[hasclass('page')]" position="inside">
+            <!-- Custom dynamic print amounts for Cash / Bank options -->
+        </xpath>
+    </template>
+</odoo>
