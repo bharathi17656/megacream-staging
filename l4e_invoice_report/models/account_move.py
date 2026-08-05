@@ -25,11 +25,14 @@ class AccountMove(models.Model):
         compute="_compute_l4e_salesperson_info",
     )
 
-    @api.depends("invoice_line_ids.quantity", "invoice_line_ids.display_type")
+    @api.depends("invoice_line_ids.quantity", "invoice_line_ids.display_type", "invoice_line_ids.product_uom_id")
     def _compute_total_qty(self):
         for move in self:
             product_lines = move.invoice_line_ids.filtered(
                 lambda l: l.display_type == "product"
+                          and l.product_uom_id
+                          and l.product_uom_id.name
+                          and l.product_uom_id.name.strip().lower() == "nos"
             )
             move.total_qty = sum(product_lines.mapped("quantity"))
 
