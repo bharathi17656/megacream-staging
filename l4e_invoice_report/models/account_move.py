@@ -29,7 +29,7 @@ class AccountMove(models.Model):
     def _compute_total_qty(self):
         for move in self:
             product_lines = move.invoice_line_ids.filtered(
-                lambda l: not l.display_type
+                lambda l: l.display_type == "product"
             )
             move.total_qty = sum(product_lines.mapped("quantity"))
 
