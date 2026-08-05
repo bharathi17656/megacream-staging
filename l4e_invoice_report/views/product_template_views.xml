@@ -1,0 +1,14 @@
+<odoo>
+    <record id="view_product_template_form_inherit_item_code" model="ir.ui.view">
+        <field name="name">product.template.form.item.code</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="l10n_in.product_template_hsn_code"/>
+        <field name="arch" type="xml">
+
+            <xpath expr="//field[@name='l10n_in_hsn_code']" position="after">
+                <field name="l4e_item_code"/>
+            </xpath>
+
+        </field>
+    </record>
+</odoo>

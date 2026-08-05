@@ -53,7 +53,7 @@
         </xpath>
         <xpath expr="//table[hasclass('o_main_table')]//tbody//td[@name='td_quantity']" position="before">
             <td name="td_item_code">
-                <span t-field="line.product_id.default_code"/>
+                <span t-field="line.product_id.l4e_item_code"/>
             </td>
         </xpath>
 
