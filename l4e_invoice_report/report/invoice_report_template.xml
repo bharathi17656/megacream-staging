@@ -5,7 +5,7 @@
              Static company letterhead data - hardcoded rather than modeled as fields,
              since it does not change per invoice. Edit the text below directly if the
              company's registration/bank details ever change. -->
-        <xpath expr="//div[hasclass('invoice_main')]" position="before">
+        <!-- <xpath expr="//div[hasclass('invoice_main')]" position="before">
             <div class="row mt8" name="l4e_seller_details">
                 <div class="col-6" name="l4e_seller_info">
                     <strong>GSTIN/UIN:</strong> 33AASFM2559C1Z9<br/>
@@ -15,22 +15,19 @@
                     <strong>E-Mail:</strong> accounts@megacream.in
                 </div>
             </div>
-        </xpath>
+        </xpath> -->
 
         <!-- (2) Customer block: add Phone to the "Invoice to" widget (dynamic, per partner).
              v19 has 3 variants of this address block depending on shipping-address logic;
              patch all 3 so it works regardless of which one renders for a given invoice. -->
         <xpath expr="//div[@name='no_shipping']//address[@t-field='o.partner_id']" position="replace">
-            <address class="mb-0" t-field="o.partner_id"
-                 t-options='{"widget": "contact", "fields": ["address", "name", "phone", "email"], "no_marker": True}'/>
+            <address class="mb-0" t-field="o.partner_id" t-options="{&quot;widget&quot;: &quot;contact&quot;, &quot;fields&quot;: [&quot;address&quot;, &quot;name&quot;, &quot;phone&quot;, &quot;email&quot;], &quot;no_marker&quot;: True}"/>
         </xpath>
         <xpath expr="//div[@name='address_same_as_shipping']//address[@t-field='o.partner_id']" position="replace">
-            <address class="mb-0" t-field="o.partner_id"
-                 t-options='{"widget": "contact", "fields": ["address", "name", "phone", "email"], "no_marker": True}'/>
+            <address class="mb-0" t-field="o.partner_id" t-options="{&quot;widget&quot;: &quot;contact&quot;, &quot;fields&quot;: [&quot;address&quot;, &quot;name&quot;, &quot;phone&quot;, &quot;email&quot;], &quot;no_marker&quot;: True}"/>
         </xpath>
         <xpath expr="//div[@name='address_not_same_as_shipping']//address[@t-field='o.partner_id']" position="replace">
-            <address class="mb-0" t-field="o.partner_id"
-                 t-options='{"widget": "contact", "fields": ["address", "name", "phone", "email"], "no_marker": True}'/>
+            <address class="mb-0" t-field="o.partner_id" t-options="{&quot;widget&quot;: &quot;contact&quot;, &quot;fields&quot;: [&quot;address&quot;, &quot;name&quot;, &quot;phone&quot;, &quot;email&quot;], &quot;no_marker&quot;: True}"/>
         </xpath>
 
         <!-- (4) Salesperson name + contact, next to Reference/Source.
@@ -72,7 +69,7 @@
         </xpath>
 
         <!-- (9) Bank Details - static, hardcoded (from company's actual bank account) -->
-        <xpath expr="//div[hasclass('oe_structure')][last()]" position="before">
+        <xpath expr="//div[@id='payment_term']" position="before">
             <div class="row mt32" name="l4e_bank_details">
                 <div class="col-6">
                     <strong>Company's Bank Details</strong>
@@ -86,22 +83,22 @@
         </xpath>
 
         <!-- Declaration + computer-generated note, static text -->
-        <xpath expr="//div[hasclass('oe_structure')][last()]" position="before">
-            <div class="row mt16" name="l4e_declaration">
-                <div class="col-12">
-                    <strong>Declaration</strong>
-                    <p style="margin-bottom:0;">
-                        We declare that this invoice shows the actual price of the goods
-                        described and that all particulars are true and correct.
-                    </p>
-                </div>
-            </div>
-            <div class="row mt8">
-                <div class="col-12 text-center">
-                    <em>This is a Computer Generated Invoice</em>
-                </div>
-            </div>
-        </xpath>
+        <!--<xpath expr="//div[hasclass('oe_structure')][last()]" position="before">-->
+        <!--    <div class="row mt16" name="l4e_declaration">-->
+        <!--        <div class="col-12">-->
+        <!--            <strong>Declaration</strong>-->
+        <!--            <p style="margin-bottom:0;">-->
+        <!--                We declare that this invoice shows the actual price of the goods-->
+        <!--                described and that all particulars are true and correct.-->
+        <!--            </p>-->
+        <!--        </div>-->
+        <!--    </div>-->
+        <!--    <div class="row mt8">-->
+        <!--        <div class="col-12 text-center">-->
+        <!--            <em>This is a Computer Generated Invoice</em>-->
+        <!--        </div>-->
+        <!--    </div>-->
+        <!--</xpath>-->
 
     </template>
 </odoo>

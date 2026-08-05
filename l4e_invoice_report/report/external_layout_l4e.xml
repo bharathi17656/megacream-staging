@@ -1,5 +1,5 @@
 <odoo>
-    <template id="external_layout_standard_l4e_inherit" inherit_id="web.external_layout_standard">
+    <template id="external_layout_standard_l4e_inherit" inherit_id="web.external_layout_wave">
         <xpath expr="//div[@name='company_address']" position="after">
             <div class="row mt8" name="l4e_seller_details" t-if="o and o._name == 'account.move'">
                 <div class="col-6">
