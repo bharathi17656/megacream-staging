@@ -40,7 +40,7 @@
                 <p t-field="o.l4e_salesperson_name"/>
             </div>
             <div t-if="o.l4e_salesperson_contact" class="col" name="l4e_salesperson_contact">
-                <strong>Sales Person Contact:</strong>
+                <strong>Contact NO:</strong>
                 <p t-field="o.l4e_salesperson_contact"/>
             </div>
         </xpath>
