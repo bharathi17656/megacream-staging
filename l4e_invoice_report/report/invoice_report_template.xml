@@ -57,11 +57,6 @@
             </td>
         </xpath>
 
-        <!-- (6) HSN/SAC fallback to the product's HSN code. ... -->
-        <xpath expr="//span[@t-field='line.l10n_in_hsn_code']" position="replace">
-            <span t-out="line.l10n_in_hsn_code or line.product_id.l10n_in_hsn_code"/>
-        </xpath>
-
         <!-- (7) Rename "Unit Price" header to "Rate" -->
         <xpath expr="//table[hasclass('o_main_table')]//thead//th[@name='th_priceunit']/span" position="replace">
             <span>Rate</span>
@@ -111,10 +106,19 @@
 
     </template>
 
+    <!-- Separate template, inheriting l10n_in's view directly (not the base
+         account view). This guarantees it runs AFTER l10n_in has already
+         inserted the HSN/SAC span into the tree, avoiding "cannot be located
+         in parent view" errors caused by sibling-inherit ordering when both
+         views inherit account.report_invoice_document directly. -->
     <template id="report_invoice_document_l4e_hsn_fallback" inherit_id="l10n_in.l10n_in_report_invoice_document_inherit">
-        <!-- Inheriting l10n_in's view directly (not the base account view) guarantees
-            this runs AFTER l10n_in has already inserted the HSN/SAC span, avoiding
-            "cannot be located in parent view" errors caused by sibling-inherit ordering. -->
+        <!-- (6) HSN/SAC fallback to the product's HSN code.
+             l10n_in only copies HSN from product to the invoice line while the
+             invoice is in draft (see l10n_in's _compute_l10n_in_hsn_code). Once
+             posted, that copy is frozen - if the product's HSN code was set/edited
+             AFTER the invoice was created, the line stays blank forever. This
+             falls back to the product's current HSN code whenever the line's own
+             value is empty, so the PDF always shows something if the product has it. -->
         <xpath expr="//span[@t-field='line.l10n_in_hsn_code']" position="replace">
             <span t-out="line.l10n_in_hsn_code or line.product_id.l10n_in_hsn_code"/>
         </xpath>
