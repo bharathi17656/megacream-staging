@@ -11,9 +11,9 @@
         "l4e_custom_fields",
     ],
     "data": [
-        "report/invoice_report_template.xml",
-        "external_layout_l4e.xml"
-    ],
+            "report/invoice_report_template.xml",
+            "report/external_layout_l4e.xml",
+        ],
     "installable": True,
     "application": False,
 }
