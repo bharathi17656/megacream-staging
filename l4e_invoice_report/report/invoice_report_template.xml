@@ -1,5 +1,5 @@
 <odoo>
-    <template id="report_invoice_document_l4e_inherit" inherit_id="account.report_invoice_document" priority="20">
+    <template id="report_invoice_document_l4e_inherit" inherit_id="account.report_invoice_document">
 
         <!-- (1) Seller block: GSTIN / FSSAI / State / Contact / Email.
              Static company letterhead data - hardcoded rather than modeled as fields,
@@ -57,6 +57,30 @@
             </td>
         </xpath>
 
+        <!-- (6) HSN/SAC column, positioned right after Description, with fallback
+             to the product's HSN code. Rendered directly here (name-anchored to
+             th_description / account_invoice_line_name) instead of relying on
+             l10n_in's own HSN column - l10n_in inserts its column positionally
+             ("after whatever the first column currently is"), which conflicts
+             with our Item Code column and produces an unreliable order depending
+             on inherit-view load sequencing. See report_invoice_document_l4e_hsn_fallback
+             below, which removes l10n_in's own column so it isn't duplicated.
+             Fallback to the product's HSN code matters because l10n_in only
+             copies HSN from product to the invoice line while the invoice is in
+             draft - once posted, that copy is frozen, so if the product's HSN
+             code was set/edited AFTER the invoice was created, the line's own
+             value stays blank forever. -->
+        <xpath expr="//table[hasclass('o_main_table')]//thead//th[@name='th_description']" position="after">
+            <th name="th_hsn_sac" class="text-start" t-if="o.company_id.account_fiscal_country_id.code == 'IN' and o.company_id.l10n_in_is_gst_registered">
+                <span>HSN/SAC</span>
+            </th>
+        </xpath>
+        <xpath expr="//table[hasclass('o_main_table')]//tbody//td[@name='account_invoice_line_name']" position="after">
+            <td name="td_hsn_sac" t-if="o.company_id.account_fiscal_country_id.code == 'IN' and o.company_id.l10n_in_is_gst_registered">
+                <span t-out="line.l10n_in_hsn_code or line.product_id.l10n_in_hsn_code"/>
+            </td>
+        </xpath>
+
         <!-- (7) Rename "Unit Price" header to "Rate" -->
         <xpath expr="//table[hasclass('o_main_table')]//thead//th[@name='th_priceunit']/span" position="replace">
             <span>Rate</span>
@@ -106,38 +130,14 @@
 
     </template>
 
-    <!-- Separate template, inheriting l10n_in's view directly (not the base
-         account view). This guarantees it runs AFTER l10n_in has already
-         inserted the HSN/SAC span into the tree, avoiding "cannot be located
-         in parent view" errors caused by sibling-inherit ordering when both
-         views inherit account.report_invoice_document directly. -->
+    <!-- Removes l10n_in's own HSN/SAC column entirely. It inherits l10n_in's
+         specific view directly (not the base account view), which guarantees
+         these nodes exist here regardless of any other module's load order.
+         We render our own HSN/SAC column above instead (name-anchored, always
+         lands right after Description), so l10n_in's version must be removed
+         to avoid a duplicate column. -->
     <template id="report_invoice_document_l4e_hsn_fallback" inherit_id="l10n_in.l10n_in_report_invoice_document_inherit">
-        <!-- (6) HSN/SAC fallback to the product's HSN code.
-             l10n_in only copies HSN from product to the invoice line while the
-             invoice is in draft (see l10n_in's _compute_l10n_in_hsn_code). Once
-             posted, that copy is frozen - if the product's HSN code was set/edited
-             AFTER the invoice was created, the line stays blank forever. This
-             falls back to the product's current HSN code whenever the line's own
-             value is empty, so the PDF always shows something if the product has it. -->
-        <xpath expr="//span[@t-field='line.l10n_in_hsn_code']" position="replace">
-            <span t-out="line.l10n_in_hsn_code or line.product_id.l10n_in_hsn_code"/>
-        </xpath>
-    </template>
-
-    <!-- (10) Force final column order: Item Code, Description, HSN/SAC, Quantity...
-         l10n_in inserts its HSN/SAC column positionally ("after whatever th[1]
-         currently is"), so it lands in the wrong place depending on inherit-view
-         load order, which is unreliable to control via priority alone. This
-         template runs LAST (priority 99, higher than everything else touching
-         this report) and explicitly moves the already-inserted HSN/SAC column
-         to sit right after Description, guaranteeing the order regardless of
-         how the other views were applied. -->
-    <template id="report_invoice_document_l4e_column_order" inherit_id="account.report_invoice_document" priority="99">
-        <xpath expr="//th[@name='th_description']" position="after">
-            <xpath expr="//th[normalize-space(text())='HSN/SAC']" position="move"/>
-        </xpath>
-        <xpath expr="//td[@name='account_invoice_line_name']" position="after">
-            <xpath expr="//td[span[@t-out]]" position="move"/>
-        </xpath>
+        <xpath expr="//th[normalize-space(text())='HSN/SAC']" position="replace"/>
+        <xpath expr="//td[span[@t-field='line.l10n_in_hsn_code']]" position="replace"/>
     </template>
 </odoo>
