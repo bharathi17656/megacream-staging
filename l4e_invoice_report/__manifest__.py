@@ -12,7 +12,6 @@
         "l4e_custom_fields",
     ],
     "data": [
-            "views/account_move_views.xml",
             "views/product_template_views.xml",
             "report/invoice_report_template.xml",
             "report/external_layout_l4e.xml",
