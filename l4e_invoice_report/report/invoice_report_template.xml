@@ -146,25 +146,17 @@
          to avoid a duplicate column. -->
     <template id="report_invoice_document_l4e_hsn_fallback" inherit_id="l10n_in.l10n_in_report_invoice_document_inherit">
         <xpath expr="//th[normalize-space(text())='HSN/SAC']" position="replace"/>
-        <xpath expr="//td[span[@t-field='line.l10n_in_hsn_code']]" position="replace"/>
-
-        <!-- Hide l10n_in's right-side "Total amount in words" via CSS (Odoo 19 restructured the DOM, old ancestor XPath no longer works) -->
-        <xpath expr="//div[@id='payment_term']" position="before">
-            <style>
-                span[data-field-name="amount_total_words"],
-                .l10n_in_amount_in_words,
-                div:has(> span[data-field-name="amount_total_words"]) {
-                    display: none !important;
-                }
-            </style>
-        </xpath>
-
-        <!-- Our own left-side "Total amount in words" after payment communication -->
-        <xpath expr="//p[@name='payment_communication']" position="after">
-            <div t-if="o.company_id.display_invoice_amount_total_words" class="mb-2 text-start" name="l4e_amount_in_words">
-                <strong>Total amount in words:</strong><br/>
-                <span class="text-muted" t-field="o.amount_total_words"/>
-            </div>
-        </xpath>
+            <xpath expr="//td[span[@t-field='line.l10n_in_hsn_code']]" position="replace"/>
+        
+            <!-- Hide l10n_in's right-side "Total amount in words" - replace the parent div -->
+            <xpath expr="//span[@t-field='o.amount_total_words']/../.." position="replace"/>
+        
+            <!-- Our own left-side "Total amount in words" after payment communication -->
+            <xpath expr="//p[@name='payment_communication']" position="after">
+                <div t-if="o.company_id.display_invoice_amount_total_words" class="mb-2 text-start" name="l4e_amount_in_words">
+                    <strong>Total amount in words:</strong><br/>
+                    <span class="text-muted" t-field="o.amount_total_words"/>
+                </div>
+            </xpath>
     </template>
 </odoo>
