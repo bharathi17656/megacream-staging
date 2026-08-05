@@ -1,0 +1,97 @@
+<odoo>
+    <template id="report_invoice_document_l4e_inherit" inherit_id="account.report_invoice_document">
+
+        <!-- (1) Seller block: GSTIN / FSSAI / State / Contact / Email.
+             Static company letterhead data - hardcoded rather than modeled as fields,
+             since it does not change per invoice. Edit the text below directly if the
+             company's registration/bank details ever change. -->
+        <xpath expr="//div[@id='right_addresses']/.." position="after">
+            <div class="row mt8" name="l4e_seller_details">
+                <div class="col-6" name="l4e_seller_info">
+                    <strong>GSTIN/UIN:</strong> 33AASFM2559C1Z9<br/>
+                    <strong>FSSAI No:</strong> 12417002001963<br/>
+                    <strong>State Name:</strong> Tamil Nadu, Code: 33<br/>
+                    <strong>Contact:</strong> 044-26622939, 9884049497, 9884074242<br/>
+                    <strong>E-Mail:</strong> accounts@megacream.in
+                </div>
+            </div>
+        </xpath>
+
+        <!-- (2) Customer block: add Phone to the "Invoice to" widget (dynamic, per partner) -->
+        <xpath expr="//div[@id='right_addresses']//div[@t-field='o.partner_id']" position="replace">
+            <div t-field="o.partner_id"
+                 t-options='{"widget": "contact", "fields": ["address", "name", "phone", "email", "vat"], "no_marker": True}'/>
+        </xpath>
+
+        <!-- (4) Salesperson name + contact, next to Reference/Source.
+             Name uses the standard invoice_user_id field - no custom field needed.
+             Contact number uses sales_contact_number, already added by l4e_custom_fields. -->
+        <xpath expr="//div[@id='informations']" position="inside">
+            <div t-if="o.invoice_user_id" class="col" name="l4e_salesperson">
+                <strong>Sales Person:</strong>
+                <p t-field="o.invoice_user_id.name"/>
+                <span t-if="o.sales_contact_number" t-field="o.sales_contact_number"/>
+            </div>
+        </xpath>
+
+        <!-- (5) Item Code column (kept per original handwritten note) -->
+        <xpath expr="//table[hasclass('o_main_table')]//thead//th[@name='th_quantity']" position="before">
+            <th name="th_item_code" class="text-start">
+                <span>Item Code</span>
+            </th>
+        </xpath>
+        <xpath expr="//table[hasclass('o_main_table')]//tbody//td[@name='td_quantity']" position="before">
+            <td name="td_item_code">
+                <span t-field="line.product_id.default_code"/>
+            </td>
+        </xpath>
+
+        <!-- (7) Rename "Unit Price" header to "Rate" -->
+        <xpath expr="//table[hasclass('o_main_table')]//thead//th[@name='th_priceunit']/span" position="replace">
+            <span>Rate</span>
+        </xpath>
+
+        <!-- (8) Total Quantity, above the tax totals block (dynamic, per invoice) -->
+        <xpath expr="//div[@id='total']" position="before">
+            <div class="row" name="l4e_total_qty">
+                <div class="col-4 ms-auto text-end">
+                    <strong>Total Quantity: </strong>
+                    <span t-field="o.total_qty"/>
+                </div>
+            </div>
+        </xpath>
+
+        <!-- (9) Bank Details - static, hardcoded (from company's actual bank account) -->
+        <xpath expr="//div[hasclass('oe_structure')][last()]" position="before">
+            <div class="row mt32" name="l4e_bank_details">
+                <div class="col-6">
+                    <strong>Company's Bank Details</strong>
+                    <p style="margin-bottom:0;">
+                        Bank Name: Hdfc Bank<br/>
+                        A/c No.: 12842000000160<br/>
+                        Branch &amp; IFS Code: EGMORE &amp; HDFC0001284
+                    </p>
+                </div>
+            </div>
+        </xpath>
+
+        <!-- Declaration + computer-generated note, static text -->
+        <xpath expr="//div[hasclass('oe_structure')][last()]" position="before">
+            <div class="row mt16" name="l4e_declaration">
+                <div class="col-12">
+                    <strong>Declaration</strong>
+                    <p style="margin-bottom:0;">
+                        We declare that this invoice shows the actual price of the goods
+                        described and that all particulars are true and correct.
+                    </p>
+                </div>
+            </div>
+            <div class="row mt8">
+                <div class="col-12 text-center">
+                    <em>This is a Computer Generated Invoice</em>
+                </div>
+            </div>
+        </xpath>
+
+    </template>
+</odoo>
