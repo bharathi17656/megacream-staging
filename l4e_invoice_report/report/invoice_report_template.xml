@@ -152,10 +152,12 @@
             <xpath expr="//span[@t-field='o.amount_total_words']/../.." position="replace"/>
         
             <!-- Our own left-side "Total amount in words" after payment communication -->
-            <xpath expr="//p[@name='payment_communication']" position="after">
-                <div t-if="o.company_id.display_invoice_amount_total_words" class="mb-2 text-start" name="l4e_amount_in_words">
-                    <strong>Total amount in words:</strong><br/>
-                    <span class="text-muted" t-field="o.amount_total_words"/>
+            <xpath expr="//div[@name='l4e_bank_details']" position="before">
+                <div t-if="o.company_id.display_invoice_amount_total_words" class="row mt8" name="l4e_amount_in_words">
+                    <div class="col-12">
+                        <strong>Total amount in words:</strong><br/>
+                        <span class="text-muted" t-field="o.amount_total_words"/>
+                    </div>
                 </div>
             </xpath>
     </template>
