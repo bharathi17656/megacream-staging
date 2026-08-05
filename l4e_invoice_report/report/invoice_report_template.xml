@@ -149,13 +149,13 @@
         <xpath expr="//td[span[@t-field='line.l10n_in_hsn_code']]" position="replace"/>
 
         <!-- (10) Relocate "Total amount in words" to the left side (after payment communication) -->
-        <xpath expr="//span[@t-field='o.amount_total_words']/ancestor::div[@t-if][1]" position="replace"/>
+        <!-- <xpath expr="//span[@t-field='o.amount_total_words']/ancestor::div[@t-if][1]" position="replace"/> -->
 
-        <xpath expr="//p[@name='payment_communication']" position="after">
+        <!-- <xpath expr="//p[@name='payment_communication']" position="after">
             <div t-if="o.company_id.display_invoice_amount_total_words" class="mb-2 text-start" name="l4e_amount_in_words">
                 <strong>Total amount in words:</strong><br/>
                 <span class="text-muted" t-field="o.amount_total_words"/>
             </div>
-        </xpath>
+        </xpath> -->
     </template>
 </odoo>
