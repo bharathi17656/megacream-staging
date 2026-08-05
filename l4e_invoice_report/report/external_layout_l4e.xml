@@ -1,0 +1,15 @@
+<odoo>
+    <template id="external_layout_standard_l4e_inherit" inherit_id="web.external_layout_standard">
+        <xpath expr="//div[@name='company_address']" position="after">
+            <div class="row mt8" name="l4e_seller_details" t-if="o and o._name == 'account.move'">
+                <div class="col-6">
+                    <strong>GSTIN/UIN:</strong> 33AASFM2559C1Z9<br/>
+                    <strong>FSSAI No:</strong> 12417002001963<br/>
+                    <strong>State Name:</strong> Tamil Nadu, Code: 33<br/>
+                    <strong>Contact:</strong> 044-26622939, 9884049497, 9884074242<br/>
+                    <strong>E-Mail:</strong> accounts@megacream.in
+                </div>
+            </div>
+        </xpath>
+    </template>
+</odoo>

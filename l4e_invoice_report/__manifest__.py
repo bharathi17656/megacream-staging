@@ -12,6 +12,7 @@
     ],
     "data": [
         "report/invoice_report_template.xml",
+        "external_layout_l4e.xml"
     ],
     "installable": True,
     "application": False,
