@@ -7,6 +7,7 @@
     "license": "OPL-1",
     "depends": [
         "account",
+        "sale",
         "l10n_in",
         "l4e_custom_fields",
     ],
