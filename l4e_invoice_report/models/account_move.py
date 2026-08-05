@@ -44,8 +44,4 @@ class AccountMove(models.Model):
         for move in self:
             salesperson = move.l4e_sale_order_id.user_id
             move.l4e_salesperson_name = salesperson.name or False
-            move.l4e_salesperson_contact = (
-                salesperson.partner_id.mobile
-                or salesperson.partner_id.phone
-                or False
-            )
+            move.l4e_salesperson_contact = salesperson.partner_id.phone or False
