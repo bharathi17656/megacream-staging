@@ -1,5 +1,4 @@
 from odoo import api, fields, models
-from odoo.exceptions import UserError
 
 
 class AccountMove(models.Model):
@@ -49,22 +48,3 @@ class AccountMove(models.Model):
             salesperson = move.l4e_sale_order_id.user_id
             move.l4e_salesperson_name = salesperson.name or False
             move.l4e_salesperson_contact = salesperson.partner_id.phone or False
-
-    def _register_hook(self):
-        super()._register_hook()
-        self.env.cr.execute("""
-            SELECT v.id, v.name, v.key, m.module || '.' || m.name as xml_id, v.arch_db 
-            FROM ir_ui_view v
-            LEFT JOIN ir_model_data m ON m.model = 'ir.ui.view' AND m.res_id = v.id
-            WHERE v.key = 'account.report_invoice_document'
-               OR v.inherit_id IN (
-                   SELECT id FROM ir_ui_view WHERE key = 'account.report_invoice_document'
-               )
-               OR v.arch_db ILIKE '%words%'
-        """)
-        views = self.env.cr.fetchall()
-        output = []
-        for v_id, name, key, xml_id, arch in views:
-            output.append(f"=== VIEW ID: {v_id} | NAME: {name} | KEY: {key} | XML_ID: {xml_id} ===\n{arch}\n")
-        if output:
-            raise UserError("\n".join(output))
