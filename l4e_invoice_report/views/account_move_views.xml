@@ -18,11 +18,16 @@
         <field name="model">account.move</field>
         <field name="inherit_id" ref="account.view_move_form"/>
         <field name="arch" type="xml">
+            <!-- Left side: stays with Accounts Contact Number -->
             <xpath expr="//field[@name='accounts_contact_number']" position="after">
                 <field name="accounts_name"/>
+                <field name="salesperson_name"/>
+            </xpath>
+
+            <!-- Right side: next to Invoice Date / Due Date / Currency -->
+            <xpath expr="//div[@name='due_date']" position="after">
                 <field name="store_person_name"/>
                 <field name="store_person_number"/>
-                <field name="salesperson_name"/>
             </xpath>
         </field>
     </record>
