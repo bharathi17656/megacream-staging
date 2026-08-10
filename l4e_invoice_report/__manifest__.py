@@ -10,6 +10,7 @@
         "sale",
         "l10n_in",
         "l4e_custom_fields",
+        "l4e_posted_invoice_editor",
     ],
     "data": [
         "views/product_template_views.xml",
