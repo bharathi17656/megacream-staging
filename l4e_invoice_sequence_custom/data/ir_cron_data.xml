@@ -60,5 +60,17 @@
             <field name="interval_type">months</field>
             <field name="active">False</field>
         </record>
+
+        <!-- Cron 6: Update Old Receipts (GRN) -->
+        <record id="cron_update_old_receipts" model="ir.cron">
+            <field name="name">L4E: Update Old Receipt (GRN) Names</field>
+            <field name="model_id" ref="stock.model_stock_picking"/>
+            <field name="state">code</field>
+            <field name="code">model.cron_update_old_receipts()</field>
+            <field name="user_id" ref="base.user_root"/>
+            <field name="interval_number">1</field>
+            <field name="interval_type">months</field>
+            <field name="active">False</field>
+        </record>
     </data>
 </odoo>
