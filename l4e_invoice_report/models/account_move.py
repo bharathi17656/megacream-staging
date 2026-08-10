@@ -24,6 +24,12 @@ class AccountMove(models.Model):
         string="Sales Person Contact",
         compute="_compute_l4e_salesperson_info",
     )
+    
+    l4e_partner_payment_term_id = fields.Many2one(
+        related="partner_id.l4e_invoice_payment_term_id",
+        string="Partner Invoice Payment Term",
+        store=False,
+    )
 
     @api.depends("invoice_line_ids.quantity", "invoice_line_ids.display_type", "invoice_line_ids.product_uom_id")
     def _compute_total_qty(self):

@@ -12,11 +12,12 @@
         "l4e_custom_fields",
     ],
     "data": [
-            "views/product_template_views.xml",
-            "views/res_partner_views.xml",
-            "report/invoice_report_template.xml",
-            "report/external_layout_l4e.xml",
-        ],
+        "views/product_template_views.xml",
+        "views/res_partner_views.xml",
+        "views/account_move_views.xml",
+        "report/invoice_report_template.xml",
+        "report/external_layout_l4e.xml",
+    ],
     "installable": True,
     "application": False,
 }

@@ -1,0 +1,15 @@
+<odoo>
+    <record id="view_move_form_l4e_readonly_payment_term" model="ir.ui.view">
+        <field name="name">account.move.form.l4e.readonly.payment.term</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_move_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='invoice_payment_term_id']" position="before">
+                <field name="l4e_partner_payment_term_id" invisible="1"/>
+            </xpath>
+            <xpath expr="//field[@name='invoice_payment_term_id']" position="attributes">
+                <attribute name="readonly">l4e_partner_payment_term_id</attribute>
+            </xpath>
+        </field>
+    </record>
+</odoo>
