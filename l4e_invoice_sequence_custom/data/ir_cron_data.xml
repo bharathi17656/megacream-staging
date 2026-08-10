@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- Cron 1: Update Old Customer Invoices -->
+        <record id="cron_update_old_customer_invoices" model="ir.cron">
+            <field name="name">L4E: Update Old Customer Invoice Names</field>
+            <field name="model_id" ref="account.model_account_move"/>
+            <field name="state">code</field>
+            <field name="code">model.cron_update_old_invoices()</field>
+            <field name="user_id" ref="base.user_root"/>
+            <field name="interval_number">1</field>
+            <field name="interval_type">months</field>
+            <field name="active">False</field>
+        </record>
+
+        <!-- Cron 2: Update Old Vendor Bills -->
+        <record id="cron_update_old_vendor_bills" model="ir.cron">
+            <field name="name">L4E: Update Old Vendor Bill Names</field>
+            <field name="model_id" ref="account.model_account_move"/>
+            <field name="state">code</field>
+            <field name="code">model.cron_update_old_bills()</field>
+            <field name="user_id" ref="base.user_root"/>
+            <field name="interval_number">1</field>
+            <field name="interval_type">months</field>
+            <field name="active">False</field>
+        </record>
+    </data>
+</odoo>
