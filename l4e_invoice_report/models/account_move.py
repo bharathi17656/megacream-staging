@@ -30,6 +30,13 @@ class AccountMove(models.Model):
         string="Partner Invoice Payment Term",
         store=False,
     )
+    
+    def _l4e_default_invoice_date(self):
+        if self.env.context.get("default_move_type") in ("in_invoice", "in_refund"):
+            return fields.Date.context_today(self)
+        return False
+
+    invoice_date = fields.Date(default=_l4e_default_invoice_date)
 
     @api.depends("invoice_line_ids.quantity", "invoice_line_ids.display_type", "invoice_line_ids.product_uom_id")
     def _compute_total_qty(self):
