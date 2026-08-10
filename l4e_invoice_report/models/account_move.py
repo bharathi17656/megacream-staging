@@ -42,16 +42,28 @@ class AccountMove(models.Model):
             orders = move.invoice_line_ids.sale_line_ids.order_id
             move.l4e_sale_order_id = orders[:1]
 
-    @api.depends("l4e_sale_order_id.user_id")
+    @api.depends("invoice_line_ids.sale_line_ids.order_id.user_id")
     def _compute_l4e_salesperson_info(self):
         for move in self:
             salesperson = move.l4e_sale_order_id.user_id
             move.l4e_salesperson_name = salesperson.name or False
             move.l4e_salesperson_contact = salesperson.partner_id.phone or False
-            
+
     @api.depends("partner_id", "partner_id.l4e_invoice_payment_term_id")
     def _compute_invoice_payment_term_id(self):
         super()._compute_invoice_payment_term_id()
         for move in self:
             if move.is_sale_document(include_receipts=True) and move.partner_id.l4e_invoice_payment_term_id:
                 move.invoice_payment_term_id = move.partner_id.l4e_invoice_payment_term_id
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        moves = super().create(vals_list)
+        for move in moves:
+            if (
+                move.is_sale_document(include_receipts=True)
+                and move.partner_id.l4e_invoice_payment_term_id
+                and move.invoice_payment_term_id != move.partner_id.l4e_invoice_payment_term_id
+            ):
+                move.invoice_payment_term_id = move.partner_id.l4e_invoice_payment_term_id
+        return moves
