@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_move_form_inherit_l4e_posted_edit" model="ir.ui.view">
+        <field name="name">account.move.form.inherit.l4e.posted.edit</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_move_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//header" position="inside">
+                <field name="is_posted_editable" invisible="1"/>
+                <button name="action_posted_edit"
+                        string="Edit"
+                        type="object"
+                        class="btn-primary"
+                        invisible="state != 'posted' or is_posted_editable"/>
+                <button name="action_posted_done"
+                        string="Done"
+                        type="object"
+                        class="btn-success"
+                        invisible="state != 'posted' or not is_posted_editable"/>
+            </xpath>
+
+            <xpath expr="//field[@name='partner_id']" position="attributes">
+                <attribute name="readonly">state != 'draft' and not is_posted_editable</attribute>
+            </xpath>
+            <xpath expr="//field[@name='invoice_date']" position="attributes">
+                <attribute name="readonly">state != 'draft' and not is_posted_editable</attribute>
+            </xpath>
+            <xpath expr="//field[@name='date']" position="attributes">
+                <attribute name="readonly">state != 'draft' and not is_posted_editable</attribute>
+            </xpath>
+            <xpath expr="//field[@name='payment_reference']" position="attributes">
+                <attribute name="readonly">inalterable_hash != False and not is_posted_editable</attribute>
+            </xpath>
+            <xpath expr="//field[@name='invoice_payment_term_id']" position="attributes">
+                <attribute name="readonly">state in ['cancel', 'posted'] and not is_posted_editable</attribute>
+            </xpath>
+            <xpath expr="//field[@name='journal_id']" position="attributes">
+                <attribute name="readonly">posted_before and name not in (False, '', '/') and not is_posted_editable</attribute>
+            </xpath>
+            <xpath expr="//field[@name='invoice_line_ids']" position="attributes">
+                <attribute name="readonly">state != 'draft' and not is_posted_editable</attribute>
+            </xpath>
+            <xpath expr="//field[@name='line_ids' or @name='journal_line_ids']" position="attributes">
+                <attribute name="readonly">state != 'draft' and not is_posted_editable</attribute>
+            </xpath>
+            <xpath expr="//field[@name='narration']" position="attributes">
+                <attribute name="readonly">state != 'draft' and not is_posted_editable</attribute>
+            </xpath>
+            <xpath expr="//field[@name='fiscal_position_id']" position="attributes">
+                <attribute name="readonly">state in ['cancel', 'posted'] and not is_posted_editable</attribute>
+            </xpath>
+        </field>
+    </record>
+</odoo>
