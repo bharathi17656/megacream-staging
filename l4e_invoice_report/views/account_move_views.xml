@@ -12,4 +12,18 @@
             </xpath>
         </field>
     </record>
+
+    <record id="view_move_form_l4e_extra_contact_fields" model="ir.ui.view">
+        <field name="name">account.move.form.l4e.extra.contact.fields</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_move_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='invoice_payment_term_id']" position="after">
+                <field name="salesperson_name"/>
+                <field name="store_person_name"/>
+                <field name="store_person_number"/>
+                <field name="accounts_name"/>
+            </xpath>
+        </field>
+    </record>
 </odoo>

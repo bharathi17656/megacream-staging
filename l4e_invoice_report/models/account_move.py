@@ -31,6 +31,11 @@ class AccountMove(models.Model):
         store=False,
     )
     
+    salesperson_name = fields.Char(string="Salesperson Name")
+    store_person_name = fields.Char(string="Store Person Name")
+    store_person_number = fields.Char(string="Store Person Number")
+    accounts_name = fields.Char(string="Accounts Name")
+    
     def _l4e_default_invoice_date(self):
         if self.env.context.get("default_move_type") in ("in_invoice", "in_refund"):
             return fields.Date.context_today(self)
