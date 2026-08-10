@@ -13,6 +13,7 @@
     ],
     "data": [
             "views/product_template_views.xml",
+            "views/res_partner_views.xml",
             "report/invoice_report_template.xml",
             "report/external_layout_l4e.xml",
         ],
