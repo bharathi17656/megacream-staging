@@ -3,6 +3,7 @@
         <field name="name">account.move.form.l4e.readonly.payment.term</field>
         <field name="model">account.move</field>
         <field name="inherit_id" ref="account.view_move_form"/>
+        <field name="priority">99</field>
         <field name="arch" type="xml">
             <xpath expr="//field[@name='invoice_payment_term_id']" position="before">
                 <field name="l4e_partner_payment_term_id" invisible="1"/>
