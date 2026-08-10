@@ -25,10 +25,9 @@ class AccountMove(models.Model):
         compute="_compute_l4e_salesperson_info",
     )
     
-    l4e_partner_payment_term_id = fields.Many2one(
-        related="partner_id.l4e_invoice_payment_term_id",
-        string="Partner Invoice Payment Term",
-        store=False,
+    l4e_is_payment_term_readonly = fields.Boolean(
+        string="Is Payment Term Readonly",
+        compute="_compute_l4e_is_payment_term_readonly",
     )
     
     salesperson_name = fields.Char(string="Salesperson Name")
@@ -85,3 +84,15 @@ class AccountMove(models.Model):
             ):
                 move.invoice_payment_term_id = move.partner_id.l4e_invoice_payment_term_id
         return moves
+
+    @api.depends("partner_id", "partner_id.l4e_invoice_payment_term_id", "state", "is_posted_editable")
+    def _compute_l4e_is_payment_term_readonly(self):
+        for move in self:
+            is_editable_posted = False
+            if 'is_posted_editable' in self._fields:
+                is_editable_posted = move.is_posted_editable
+            
+            has_partner_term = bool(move.partner_id.l4e_invoice_payment_term_id)
+            is_posted_or_canceled = move.state in ('cancel', 'posted')
+            
+            move.l4e_is_payment_term_readonly = has_partner_term or (is_posted_or_canceled and not is_editable_posted)

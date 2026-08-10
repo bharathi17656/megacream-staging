@@ -6,10 +6,10 @@
         <field name="priority">99</field>
         <field name="arch" type="xml">
             <xpath expr="//field[@name='invoice_payment_term_id']" position="before">
-                <field name="l4e_partner_payment_term_id" invisible="1"/>
+                <field name="l4e_is_payment_term_readonly" invisible="1"/>
             </xpath>
             <xpath expr="//field[@name='invoice_payment_term_id']" position="attributes">
-                <attribute name="readonly">l4e_partner_payment_term_id or (state in ['cancel', 'posted'] and not is_posted_editable)</attribute>
+                <attribute name="readonly">l4e_is_payment_term_readonly</attribute>
             </xpath>
         </field>
     </record>
