@@ -19,10 +19,16 @@
         <field name="inherit_id" ref="account.view_move_form"/>
         <field name="arch" type="xml">
             <xpath expr="//field[@name='accounts_contact_number']" position="after">
-                <field name="salesperson_name"/>
-                <field name="store_person_name"/>
-                <field name="store_person_number"/>
-                <field name="accounts_name"/>
+                <group col="2">
+                    <group>
+                        <field name="accounts_name"/>
+                        <field name="salesperson_name"/>
+                    </group>
+                    <group>
+                        <field name="store_person_name"/>
+                        <field name="store_person_number"/>
+                    </group>
+                </group>
             </xpath>
         </field>
     </record>
