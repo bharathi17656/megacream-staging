@@ -4,7 +4,7 @@
     'author': 'Krishnaraj',
     'category': 'Human Resources',
     'summary': 'Manage employee salary increments and decrements with approval workflow',
-    'depends': ['hr', 'hr_payroll', 'mail'],
+    'depends': ['hr', 'hr_payroll', 'mail','adevx_hr_leave_rule'],
     'data': [
         'security/ir.model.access.csv',
         'views/employee_increment_views.xml',
