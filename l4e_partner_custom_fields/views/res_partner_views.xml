@@ -5,9 +5,13 @@
         <field name="model">res.partner</field>
         <field name="inherit_id" ref="base.view_partner_form"/>
         <field name="arch" type="xml">
-            <xpath expr="//div[@class='o_address_format']" position="after">
+            <xpath expr="//div[hasclass('o_address_format')]" position="after">
                 <field name="is_vendor"/>
                 <field name="is_customer"/>
+            </xpath>
+
+            <xpath expr="//field[@name='website']" position="before">
+                <field name="fssai_no" placeholder="e.g. 12345678901234"/>
             </xpath>
 
             <xpath expr="//field[@name='category_id']" position="after">

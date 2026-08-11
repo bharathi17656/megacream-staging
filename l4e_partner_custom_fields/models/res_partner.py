@@ -1,4 +1,5 @@
 from odoo import models, fields, api, _
+from odoo.exceptions import ValidationError
 
 class ResPartner(models.Model):
     _inherit = 'res.partner'
@@ -21,6 +22,18 @@ class ResPartner(models.Model):
         string='Certificates',
         help="Upload certificate documents for this partner."
     )
+    fssai_no = fields.Char(
+        string='FSSAI',
+        size=14,
+        help="14-digit FSSAI License/Registration Number."
+    )
+
+    @api.constrains('fssai_no')
+    def _check_fssai_no(self):
+        for record in self:
+            if record.fssai_no:
+                if not record.fssai_no.isdigit() or len(record.fssai_no) != 14:
+                    raise ValidationError(_("FSSAI number must consist of exactly 14 numeric digits."))
 
     def write(self, vals):
         partners_with_old_certs = {}
