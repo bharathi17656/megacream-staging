@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="report_saleorder_document_inherit_l4e" inherit_id="sale.report_saleorder_document">
+        <xpath expr="//t[@t-set='address']" position="replace">
+            <t t-set="address">
+                <div t-field="doc.partner_id" class="mb-0"
+                    t-options='{"widget": "contact", "fields": ["address", "name"], "no_marker": True}' />
+                <div class="mt-1" style="font-size: 13px; line-height: 1.4;">
+                    <div t-if="doc.partner_id.phone or doc.partner_id.mobile">
+                        <strong>Contact No : </strong>
+                        <span t-out="doc.partner_id.phone or doc.partner_id.mobile"/>
+                    </div>
+                    <div t-if="doc.partner_id.email">
+                        <strong>Email : </strong>
+                        <span t-field="doc.partner_id.email"/>
+                    </div>
+                    <div t-if="'l10n_in_gst_treatment' in doc.partner_id._fields and doc.partner_id.l10n_in_gst_treatment">
+                        <strong>GST Treatment : </strong>
+                        <span t-field="doc.partner_id.l10n_in_gst_treatment"/>
+                    </div>
+                    <div t-if="doc.partner_id.vat">
+                        <strong>GSTIN : </strong>
+                        <span t-field="doc.partner_id.vat"/>
+                    </div>
+                    <div t-if="'fssai_no' in doc.partner_id._fields and doc.partner_id.fssai_no">
+                        <strong>FSSAI No : </strong>
+                        <span t-field="doc.partner_id.fssai_no"/>
+                    </div>
+                </div>
+            </t>
+        </xpath>
+    </template>
+</odoo>
