@@ -67,3 +67,40 @@ class SaleOrder(models.Model):
                 'default_tax_amount': self.transport_charge_tax_amount,
             },
         }
+        
+    def _create_invoices(self, grouped=False, final=False, date=None):
+        moves = super()._create_invoices(grouped=grouped, final=final, date=date)
+        for order in self:
+            transport = order.transport_charge_amount
+            transport_tax = order.transport_charge_tax_amount
+            if not transport and not transport_tax:
+                continue
+
+            order_moves = moves.filtered(lambda m: order in m.line_ids.sale_line_ids.order_id)
+            for move in order_moves:
+                if move.state != 'draft':
+                    continue
+                account = move.invoice_line_ids[:1].account_id or move.journal_id.default_account_id
+                if not account:
+                    continue
+
+                lines_vals = []
+                if transport:
+                    lines_vals.append((0, 0, {
+                        'name': 'Transport',
+                        'account_id': account.id,
+                        'quantity': 1,
+                        'price_unit': transport,
+                        'tax_ids': [(6, 0, [])],
+                    }))
+                if transport_tax:
+                    lines_vals.append((0, 0, {
+                        'name': 'Transport Tax',
+                        'account_id': account.id,
+                        'quantity': 1,
+                        'price_unit': transport_tax,
+                        'tax_ids': [(6, 0, [])],
+                    }))
+                if lines_vals:
+                    move.write({'invoice_line_ids': lines_vals})
+        return moves
