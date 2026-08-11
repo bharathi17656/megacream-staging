@@ -11,6 +11,7 @@
         "l10n_in",
         "l4e_custom_fields",
         "l4e_posted_invoice_editor",
+        "l4e_partner_custom_fields",
     ],
     "data": [
         "views/product_template_views.xml",

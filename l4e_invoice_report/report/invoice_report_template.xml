@@ -17,17 +17,89 @@
             </div>
         </xpath> -->
 
-        <!-- (2) Customer block: add Phone to the "Invoice to" widget (dynamic, per partner).
-             v19 has 3 variants of this address block depending on shipping-address logic;
-             patch all 3 so it works regardless of which one renders for a given invoice. -->
+        <!-- (2) Customer/Vendor block: remove raw phone/email from contact widget, and append structured details below Place of Supply -->
         <xpath expr="//div[@name='no_shipping']//address[@t-field='o.partner_id']" position="replace">
-            <address class="mb-0" t-field="o.partner_id" t-options="{&quot;widget&quot;: &quot;contact&quot;, &quot;fields&quot;: [&quot;address&quot;, &quot;name&quot;, &quot;phone&quot;, &quot;email&quot;], &quot;no_marker&quot;: True}"/>
+            <address class="mb-0" t-field="o.partner_id" t-options='{"widget": "contact", "fields": ["address", "name"], "no_marker": True}'/>
         </xpath>
         <xpath expr="//div[@name='address_same_as_shipping']//address[@t-field='o.partner_id']" position="replace">
-            <address class="mb-0" t-field="o.partner_id" t-options="{&quot;widget&quot;: &quot;contact&quot;, &quot;fields&quot;: [&quot;address&quot;, &quot;name&quot;, &quot;phone&quot;, &quot;email&quot;], &quot;no_marker&quot;: True}"/>
+            <address class="mb-0" t-field="o.partner_id" t-options='{"widget": "contact", "fields": ["address", "name"], "no_marker": True}'/>
         </xpath>
         <xpath expr="//div[@name='address_not_same_as_shipping']//address[@t-field='o.partner_id']" position="replace">
-            <address class="mb-0" t-field="o.partner_id" t-options="{&quot;widget&quot;: &quot;contact&quot;, &quot;fields&quot;: [&quot;address&quot;, &quot;name&quot;, &quot;phone&quot;, &quot;email&quot;], &quot;no_marker&quot;: True}"/>
+            <address class="mb-0" t-field="o.partner_id" t-options='{"widget": "contact", "fields": ["address", "name"], "no_marker": True}'/>
+        </xpath>
+
+        <!-- Append structured contact, GST and FSSAI details below Place of supply / address block -->
+        <xpath expr="//div[@name='no_shipping']" position="inside">
+            <div class="mt-1" style="font-size: 13px; line-height: 1.4;">
+                <div t-if="o.partner_id.phone">
+                    <strong>Contact No : </strong>
+                    <span t-field="o.partner_id.phone"/>
+                </div>
+                <div t-if="o.partner_id.email">
+                    <strong>Email : </strong>
+                    <span t-field="o.partner_id.email"/>
+                </div>
+                <div t-if="'l10n_in_gst_treatment' in o.partner_id._fields and o.partner_id.l10n_in_gst_treatment">
+                    <strong>GST Treatment : </strong>
+                    <span t-field="o.partner_id.l10n_in_gst_treatment"/>
+                </div>
+                <div t-if="o.partner_id.vat">
+                    <strong>GSTIN : </strong>
+                    <span t-field="o.partner_id.vat"/>
+                </div>
+                <div t-if="'fssai_no' in o.partner_id._fields and o.partner_id.fssai_no">
+                    <strong>FSSAI No : </strong>
+                    <span t-field="o.partner_id.fssai_no"/>
+                </div>
+            </div>
+        </xpath>
+        <xpath expr="//div[@name='address_same_as_shipping']" position="inside">
+            <div class="mt-1" style="font-size: 13px; line-height: 1.4;">
+                <div t-if="o.partner_id.phone">
+                    <strong>Contact No : </strong>
+                    <span t-field="o.partner_id.phone"/>
+                </div>
+                <div t-if="o.partner_id.email">
+                    <strong>Email : </strong>
+                    <span t-field="o.partner_id.email"/>
+                </div>
+                <div t-if="'l10n_in_gst_treatment' in o.partner_id._fields and o.partner_id.l10n_in_gst_treatment">
+                    <strong>GST Treatment : </strong>
+                    <span t-field="o.partner_id.l10n_in_gst_treatment"/>
+                </div>
+                <div t-if="o.partner_id.vat">
+                    <strong>GSTIN : </strong>
+                    <span t-field="o.partner_id.vat"/>
+                </div>
+                <div t-if="'fssai_no' in o.partner_id._fields and o.partner_id.fssai_no">
+                    <strong>FSSAI No : </strong>
+                    <span t-field="o.partner_id.fssai_no"/>
+                </div>
+            </div>
+        </xpath>
+        <xpath expr="//div[@name='address_not_same_as_shipping']" position="inside">
+            <div class="mt-1" style="font-size: 13px; line-height: 1.4;">
+                <div t-if="o.partner_id.phone">
+                    <strong>Contact No : </strong>
+                    <span t-field="o.partner_id.phone"/>
+                </div>
+                <div t-if="o.partner_id.email">
+                    <strong>Email : </strong>
+                    <span t-field="o.partner_id.email"/>
+                </div>
+                <div t-if="'l10n_in_gst_treatment' in o.partner_id._fields and o.partner_id.l10n_in_gst_treatment">
+                    <strong>GST Treatment : </strong>
+                    <span t-field="o.partner_id.l10n_in_gst_treatment"/>
+                </div>
+                <div t-if="o.partner_id.vat">
+                    <strong>GSTIN : </strong>
+                    <span t-field="o.partner_id.vat"/>
+                </div>
+                <div t-if="'fssai_no' in o.partner_id._fields and o.partner_id.fssai_no">
+                    <strong>FSSAI No : </strong>
+                    <span t-field="o.partner_id.fssai_no"/>
+                </div>
+            </div>
         </xpath>
 
         <!-- (4) Salesperson name + contact, next to Reference/Source.
