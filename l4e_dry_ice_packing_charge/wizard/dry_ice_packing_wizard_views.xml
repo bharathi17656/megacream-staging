@@ -1,0 +1,19 @@
+<odoo>
+    <record id="view_dry_ice_packing_wizard_form" model="ir.ui.view">
+        <field name="name">dry.ice.packing.wizard.form</field>
+        <field name="model">dry.ice.packing.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Dry Ice Packing Charge">
+                <group>
+                    <field name="sale_order_id" invisible="1"/>
+                    <field name="amount"/>
+                    <field name="qty"/>
+                </group>
+                <footer>
+                    <button string="Apply" name="action_apply" type="object" class="btn-primary"/>
+                    <button string="Cancel" special="cancel" class="btn-secondary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

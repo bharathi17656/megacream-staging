@@ -1,0 +1,15 @@
+<odoo>
+    <record id="view_order_form_dry_ice_packing_charge" model="ir.ui.view">
+        <field name="name">sale.order.form.dry.ice.packing.charge</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//group[@name='note_group']" position="before">
+                <button name="action_open_dry_ice_packing_wizard"
+                    type="object"
+                    string="Dry Ice Packing"
+                    class="btn-secondary mb-2 ms-2"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>
