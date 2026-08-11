@@ -30,6 +30,23 @@
             <address class="mb-0" t-field="o.partner_id" t-options="{&quot;widget&quot;: &quot;contact&quot;, &quot;fields&quot;: [&quot;address&quot;, &quot;name&quot;, &quot;phone&quot;, &quot;email&quot;], &quot;no_marker&quot;: True}"/>
         </xpath>
 
+        <!-- (3) Customer FSSAI number, right after the address block (dynamic, per partner). -->
+        <xpath expr="//div[@name='no_shipping']//address[@t-field='o.partner_id']" position="after">
+            <div t-if="o.partner_id.fssai_no" name="l4e_customer_fssai">
+                <strong>FSSAI:</strong> <span t-field="o.partner_id.fssai_no"/>
+            </div>
+        </xpath>
+        <xpath expr="//div[@name='address_same_as_shipping']//address[@t-field='o.partner_id']" position="after">
+            <div t-if="o.partner_id.fssai_no" name="l4e_customer_fssai">
+                <strong>FSSAI:</strong> <span t-field="o.partner_id.fssai_no"/>
+            </div>
+        </xpath>
+        <xpath expr="//div[@name='address_not_same_as_shipping']//address[@t-field='o.partner_id']" position="after">
+            <div t-if="o.partner_id.fssai_no" name="l4e_customer_fssai">
+                <strong>FSSAI:</strong> <span t-field="o.partner_id.fssai_no"/>
+            </div>
+        </xpath>
+
         <!-- (4) Salesperson name + contact, next to Reference/Source.
              Both values are fetched from the Sale Order linked to this invoice
              (via invoice_line_ids.sale_line_ids.order_id), NOT typed manually -
