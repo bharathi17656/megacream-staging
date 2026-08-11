@@ -1,0 +1,15 @@
+<odoo>
+    <record id="view_purchase_order_form_transport_charge" model="ir.ui.view">
+        <field name="name">purchase.order.form.transport.charge</field>
+        <field name="model">purchase.order</field>
+        <field name="inherit_id" ref="purchase.purchase_order_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//header" position="inside">
+                <button name="action_open_transportation_charge_wizard"
+                        type="object"
+                        string="Transportation Charge"
+                        class="btn-secondary"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>
