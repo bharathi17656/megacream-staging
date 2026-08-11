@@ -1,0 +1,18 @@
+<odoo>
+    <menuitem id="menu_day_wise_report_root"
+              name="Day Wise Report"
+              parent="sale.sale_menu_root"
+              sequence="90"/>
+
+    <menuitem id="menu_sale_order_daywise_report"
+              name="Sale Orders"
+              parent="menu_day_wise_report_root"
+              action="action_sale_order_daywise_report"
+              sequence="10"/>
+
+    <menuitem id="menu_account_move_daywise_report"
+              name="Invoices"
+              parent="menu_day_wise_report_root"
+              action="action_account_move_daywise_report"
+              sequence="20"/>
+</odoo>

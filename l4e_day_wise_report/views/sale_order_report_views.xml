@@ -1,0 +1,41 @@
+<odoo>
+    <record id="view_sale_order_daywise_pivot" model="ir.ui.view">
+        <field name="name">sale.order.daywise.pivot</field>
+        <field name="model">sale.order</field>
+        <field name="arch" type="xml">
+            <pivot string="Sale Orders Day Wise Report">
+                <field name="create_date" type="row" interval="day"/>
+                <field name="amount_total" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="view_sale_order_daywise_search" model="ir.ui.view">
+        <field name="name">sale.order.daywise.search</field>
+        <field name="model">sale.order</field>
+        <field name="arch" type="xml">
+            <search string="Sale Orders Day Wise Report">
+                <field name="name"/>
+                <field name="partner_id"/>
+                <field name="create_date"/>
+                <filter string="Today" name="today" domain="[('create_date', '&gt;=', 'today')]"/>
+                <separator/>
+                <filter string="Sales Order" name="filter_state_sale" domain="[('state', '=', 'sale')]"/>
+                <filter string="Quotation" name="filter_state_draft" domain="[('state', 'in', ('draft', 'sent'))]"/>
+                <group>
+                    <filter string="Order Date" name="groupby_create_date" context="{'group_by': 'create_date:day'}"/>
+                    <filter string="Customer" name="groupby_partner" context="{'group_by': 'partner_id'}"/>
+                    <filter string="Salesperson" name="groupby_user" context="{'group_by': 'user_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_sale_order_daywise_report" model="ir.actions.act_window">
+        <field name="name">Sale Orders Day Wise Report</field>
+        <field name="res_model">sale.order</field>
+        <field name="view_mode">list,pivot,form</field>
+        <field name="search_view_id" ref="view_sale_order_daywise_search"/>
+        <field name="context">{'search_default_today': 1, 'search_default_groupby_create_date': 1}</field>
+    </record>
+</odoo>

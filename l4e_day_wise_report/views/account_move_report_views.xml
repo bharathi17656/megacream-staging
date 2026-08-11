@@ -1,0 +1,41 @@
+<odoo>
+    <record id="view_account_move_daywise_pivot" model="ir.ui.view">
+        <field name="name">account.move.daywise.pivot</field>
+        <field name="model">account.move</field>
+        <field name="arch" type="xml">
+            <pivot string="Invoices Day Wise Report">
+                <field name="create_date" type="row" interval="day"/>
+                <field name="amount_total" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="view_account_move_daywise_search" model="ir.ui.view">
+        <field name="name">account.move.daywise.search</field>
+        <field name="model">account.move</field>
+        <field name="arch" type="xml">
+            <search string="Invoices Day Wise Report">
+                <field name="name"/>
+                <field name="partner_id"/>
+                <field name="create_date"/>
+                <filter string="Today" name="today" domain="[('create_date', '&gt;=', 'today')]"/>
+                <separator/>
+                <filter string="Posted" name="filter_posted" domain="[('state', '=', 'posted')]"/>
+                <filter string="Draft" name="filter_draft" domain="[('state', '=', 'draft')]"/>
+                <group>
+                    <filter string="Invoice Date" name="groupby_create_date" context="{'group_by': 'create_date:day'}"/>
+                    <filter string="Customer" name="groupby_partner" context="{'group_by': 'partner_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_account_move_daywise_report" model="ir.actions.act_window">
+        <field name="name">Invoices Day Wise Report</field>
+        <field name="res_model">account.move</field>
+        <field name="view_mode">list,pivot,form</field>
+        <field name="domain">[('move_type', 'in', ('out_invoice', 'out_refund'))]</field>
+        <field name="search_view_id" ref="view_account_move_daywise_search"/>
+        <field name="context">{'search_default_today': 1, 'search_default_groupby_create_date': 1}</field>
+    </record>
+</odoo>
