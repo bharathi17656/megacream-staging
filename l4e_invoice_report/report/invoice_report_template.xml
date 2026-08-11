@@ -1,92 +1,39 @@
 <odoo>
     <template id="report_invoice_document_l4e_inherit" inherit_id="account.report_invoice_document">
 
-        <!-- (2) Customer/Vendor block: remove raw phone/email from contact widget, and append structured details below Place of Supply -->
+        <!-- (1) Seller block: GSTIN / FSSAI / State / Contact / Email.
+             Static company letterhead data - hardcoded rather than modeled as fields,
+             since it does not change per invoice. Edit the text below directly if the
+             company's registration/bank details ever change. -->
+        <!-- <xpath expr="//div[hasclass('invoice_main')]" position="before">
+            <div class="row mt8" name="l4e_seller_details">
+                <div class="col-6" name="l4e_seller_info">
+                    <strong>GSTIN/UIN:</strong> 33AASFM2559C1Z9<br/>
+                    <strong>FSSAI No:</strong> 12417002001963<br/>
+                    <strong>State Name:</strong> Tamil Nadu, Code: 33<br/>
+                    <strong>Contact:</strong> 044-26622939, 9884049497, 9884074242<br/>
+                    <strong>E-Mail:</strong> accounts@megacream.in
+                </div>
+            </div>
+        </xpath> -->
+
+        <!-- (2) Customer block: add Phone to the "Invoice to" widget (dynamic, per partner).
+             v19 has 3 variants of this address block depending on shipping-address logic;
+             patch all 3 so it works regardless of which one renders for a given invoice. -->
         <xpath expr="//div[@name='no_shipping']//address[@t-field='o.partner_id']" position="replace">
-            <address class="mb-0" t-field="o.partner_id" t-options='{"widget": "contact", "fields": ["address", "name"], "no_marker": True}'/>
+            <address class="mb-0" t-field="o.partner_id" t-options="{&quot;widget&quot;: &quot;contact&quot;, &quot;fields&quot;: [&quot;address&quot;, &quot;name&quot;, &quot;phone&quot;, &quot;email&quot;], &quot;no_marker&quot;: True}"/>
         </xpath>
         <xpath expr="//div[@name='address_same_as_shipping']//address[@t-field='o.partner_id']" position="replace">
-            <address class="mb-0" t-field="o.partner_id" t-options='{"widget": "contact", "fields": ["address", "name"], "no_marker": True}'/>
+            <address class="mb-0" t-field="o.partner_id" t-options="{&quot;widget&quot;: &quot;contact&quot;, &quot;fields&quot;: [&quot;address&quot;, &quot;name&quot;, &quot;phone&quot;, &quot;email&quot;], &quot;no_marker&quot;: True}"/>
         </xpath>
         <xpath expr="//div[@name='address_not_same_as_shipping']//address[@t-field='o.partner_id']" position="replace">
-            <address class="mb-0" t-field="o.partner_id" t-options='{"widget": "contact", "fields": ["address", "name"], "no_marker": True}'/>
+            <address class="mb-0" t-field="o.partner_id" t-options="{&quot;widget&quot;: &quot;contact&quot;, &quot;fields&quot;: [&quot;address&quot;, &quot;name&quot;, &quot;phone&quot;, &quot;email&quot;], &quot;no_marker&quot;: True}"/>
         </xpath>
 
-        <!-- Append structured contact, GST and FSSAI details below Place of supply / address block without top gap -->
-        <xpath expr="//div[@name='no_shipping']" position="inside">
-            <div class="mt-0 pt-0" style="font-size: 13px; line-height: 1.4; margin-top: 0 !important;">
-                <div t-if="o.partner_id.phone">
-                    <strong>Contact No : </strong>
-                    <span t-field="o.partner_id.phone"/>
-                </div>
-                <div t-if="o.partner_id.email">
-                    <strong>Email : </strong>
-                    <span t-field="o.partner_id.email"/>
-                </div>
-                <div t-if="'l10n_in_gst_treatment' in o.partner_id._fields and o.partner_id.l10n_in_gst_treatment">
-                    <strong>GST Treatment : </strong>
-                    <span t-field="o.partner_id.l10n_in_gst_treatment"/>
-                </div>
-                <div t-if="o.partner_id.vat">
-                    <strong>GSTIN : </strong>
-                    <span t-field="o.partner_id.vat"/>
-                </div>
-                <div t-if="'fssai_no' in o.partner_id._fields and o.partner_id.fssai_no">
-                    <strong>FSSAI No : </strong>
-                    <span t-field="o.partner_id.fssai_no"/>
-                </div>
-            </div>
-        </xpath>
-        <xpath expr="//div[@name='address_same_as_shipping']" position="inside">
-            <div class="mt-0 pt-0" style="font-size: 13px; line-height: 1.4; margin-top: 0 !important;">
-                <div t-if="o.partner_id.phone">
-                    <strong>Contact No : </strong>
-                    <span t-field="o.partner_id.phone"/>
-                </div>
-                <div t-if="o.partner_id.email">
-                    <strong>Email : </strong>
-                    <span t-field="o.partner_id.email"/>
-                </div>
-                <div t-if="'l10n_in_gst_treatment' in o.partner_id._fields and o.partner_id.l10n_in_gst_treatment">
-                    <strong>GST Treatment : </strong>
-                    <span t-field="o.partner_id.l10n_in_gst_treatment"/>
-                </div>
-                <div t-if="o.partner_id.vat">
-                    <strong>GSTIN : </strong>
-                    <span t-field="o.partner_id.vat"/>
-                </div>
-                <div t-if="'fssai_no' in o.partner_id._fields and o.partner_id.fssai_no">
-                    <strong>FSSAI No : </strong>
-                    <span t-field="o.partner_id.fssai_no"/>
-                </div>
-            </div>
-        </xpath>
-        <xpath expr="//div[@name='address_not_same_as_shipping']" position="inside">
-            <div class="mt-0 pt-0" style="font-size: 13px; line-height: 1.4; margin-top: 0 !important;">
-                <div t-if="o.partner_id.phone">
-                    <strong>Contact No : </strong>
-                    <span t-field="o.partner_id.phone"/>
-                </div>
-                <div t-if="o.partner_id.email">
-                    <strong>Email : </strong>
-                    <span t-field="o.partner_id.email"/>
-                </div>
-                <div t-if="'l10n_in_gst_treatment' in o.partner_id._fields and o.partner_id.l10n_in_gst_treatment">
-                    <strong>GST Treatment : </strong>
-                    <span t-field="o.partner_id.l10n_in_gst_treatment"/>
-                </div>
-                <div t-if="o.partner_id.vat">
-                    <strong>GSTIN : </strong>
-                    <span t-field="o.partner_id.vat"/>
-                </div>
-                <div t-if="'fssai_no' in o.partner_id._fields and o.partner_id.fssai_no">
-                    <strong>FSSAI No : </strong>
-                    <span t-field="o.partner_id.fssai_no"/>
-                </div>
-            </div>
-        </xpath>
-
-        <!-- (4) Salesperson name + contact, next to Reference/Source. -->
+        <!-- (4) Salesperson name + contact, next to Reference/Source.
+             Both values are fetched from the Sale Order linked to this invoice
+             (via invoice_line_ids.sale_line_ids.order_id), NOT typed manually -
+             see l4e_salesperson_name / l4e_salesperson_contact on account.move. -->
         <xpath expr="//div[@id='informations']" position="inside">
             <div t-if="o.l4e_salesperson_name" class="col" name="l4e_salesperson">
                 <strong>Sales Person:</strong>
@@ -98,7 +45,7 @@
             </div>
         </xpath>
 
-        <!-- (5) Item Code column -->
+        <!-- (5) Item Code column, positioned as the first column (kept per original handwritten note) -->
         <xpath expr="//table[hasclass('o_main_table')]//thead//th[@name='th_description']" position="before">
             <th name="th_item_code" class="text-start">
                 <span>Item Code</span>
@@ -110,7 +57,19 @@
             </td>
         </xpath>
 
-        <!-- (6) HSN/SAC column -->
+        <!-- (6) HSN/SAC column, positioned right after Description, with fallback
+             to the product's HSN code. Rendered directly here (name-anchored to
+             th_description / account_invoice_line_name) instead of relying on
+             l10n_in's own HSN column - l10n_in inserts its column positionally
+             ("after whatever the first column currently is"), which conflicts
+             with our Item Code column and produces an unreliable order depending
+             on inherit-view load sequencing. See report_invoice_document_l4e_hsn_fallback
+             below, which removes l10n_in's own column so it isn't duplicated.
+             Fallback to the product's HSN code matters because l10n_in only
+             copies HSN from product to the invoice line while the invoice is in
+             draft - once posted, that copy is frozen, so if the product's HSN
+             code was set/edited AFTER the invoice was created, the line's own
+             value stays blank forever. -->
         <xpath expr="//table[hasclass('o_main_table')]//thead//th[@name='th_description']" position="after">
             <th name="th_hsn_sac" class="text-start" t-if="o.company_id.account_fiscal_country_id.code == 'IN' and o.company_id.l10n_in_is_gst_registered">
                 <span>HSN/SAC</span>
@@ -127,31 +86,79 @@
             <span>Rate</span>
         </xpath>
 
-        <!-- (8) Total row -->
+        <!-- (8) Total row, appended as the last row of the items table itself.
+             Colspan math: 2 (Item Code + Description) + 1 if HSN/SAC column is
+             shown, spans the label under "Total"; then the quantity cell lines
+             up under the Quantity column; then a trailing spacer cell spans
+             Unit Price + Discount(if any) + Taxes(if any) + Amount, so the row
+             doesn't break the table's column count. -->
         <xpath expr="//tbody[hasclass('invoice_tbody')]" position="inside">
             <tr class="fw-bold" name="l4e_total_qty_row" style="border-top: 1px solid #000;">
                 <td t-att-colspan="2 + (1 if o.company_id.account_fiscal_country_id.code == 'IN' and o.company_id.l10n_in_is_gst_registered else 0)" class="text-end">
                     <span>Total</span>
                 </td>
                 <td name="td_total_qty" class="o_td_quantity text-end">
-                    <span t-out="sum(o.invoice_line_ids.mapped('quantity'))"/>
+                    <span t-field="o.total_qty"/>
                 </td>
-                <td t-att-colspan="4 if o.tax_totals.get('subtotals') else 3"/>
+                <td t-att-colspan="2 + (1 if display_discount else 0) + (1 if display_taxes else 0)"/>
             </tr>
         </xpath>
 
-        <!-- (9) Bank details block at the bottom of the invoice page -->
-        <xpath expr="//div[@id='total']" position="after">
-            <div class="row mt-3" name="l4e_bank_details">
+        <!-- (9) Bank Details - static, hardcoded (from company's actual bank account) -->
+        <xpath expr="//div[@id='payment_term']" position="before">
+            <div class="row mt32" name="l4e_bank_details">
                 <div class="col-6">
-                    <strong>Bank Account Details:</strong><br/>
-                    <strong>Bank Name:</strong> Federal Bank<br/>
-                    <strong>Branch:</strong> Kilpauk<br/>
-                    <strong>A/C No:</strong> 15230200003058<br/>
-                    <strong>IFSC Code:</strong> FDRL0001523
+                    <strong>Company's Bank Details</strong>
+                    <p style="margin-bottom:0;">
+                        Bank Name: Hdfc Bank<br/>
+                        A/c No.: 12842000000160<br/>
+                        Branch &amp; IFS Code: EGMORE &amp; HDFC0001284
+                    </p>
                 </div>
             </div>
         </xpath>
 
+        <!-- Declaration + computer-generated note, static text -->
+        <!--<xpath expr="//div[hasclass('oe_structure')][last()]" position="before">-->
+        <!--    <div class="row mt16" name="l4e_declaration">-->
+        <!--        <div class="col-12">-->
+        <!--            <strong>Declaration</strong>-->
+        <!--            <p style="margin-bottom:0;">-->
+        <!--                We declare that this invoice shows the actual price of the goods-->
+        <!--                described and that all particulars are true and correct.-->
+        <!--            </p>-->
+        <!--        </div>-->
+        <!--    </div>-->
+        <!--    <div class="row mt8">-->
+        <!--        <div class="col-12 text-center">-->
+        <!--            <em>This is a Computer Generated Invoice</em>-->
+        <!--        </div>-->
+        <!--    </div>-->
+        <!--</xpath>-->
+
+    </template>
+
+    <!-- Removes l10n_in's own HSN/SAC column entirely. It inherits l10n_in's
+         specific view directly (not the base account view), which guarantees
+         these nodes exist here regardless of any other module's load order.
+         We render our own HSN/SAC column above instead (name-anchored, always
+         lands right after Description), so l10n_in's version must be removed
+         to avoid a duplicate column. -->
+    <template id="report_invoice_document_l4e_hsn_fallback" inherit_id="l10n_in.l10n_in_report_invoice_document_inherit">
+        <xpath expr="//th[normalize-space(text())='HSN/SAC']" position="replace"/>
+            <xpath expr="//td[span[@t-field='line.l10n_in_hsn_code']]" position="replace"/>
+        
+            <!-- Hide l10n_in's right-side "Total amount in words" - replace the parent div -->
+            <xpath expr="//span[@t-field='o.amount_total_words']/../.." position="replace"/>
+        
+            <!-- Our own left-side "Total amount in words" after payment communication -->
+            <xpath expr="//div[@name='l4e_bank_details']" position="before">
+                <div t-if="o.company_id.display_invoice_amount_total_words" class="row mt8" name="l4e_amount_in_words">
+                    <div class="col-12">
+                        <strong>Total amount in words:</strong><br/>
+                        <span class="text-muted" t-field="o.amount_total_words"/>
+                    </div>
+                </div>
+            </xpath>
     </template>
 </odoo>
