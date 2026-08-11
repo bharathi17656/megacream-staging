@@ -33,17 +33,17 @@
         <!-- (3) Customer FSSAI number, right after the address block (dynamic, per partner). -->
         <xpath expr="//div[@name='no_shipping']//address[@t-field='o.partner_id']" position="after">
             <div t-if="o.partner_id.fssai_no" name="l4e_customer_fssai">
-                <strong>FSSAI:</strong> <span t-field="o.partner_id.fssai_no"/>
+                FSSAI: <span t-field="o.partner_id.fssai_no"/>
             </div>
         </xpath>
         <xpath expr="//div[@name='address_same_as_shipping']//address[@t-field='o.partner_id']" position="after">
             <div t-if="o.partner_id.fssai_no" name="l4e_customer_fssai">
-                <strong>FSSAI:</strong> <span t-field="o.partner_id.fssai_no"/>
+               FSSAI: <span t-field="o.partner_id.fssai_no"/>
             </div>
         </xpath>
         <xpath expr="//div[@name='address_not_same_as_shipping']//address[@t-field='o.partner_id']" position="after">
             <div t-if="o.partner_id.fssai_no" name="l4e_customer_fssai">
-                <strong>FSSAI:</strong> <span t-field="o.partner_id.fssai_no"/>
+                FSSAI: <span t-field="o.partner_id.fssai_no"/>
             </div>
         </xpath>
 
