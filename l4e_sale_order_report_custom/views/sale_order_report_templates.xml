@@ -6,9 +6,9 @@
                 <div t-field="doc.partner_id" class="mb-0"
                     t-options='{"widget": "contact", "fields": ["address", "name"], "no_marker": True}' />
                 <div class="mt-1" style="font-size: 13px; line-height: 1.4;">
-                    <div t-if="doc.partner_id.phone or doc.partner_id.mobile">
+                    <div t-if="doc.partner_id.phone or doc.partner_id.phone">
                         <strong>Contact No : </strong>
-                        <span t-out="doc.partner_id.phone or doc.partner_id.mobile"/>
+                        <span t-out="doc.partner_id.phone or doc.partner_id.phone"/>
                     </div>
                     <div t-if="doc.partner_id.email">
                         <strong>Email : </strong>
