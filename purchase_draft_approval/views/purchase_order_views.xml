@@ -123,6 +123,12 @@
                 <field name="user_has_store_indent" invisible="1"/>
             </xpath>
 
+            <!-- 10. Make Confirmation Date (date_approve) always editable,
+                 even after the PO has moved to Purchase Order state -->
+            <xpath expr="//field[@name='date_approve']" position="attributes">
+                <attribute name="readonly">0</attribute>
+            </xpath>
+
         </field>
     </record>
 
