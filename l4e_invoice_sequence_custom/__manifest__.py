@@ -20,6 +20,7 @@
     'depends': ['account', 'sale_management', 'purchase', 'stock'],
     'data': [
         'data/ir_cron_data.xml',
+        'views/stock_picking_views.xml',   
     ],
     'installable': True,
     'application': False,

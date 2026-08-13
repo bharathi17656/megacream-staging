@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_picking_form_l4e_editable_effective_date" model="ir.ui.view">
+        <field name="name">stock.picking.form.l4e.editable.effective.date</field>
+        <field name="model">stock.picking</field>
+        <field name="inherit_id" ref="stock.view_picking_form"/>
+        <field name="arch" type="xml">
+            <!-- Make Effective Date (date_done) always editable,
+                 even after the picking has been validated (Done state) -->
+            <xpath expr="//field[@name='date_done']" position="attributes">
+                <attribute name="readonly">0</attribute>
+            </xpath>
+        </field>
+    </record>
+</odoo>
