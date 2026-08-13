@@ -15,4 +15,15 @@
               parent="menu_day_wise_report_root"
               action="action_account_move_daywise_report"
               sequence="20"/>
+
+    <menuitem id="menu_purchase_day_wise_report_root"
+          name="Day Wise Report"
+          parent="purchase.menu_purchase_root"
+          sequence="90"/>
+
+    <menuitem id="menu_purchase_bill_daywise_report"
+            name="Vendor Bills"
+            parent="menu_purchase_day_wise_report_root"
+            action="action_purchase_bill_daywise_report"
+            sequence="10"/>
 </odoo>
