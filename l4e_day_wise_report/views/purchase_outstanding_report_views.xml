@@ -19,11 +19,11 @@
             <list string="Outstanding Payments">
                 <field name="name"/>
                 <field name="partner_id" string="Vendor"/>
-                <field name="invoice_date"/>
+                <field name="invoice_date" optional="hide"/>
                 <field name="amount_total" string="Total Amount"/>
                 <field name="amount_paid" string="Paid Amount"/>
-                <field name="amount_residual" string="Outstanding Amount"/>
-                <field name="payment_state"/>
+                <field name="amount_residual" string="Outstanding"/>
+                <field name="payment_state" string="Status" optional="hide"/>
             </list>
         </field>
     </record>
