@@ -53,5 +53,8 @@
         <field name="domain">[('move_type', 'in', ('in_invoice', 'in_refund')), ('state', '=', 'posted'), ('payment_state', 'not in', ('paid', 'reversed', 'in_payment'))]</field>
         <field name="search_view_id" ref="view_purchase_outstanding_daywise_search"/>
         <field name="context">{}</field>
+        <field name="view_ids" eval="[(5, 0, 0),
+            (0, 0, {'view_mode': 'list', 'view_id': ref('view_purchase_outstanding_daywise_list')}),
+            (0, 0, {'view_mode': 'pivot', 'view_id': ref('view_purchase_outstanding_daywise_pivot')})]"/>
     </record>
 </odoo>
