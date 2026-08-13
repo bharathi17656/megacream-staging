@@ -9,6 +9,7 @@
         'views/sale_order_report_views.xml',
         'views/account_move_report_views.xml',
         'views/purchase_bill_report_views.xml',
+        'views/purchase_outstanding_report_views.xml',
         'views/menu_views.xml',
     ],
     'installable': True,

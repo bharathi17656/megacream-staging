@@ -1,0 +1,57 @@
+<odoo>
+    <record id="view_purchase_outstanding_daywise_pivot" model="ir.ui.view">
+        <field name="name">purchase.outstanding.daywise.pivot</field>
+        <field name="model">account.move</field>
+        <field name="arch" type="xml">
+            <pivot string="Outstanding Payments">
+                <field name="create_date" type="row" interval="day"/>
+                <field name="amount_total" type="measure"/>
+                <field name="amount_paid" type="measure"/>
+                <field name="amount_residual" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="view_purchase_outstanding_daywise_list" model="ir.ui.view">
+        <field name="name">purchase.outstanding.daywise.list</field>
+        <field name="model">account.move</field>
+        <field name="arch" type="xml">
+            <list string="Outstanding Payments">
+                <field name="name"/>
+                <field name="partner_id" string="Vendor"/>
+                <field name="invoice_date"/>
+                <field name="amount_total" string="Total Amount"/>
+                <field name="amount_paid" string="Paid Amount"/>
+                <field name="amount_residual" string="Outstanding Amount"/>
+                <field name="payment_state"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_purchase_outstanding_daywise_search" model="ir.ui.view">
+        <field name="name">purchase.outstanding.daywise.search</field>
+        <field name="model">account.move</field>
+        <field name="arch" type="xml">
+            <search string="Outstanding Payments">
+                <field name="name"/>
+                <field name="partner_id"/>
+                <field name="create_date"/>
+                <filter string="Today" name="today" domain="[('create_date', '&gt;=', 'today')]"/>
+                <separator/>
+                <group>
+                    <filter string="Bill Date" name="groupby_create_date" context="{'group_by': 'create_date:day'}"/>
+                    <filter string="Vendor" name="groupby_partner" context="{'group_by': 'partner_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_purchase_outstanding_daywise_report" model="ir.actions.act_window">
+        <field name="name">Outstanding Payments</field>
+        <field name="res_model">account.move</field>
+        <field name="view_mode">list,pivot,form</field>
+        <field name="domain">[('move_type', 'in', ('in_invoice', 'in_refund')), ('state', '=', 'posted'), ('payment_state', 'not in', ('paid', 'reversed', 'in_payment'))]</field>
+        <field name="search_view_id" ref="view_purchase_outstanding_daywise_search"/>
+        <field name="context">{}</field>
+    </record>
+</odoo>

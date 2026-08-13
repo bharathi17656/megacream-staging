@@ -26,4 +26,10 @@
             parent="menu_purchase_day_wise_report_root"
             action="action_purchase_bill_daywise_report"
             sequence="10"/>
+
+      <menuitem id="menu_purchase_outstanding_daywise_report"
+          name="Outstanding Payments"
+          parent="menu_purchase_day_wise_report_root"
+          action="action_purchase_outstanding_daywise_report"
+          sequence="20"/>
 </odoo>
