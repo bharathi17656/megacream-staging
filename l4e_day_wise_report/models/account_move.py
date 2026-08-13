@@ -8,6 +8,7 @@ class AccountMove(models.Model):
         string='Paid Amount',
         compute='_compute_amount_paid',
         currency_field='currency_id',
+        store=True,
     )
 
     @api.depends('amount_total', 'amount_residual')

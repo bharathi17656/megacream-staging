@@ -6,7 +6,7 @@
             <pivot string="Outstanding Payments">
                 <field name="create_date" type="row" interval="day"/>
                 <field name="amount_total" type="measure"/>
-                <field name="amount_paid" type="measure"/>
+                <field name="amount_paid" type="measure" group_operator="sum"/>
                 <field name="amount_residual" type="measure"/>
             </pivot>
         </field>
