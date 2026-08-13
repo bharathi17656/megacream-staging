@@ -18,11 +18,11 @@
                 <field name="name"/>
                 <field name="partner_id"/>
                 <field name="create_date"/>
-                <filter string="Today" name="today" domain="[('create_date','&gt;=', datetime.datetime.combine(context_today(), datetime.time(0,0,0)))]"/>
+                <filter string="Today" name="today" domain="[('create_date', '&gt;=', 'today')]"/>
                 <separator/>
                 <filter string="Posted" name="filter_posted" domain="[('state', '=', 'posted')]"/>
                 <filter string="Draft" name="filter_draft" domain="[('state', '=', 'draft')]"/>
-                <group expand="0" string="Group By">
+                <group>
                     <filter string="Bill Date" name="groupby_create_date" context="{'group_by': 'create_date:day'}"/>
                     <filter string="Vendor" name="groupby_partner" context="{'group_by': 'partner_id'}"/>
                 </group>
