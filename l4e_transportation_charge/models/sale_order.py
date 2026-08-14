@@ -33,16 +33,25 @@ class SaleOrder(models.Model):
             tax_groups = list(first.get('tax_groups') or [])
 
             if transport_tax:
-                if tax_groups:
-                    count = len(tax_groups)
+                def is_exempt(g):
+                    return 'exempt' in (g.get('group_name') or '').lower() or \
+                           'exempt' in (g.get('group_label') or '').lower()
+
+                eligible_count = sum(1 for g in tax_groups if not is_exempt(g))
+                if eligible_count:
                     allocated = 0.0
+                    seen = 0
                     merged_groups = []
-                    for idx, group in enumerate(tax_groups):
+                    for group in tax_groups:
+                        if is_exempt(group):
+                            merged_groups.append(group)
+                            continue
                         group = dict(group)
-                        if idx == count - 1:
+                        seen += 1
+                        if seen == eligible_count:
                             share = transport_tax - allocated
                         else:
-                            share = transport_tax / count
+                            share = transport_tax / eligible_count
                             allocated += share
                         group['tax_amount_currency'] = group.get('tax_amount_currency', 0.0) + share
                         group['tax_amount'] = group.get('tax_amount', 0.0) + share
