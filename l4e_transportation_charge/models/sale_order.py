@@ -31,6 +31,31 @@ class SaleOrder(models.Model):
 
             first = subtotals[0]
             tax_groups = list(first.get('tax_groups') or [])
+
+            if transport_tax:
+                if tax_groups:
+                    count = len(tax_groups)
+                    allocated = 0.0
+                    merged_groups = []
+                    for idx, group in enumerate(tax_groups):
+                        group = dict(group)
+                        if idx == count - 1:
+                            share = transport_tax - allocated
+                        else:
+                            share = transport_tax / count
+                            allocated += share
+                        group['tax_amount_currency'] = group.get('tax_amount_currency', 0.0) + share
+                        group['tax_amount'] = group.get('tax_amount', 0.0) + share
+                        merged_groups.append(group)
+                    tax_groups = merged_groups
+                else:
+                    tax_groups.append({
+                        'id': False, 'group_name': 'Transport Tax', 'group_label': 'Transport Tax',
+                        'involved_tax_ids': [], 'base_amount_currency': 0.0, 'base_amount': 0.0,
+                        'tax_amount_currency': transport_tax, 'tax_amount': transport_tax,
+                        'display_base_amount_currency': 0.0, 'display_base_amount': 0.0,
+                    })
+
             if transport:
                 tax_groups.append({
                     'id': False, 'group_name': 'Transport', 'group_label': 'Transport',
@@ -38,13 +63,7 @@ class SaleOrder(models.Model):
                     'tax_amount_currency': transport, 'tax_amount': transport,
                     'display_base_amount_currency': 0.0, 'display_base_amount': 0.0,
                 })
-            if transport_tax:
-                tax_groups.append({
-                    'id': False, 'group_name': 'Transport Tax', 'group_label': 'Transport Tax',
-                    'involved_tax_ids': [], 'base_amount_currency': 0.0, 'base_amount': 0.0,
-                    'tax_amount_currency': transport_tax, 'tax_amount': transport_tax,
-                    'display_base_amount_currency': 0.0, 'display_base_amount': 0.0,
-                })
+
             first['tax_groups'] = tax_groups
             subtotals[0] = first
             totals['subtotals'] = subtotals
