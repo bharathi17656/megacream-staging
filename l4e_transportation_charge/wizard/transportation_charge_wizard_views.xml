@@ -8,7 +8,7 @@
                     <field name="sale_order_id" invisible="1"/>
                     <field name="purchase_order_id" invisible="1"/>
                     <field name="amount"/>
-                    <field name="tax_amount"/>
+                    <field name="tax_amount_percent"/>
                 </group>
                 <footer>
                     <button string="Apply" name="action_apply" type="object" class="btn-primary"/>

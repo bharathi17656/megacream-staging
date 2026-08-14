@@ -5,6 +5,7 @@ class SaleOrder(models.Model):
     _inherit = 'sale.order'
 
     transport_charge_amount = fields.Monetary(string='Transport Charge', default=0.0)
+    transport_charge_tax_percent = fields.Float(string='Transport Charge Tax %', default=0.0)
     transport_charge_tax_amount = fields.Monetary(string='Transport Charge Tax', default=0.0)
 
     @api.depends('transport_charge_amount', 'transport_charge_tax_amount')
@@ -64,7 +65,7 @@ class SaleOrder(models.Model):
             'context': {
                 'default_sale_order_id': self.id,
                 'default_amount': self.transport_charge_amount,
-                'default_tax_amount': self.transport_charge_tax_amount,
+                'default_tax_amount_percent': self.transport_charge_tax_percent,
             },
         }
         
