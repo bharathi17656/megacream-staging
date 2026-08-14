@@ -1,6 +1,14 @@
 from odoo import api, fields, models
 
 
+def _is_exempt_tax_group(group):
+    """A tax_totals tax_group dict is considered 'Exempt' if its name/label
+    mentions exempt (e.g. a 0% Exempt tax). Used to detect and hide these
+    zero-value rows from the totals breakdown widget."""
+    return 'exempt' in (group.get('group_name') or '').lower() or \
+           'exempt' in (group.get('group_label') or '').lower()
+
+
 class SaleOrder(models.Model):
     _inherit = 'sale.order'
 
@@ -16,10 +24,33 @@ class SaleOrder(models.Model):
             if transport:
                 order.amount_total += transport
 
+    def _hide_exempt_tax_groups(self):
+        """Remove 'Exempt' tax groups (e.g. 0% Exempt) from the tax_totals
+        breakdown so they don't render as a zero-value line in the totals
+        widget. This is purely cosmetic: the group's tax_amount is always
+        0.00, so Untaxed Amount / Total are unaffected by removing it."""
+        self.ensure_one()
+        totals = self.tax_totals
+        subtotals = totals and totals.get('subtotals')
+        if not subtotals:
+            return
+        changed = False
+        for subtotal in subtotals:
+            tax_groups = subtotal.get('tax_groups') or []
+            filtered = [g for g in tax_groups if not _is_exempt_tax_group(g)]
+            if len(filtered) != len(tax_groups):
+                subtotal['tax_groups'] = filtered
+                changed = True
+        if changed:
+            totals['subtotals'] = subtotals
+            self.tax_totals = totals
+
     @api.depends('transport_charge_amount', 'transport_charge_tax_amount')
     def _compute_tax_totals(self):
         super()._compute_tax_totals()
         for order in self:
+            order._hide_exempt_tax_groups()
+
             transport = order.transport_charge_amount
             transport_tax = order.transport_charge_tax_amount
             if not transport and not transport_tax:
@@ -33,17 +64,13 @@ class SaleOrder(models.Model):
             tax_groups = list(first.get('tax_groups') or [])
 
             if transport_tax:
-                def is_exempt(g):
-                    return 'exempt' in (g.get('group_name') or '').lower() or \
-                           'exempt' in (g.get('group_label') or '').lower()
-
-                eligible_count = sum(1 for g in tax_groups if not is_exempt(g))
+                eligible_count = sum(1 for g in tax_groups if not _is_exempt_tax_group(g))
                 if eligible_count:
                     allocated = 0.0
                     seen = 0
                     merged_groups = []
                     for group in tax_groups:
-                        if is_exempt(group):
+                        if _is_exempt_tax_group(group):
                             merged_groups.append(group)
                             continue
                         group = dict(group)
