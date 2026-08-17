@@ -85,7 +85,7 @@ class SaleOrder(models.Model):
                         merged_groups.append(group)
                     tax_groups = merged_groups
                 else:
-                    tax_groups.append({
+                    tax_groups.insert(0, {
                         'id': False, 'group_name': 'Transport Tax', 'group_label': 'Transport Tax',
                         'involved_tax_ids': [], 'base_amount_currency': 0.0, 'base_amount': 0.0,
                         'tax_amount_currency': transport_tax, 'tax_amount': transport_tax,
@@ -93,7 +93,7 @@ class SaleOrder(models.Model):
                     })
 
             if transport:
-                tax_groups.append({
+                tax_groups.insert(0, {
                     'id': False, 'group_name': 'Transport', 'group_label': 'Transport',
                     'involved_tax_ids': [], 'base_amount_currency': 0.0, 'base_amount': 0.0,
                     'tax_amount_currency': transport, 'tax_amount': transport,
