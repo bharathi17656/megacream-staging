@@ -177,5 +177,7 @@
                     </div>
                 </div>
             </xpath>
+            <!-- Remove the bottom "HSN Summary" table entirely (client doesn't want it on the printed invoice) -->
+            <xpath expr="//div[@name='l10n_in_hsn_summary']" position="replace"/>
     </template>
 </odoo>
