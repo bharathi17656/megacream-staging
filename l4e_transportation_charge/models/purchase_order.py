@@ -125,8 +125,8 @@ class PurchaseOrder(models.Model):
             },
         }
         
-    def action_create_invoice(self):
-        result = super().action_create_invoice()
+    def action_create_invoice(self, *args, **kwargs):
+        result = super().action_create_invoice(*args, **kwargs)
         for order in self:
             transport = order.transport_charge_amount
             transport_tax = order.transport_charge_tax_amount
