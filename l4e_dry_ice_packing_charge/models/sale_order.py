@@ -29,7 +29,7 @@ class SaleOrder(models.Model):
             first = subtotals[0]
             tax_groups = list(first.get('tax_groups') or [])
             tax_groups.insert(0, {
-                'id': False, 'group_name': 'Dry ice packing charge', 'group_label': 'Dry ice packing charge',
+                'id': False, 'group_name': 'Packing charge', 'group_label': 'Packing charge',
                 'involved_tax_ids': [], 'base_amount_currency': 0.0, 'base_amount': 0.0,
                 'tax_amount_currency': charge, 'tax_amount': charge,
                 'display_base_amount_currency': 0.0, 'display_base_amount': 0.0,
@@ -74,7 +74,7 @@ class SaleOrder(models.Model):
 
                 qty_note = f' (Qty: {order.dry_ice_packing_qty})' if order.dry_ice_packing_qty else ''
                 move.write({'invoice_line_ids': [(0, 0, {
-                    'name': f'Dry ice packing charge{qty_note}',
+                    'name': f'Packing charge{qty_note}',
                     'account_id': account.id,
                     'quantity': 1,
                     'price_unit': charge,
