@@ -28,7 +28,7 @@ class SaleOrder(models.Model):
 
             first = subtotals[0]
             tax_groups = list(first.get('tax_groups') or [])
-            tax_groups.append({
+            tax_groups.insert(0, {
                 'id': False, 'group_name': 'Dry ice packing charge', 'group_label': 'Dry ice packing charge',
                 'involved_tax_ids': [], 'base_amount_currency': 0.0, 'base_amount': 0.0,
                 'tax_amount_currency': charge, 'tax_amount': charge,
