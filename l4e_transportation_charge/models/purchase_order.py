@@ -124,3 +124,43 @@ class PurchaseOrder(models.Model):
                 'default_tax_amount_percent': self.transport_charge_tax_percent,
             },
         }
+        
+    def action_create_invoice(self):
+        result = super().action_create_invoice()
+        for order in self:
+            transport = order.transport_charge_amount
+            transport_tax = order.transport_charge_tax_amount
+            if not transport and not transport_tax:
+                continue
+
+            bills = self.env['account.move'].search([
+                ('invoice_origin', '=', order.name),
+                ('move_type', '=', 'in_invoice'),
+            ])
+            for move in bills:
+                if move.state != 'draft':
+                    continue
+                account = move.invoice_line_ids[:1].account_id or move.journal_id.default_account_id
+                if not account:
+                    continue
+
+                lines_vals = []
+                if transport:
+                    lines_vals.append((0, 0, {
+                        'name': 'Transport',
+                        'account_id': account.id,
+                        'quantity': 1,
+                        'price_unit': transport,
+                        'tax_ids': [(6, 0, [])],
+                    }))
+                if transport_tax:
+                    lines_vals.append((0, 0, {
+                        'name': 'Transport Tax',
+                        'account_id': account.id,
+                        'quantity': 1,
+                        'price_unit': transport_tax,
+                        'tax_ids': [(6, 0, [])],
+                    }))
+                if lines_vals:
+                    move.write({'invoice_line_ids': lines_vals})
+        return result
