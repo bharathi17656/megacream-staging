@@ -4,6 +4,7 @@
     "depends": [
         "base",
         "account",
+        "l10n_in",
     ],
     'data': [
     'views/account_move_views.xml',
