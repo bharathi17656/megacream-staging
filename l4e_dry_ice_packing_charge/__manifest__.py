@@ -9,7 +9,6 @@
         'security/ir.model.access.csv',
         'wizard/dry_ice_packing_wizard_views.xml',
         'views/sale_order_views.xml',
-        'views/account_move_views.xml',
     ],
     'installable': True,
     'application': False,

@@ -14,6 +14,17 @@ class AccountMoveLine(models.Model):
 class AccountMove(models.Model):
     _inherit = 'account.move'
 
+    # Overrides the domain of the existing invoice_line_ids field (core Odoo
+    # already restricts it to display_type in product/line_section/line_note;
+    # we add our own condition on top) so the hidden charge lines never show
+    # up in the Invoice Lines grid, while still being real accounting lines.
+    invoice_line_ids = fields.One2many(
+        domain=[
+            ('display_type', 'in', ('product', 'line_section', 'line_note')),
+            ('l4e_hide_charge_line', '=', False),
+        ],
+    )
+
     @api.model_create_multi
     def create(self, vals_list):
         moves = super().create(vals_list)
