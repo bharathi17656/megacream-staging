@@ -79,6 +79,6 @@ class SaleOrder(models.Model):
                     'quantity': 1,
                     'price_unit': charge,
                     'tax_ids': [(6, 0, [])],
-                    'l4e_is_charge_line': True,
+                    'l4e_hide_charge_line': True,
                 })]})
         return moves

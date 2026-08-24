@@ -148,7 +148,7 @@ class SaleOrder(models.Model):
                         'quantity': 1,
                         'price_unit': transport,
                         'tax_ids': [(6, 0, [])],
-                        'l4e_is_charge_line': True,
+                        'l4e_hide_charge_line': True,
                     }))
                 if transport_tax:
                     lines_vals.append((0, 0, {
@@ -157,7 +157,7 @@ class SaleOrder(models.Model):
                         'quantity': 1,
                         'price_unit': transport_tax,
                         'tax_ids': [(6, 0, [])],
-                        'l4e_is_charge_line': True,
+                        'l4e_hide_charge_line': True,
                     }))
                 if lines_vals:
                     move.write({'invoice_line_ids': lines_vals})

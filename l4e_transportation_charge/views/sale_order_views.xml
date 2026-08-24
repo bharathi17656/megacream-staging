@@ -1,5 +1,4 @@
 <odoo>
-
     <record id="view_order_form_transport_charge" model="ir.ui.view">
         <field name="name">sale.order.form.transport.charge</field>
         <field name="model">sale.order</field>
@@ -13,24 +12,4 @@
             </xpath>
         </field>
     </record>
-
-
-    <record id="view_move_form_hide_l4e_charge_lines" model="ir.ui.view">
-        <field name="name">account.move.form.hide.l4e.charge.lines</field>
-        <field name="model">account.move</field>
-        <field name="inherit_id" ref="account.view_move_form"/>
-        <field name="arch" type="xml">
-
-            <xpath expr="//field[@name='invoice_line_ids']" position="attributes">
-                <attribute name="domain">
-                    [
-                        ('display_type', 'in', ('product', 'line_section', 'line_subsection', 'line_note')),
-                        ('l4e_is_charge_line', '=', False)
-                    ]
-                </attribute>
-            </xpath>
-
-        </field>
-    </record>
-
 </odoo>
