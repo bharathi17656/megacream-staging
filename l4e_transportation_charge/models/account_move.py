@@ -1,6 +1,14 @@
 from odoo import api, fields, models
 
 
+def _is_exempt_tax_group(group):
+    """A tax_totals tax_group dict is considered 'Exempt' if its name/label
+    mentions exempt (e.g. a 0% Exempt tax). Used to skip these zero-value
+    rows when merging Transport Tax into the existing eligible groups."""
+    return 'exempt' in (group.get('group_name') or '').lower() or \
+           'exempt' in (group.get('group_label') or '').lower()
+
+
 class AccountMoveLine(models.Model):
     _inherit = 'account.move.line'
 
@@ -83,9 +91,12 @@ class AccountMove(models.Model):
 
     def _l4e_relabel_transport_charge_totals(self):
         """Move the hidden Transport / Transport Tax line amounts out of the
-        generic "Untaxed Amount" figure in the totals widget and show them as
-        their own labeled rows instead - exactly like the sale/purchase order
-        totals box. This only changes how the widget groups amounts for
+        generic "Untaxed Amount" figure in the totals widget - exactly like
+        the sale/purchase order totals box. "Transport" always gets its own
+        row. "Transport Tax" is merged proportionally into the existing
+        (non-exempt) tax groups when there are any - matching the SO/PO
+        behavior - and only shown as its own row when there's nothing to
+        merge into. This only changes how the widget groups amounts for
         display; the real invoice lines (and the actual accounting/tax
         amounts) are completely untouched. Wrapped defensively so that if the
         totals widget's internal data shape ever changes, this simply becomes
@@ -98,6 +109,11 @@ class AccountMove(models.Model):
         if not charge_lines:
             return
         try:
+            transport = sum(charge_lines.filtered(lambda l: l.name == 'Transport').mapped('price_subtotal'))
+            transport_tax = sum(charge_lines.filtered(lambda l: l.name == 'Transport Tax').mapped('price_subtotal'))
+            if not transport and not transport_tax:
+                return
+
             totals = self.tax_totals
             subtotals = totals and totals.get('subtotals')
             if not subtotals:
@@ -105,26 +121,50 @@ class AccountMove(models.Model):
             first = subtotals[0]
             tax_groups = list(first.get('tax_groups') or [])
 
-            new_rows = []
-            for label in ('Transport', 'Transport Tax'):
-                amount = sum(charge_lines.filtered(lambda l: l.name == label).mapped('price_subtotal'))
-                if not amount:
-                    continue
-                for base_key in ('base_amount_currency', 'base_amount',
-                                  'display_base_amount_currency', 'display_base_amount'):
-                    if base_key in first:
-                        first[base_key] = first.get(base_key, 0.0) - amount
-                new_rows.append({
-                    'id': False, 'group_name': label, 'group_label': label,
+            combined = transport + transport_tax
+            for base_key in ('base_amount_currency', 'base_amount',
+                              'display_base_amount_currency', 'display_base_amount'):
+                if base_key in first:
+                    first[base_key] = first.get(base_key, 0.0) - combined
+
+            if transport_tax:
+                eligible_count = sum(1 for g in tax_groups if not _is_exempt_tax_group(g))
+                if eligible_count:
+                    allocated = 0.0
+                    seen = 0
+                    merged_groups = []
+                    for group in tax_groups:
+                        if _is_exempt_tax_group(group):
+                            merged_groups.append(group)
+                            continue
+                        group = dict(group)
+                        seen += 1
+                        if seen == eligible_count:
+                            share = transport_tax - allocated
+                        else:
+                            share = transport_tax / eligible_count
+                            allocated += share
+                        group['tax_amount_currency'] = group.get('tax_amount_currency', 0.0) + share
+                        group['tax_amount'] = group.get('tax_amount', 0.0) + share
+                        merged_groups.append(group)
+                    tax_groups = merged_groups
+                else:
+                    tax_groups.insert(0, {
+                        'id': False, 'group_name': 'Transport Tax', 'group_label': 'Transport Tax',
+                        'involved_tax_ids': [], 'base_amount_currency': 0.0, 'base_amount': 0.0,
+                        'tax_amount_currency': transport_tax, 'tax_amount': transport_tax,
+                        'display_base_amount_currency': 0.0, 'display_base_amount': 0.0,
+                    })
+
+            if transport:
+                tax_groups.insert(0, {
+                    'id': False, 'group_name': 'Transport', 'group_label': 'Transport',
                     'involved_tax_ids': [], 'base_amount_currency': 0.0, 'base_amount': 0.0,
-                    'tax_amount_currency': amount, 'tax_amount': amount,
+                    'tax_amount_currency': transport, 'tax_amount': transport,
                     'display_base_amount_currency': 0.0, 'display_base_amount': 0.0,
                 })
 
-            if not new_rows:
-                return
-
-            first['tax_groups'] = new_rows + tax_groups
+            first['tax_groups'] = tax_groups
             subtotals[0] = first
             totals['subtotals'] = subtotals
             self.tax_totals = totals
