@@ -25,9 +25,9 @@ class AccountMove(models.Model):
     )
 
     @api.depends(
-        'invoice_line_ids.l4e_hide_charge_line',
-        'invoice_line_ids.price_subtotal',
-        'invoice_line_ids.name',
+        'line_ids.l4e_hide_charge_line',
+        'line_ids.price_subtotal',
+        'line_ids.name',
     )
     def _compute_tax_totals(self):
         super()._compute_tax_totals()
@@ -45,7 +45,7 @@ class AccountMove(models.Model):
         instead of breaking invoice computation.
         """
         self.ensure_one()
-        charge_lines = self.invoice_line_ids.filtered(
+        charge_lines = self.line_ids.filtered(
             lambda l: l.l4e_hide_charge_line and l.name and l.name.startswith('Packing charge')
         )
         if not charge_lines:
