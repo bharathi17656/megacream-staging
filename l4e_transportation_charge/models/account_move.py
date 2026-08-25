@@ -32,6 +32,15 @@ class AccountMove(models.Model):
             ('l4e_hide_charge_line', '=', False),
         ],
     )
+    
+    def _default_cash_rounding_id(self):
+        return self.env['account.cash.rounding'].search(
+            [('name', '=', 'Half Up')], limit=1
+        )
+
+    invoice_cash_rounding_id = fields.Many2one(
+        default=_default_cash_rounding_id
+    )
 
     @api.model_create_multi
     def create(self, vals_list):
