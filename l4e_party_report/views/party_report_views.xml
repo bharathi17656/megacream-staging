@@ -61,11 +61,11 @@
 
                 <!-- Inactivity Time Filters -->
                 <filter string="🚨 Inactive > 1 Month (30+ Days)" name="filter_inactive_30"
-                        domain="[('days_since_last_order', '&gt;=', 30)]"/>
+                        domain="[('days_since_last_order', '&gt;', 30)]"/>
                 <filter string="⚠️ Inactive > 2 Months (60+ Days)" name="filter_inactive_60"
-                        domain="[('days_since_last_order', '&gt;=', 60)]"/>
+                        domain="[('days_since_last_order', '&gt;', 60)]"/>
                 <filter string="🛑 Dormant > 3 Months (90+ Days)" name="filter_dormant_90"
-                        domain="[('days_since_last_order', '&gt;=', 90)]"/>
+                        domain="[('days_since_last_order', '&gt;', 90)]"/>
                 <separator/>
                 <filter string="🟢 Active (≤ 30 Days)" name="filter_active"
                         domain="[('inactivity_status', '=', 'active')]"/>

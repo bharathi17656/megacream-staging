@@ -16,19 +16,14 @@ class L4ePartyReport(models.Model):
     state_id = fields.Many2one("res.country.state", string="State", readonly=True)
     user_id = fields.Many2one("res.users", string="Salesperson", readonly=True)
     company_id = fields.Many2one("res.company", string="Company", readonly=True)
+    currency_id = fields.Many2one("res.currency", string="Currency", readonly=True)
     is_party_order = fields.Boolean(string="Party Order", readonly=True)
     last_order_id = fields.Many2one("sale.order", string="Last Sale Order", readonly=True)
     last_order_date = fields.Date(string="Last Order Date", readonly=True)
     days_since_last_order = fields.Integer(string="Days Inactive", readonly=True)
     inactivity_duration = fields.Char(string="Last Purchased", readonly=True)
     order_count = fields.Integer(string="Total Orders", readonly=True)
-    total_spent = fields.Float(string="Total Spent", readonly=True)
-    currency_id = fields.Many2one(
-        "res.currency",
-        string="Currency",
-        related="company_id.currency_id",
-        readonly=True,
-    )
+    total_spent = fields.Monetary(string="Total Spent", currency_field="currency_id", readonly=True)
     inactivity_status = fields.Selection(
         [
             ("active", "Active (< 1 Month)"),
@@ -71,7 +66,8 @@ class L4ePartyReport(models.Model):
                     p.city AS city,
                     p.state_id AS state_id,
                     COALESCE(p.user_id, lo.last_user_id) AS user_id,
-                    p.company_id AS company_id,
+                    COALESCE(p.company_id, comp.id) AS company_id,
+                    COALESCE(comp.currency_id, (SELECT id FROM res_currency WHERE name = 'INR' LIMIT 1), 1) AS currency_id,
                     FALSE AS is_party_order,
                     lo.last_order_id AS last_order_id,
                     lo.last_order_date AS last_order_date,
@@ -83,11 +79,11 @@ class L4ePartyReport(models.Model):
                         WHEN lo.last_order_date IS NULL THEN 'Never Ordered'
                         WHEN (CURRENT_DATE - lo.last_order_date) = 0 THEN 'Today'
                         WHEN (CURRENT_DATE - lo.last_order_date) = 1 THEN 'Yesterday'
-                        WHEN (CURRENT_DATE - lo.last_order_date) < 30 THEN CONCAT((CURRENT_DATE - lo.last_order_date), ' days ago')
-                        WHEN (CURRENT_DATE - lo.last_order_date) < 60 THEN '1 Month ago'
-                        WHEN (CURRENT_DATE - lo.last_order_date) < 90 THEN '2 Months ago'
-                        WHEN (CURRENT_DATE - lo.last_order_date) < 180 THEN '3–5 Months ago'
-                        WHEN (CURRENT_DATE - lo.last_order_date) < 365 THEN '6–11 Months ago'
+                        WHEN (CURRENT_DATE - lo.last_order_date) <= 30 THEN CONCAT((CURRENT_DATE - lo.last_order_date), ' days ago')
+                        WHEN (CURRENT_DATE - lo.last_order_date) <= 60 THEN '1 Month ago'
+                        WHEN (CURRENT_DATE - lo.last_order_date) <= 90 THEN '2 Months ago'
+                        WHEN (CURRENT_DATE - lo.last_order_date) <= 180 THEN '3–5 Months ago'
+                        WHEN (CURRENT_DATE - lo.last_order_date) <= 365 THEN '6–11 Months ago'
                         ELSE '1+ Year ago'
                     END AS inactivity_duration,
                     COALESCE(os.order_count, 0) AS order_count,
@@ -102,6 +98,7 @@ class L4ePartyReport(models.Model):
                 FROM res_partner p
                 LEFT JOIN latest_orders lo ON lo.partner_id = p.id
                 LEFT JOIN order_stats os ON os.partner_id = p.id
+                LEFT JOIN res_company comp ON comp.id = COALESCE(p.company_id, (SELECT id FROM res_company ORDER BY id LIMIT 1))
                 WHERE p.active = TRUE 
                   AND (lo.last_order_id IS NOT NULL OR p.customer_rank > 0 OR p.is_company = TRUE OR p.parent_id IS NULL)
             )

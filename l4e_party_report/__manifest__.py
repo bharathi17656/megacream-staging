@@ -9,9 +9,9 @@ MegaCream Party & Customer Inactivity Report Module (Odoo 19)
 ==============================================================
 Features:
 - Track customer inactivity based on days elapsed since their last Sales Order.
-- Clean, professional duration formatting (e.g. '15 days ago', '2 Months ago', 'Never Ordered').
+- Clean, professional duration formatting (e.g. '15 days ago', '1 Month ago', 'Never Ordered').
 - Quick customer contact details (Phone, Email, City/State) for follow-up calls.
-- Time-based filters: Inactive > 1 Month (30 Days), > 2 Months (60 Days), > 3 Months (90 Days), Active.
+- Time-based filters: Inactive > 1 Month (30+ Days), > 2 Months (60+ Days), > 3 Months (90+ Days), Active.
 - Dedicated Party Report under Sales -> Reporting -> Party Report (below Customers).
 - Pivot, Graph, and List views with tier grouping and lifetime revenue metrics.
     """,
