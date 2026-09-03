@@ -1,43 +1,42 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
+
     <!-- ═══════════════════════════════════════════════════════
          PARTY REPORT — List View
     ═══════════════════════════════════════════════════════ -->
     <record id="view_party_report_list" model="ir.ui.view">
-        <field name="name">sale.order.party.report.list</field>
-        <field name="model">sale.order</field>
+        <field name="name">l4e.party.report.list</field>
+        <field name="model">l4e.party.report</field>
         <field name="arch" type="xml">
-            <list string="Party Refrigerator Report"
-                  decoration-danger="fridge_qty_missing &gt; 0 and is_fridge_overdue"
-                  decoration-warning="fridge_qty_missing &gt; 0 and not is_fridge_overdue"
-                  decoration-success="fridge_return_status == 'returned'"
-                  create="false">
-                <field name="name" string="Order Ref"/>
-                <field name="date_order" string="Order Date" widget="date"/>
+            <list string="Party Inactivity Report"
+                  decoration-danger="inactivity_status in ('dormant_90', 'never_ordered')"
+                  decoration-warning="inactivity_status == 'inactive_60'"
+                  decoration-info="inactivity_status == 'inactive_30'"
+                  decoration-success="inactivity_status == 'active'"
+                  create="false" edit="false" delete="false">
                 <field name="partner_id" string="Customer / Party"/>
-                <field name="partner_phone" string="Phone" widget="phone" optional="show"/>
-                <field name="partner_email" string="Email" widget="email" optional="show"/>
-                <field name="fridge_serial_no" string="Fridge / Tag No" optional="show"/>
-                <field name="fridge_expected_return_date" string="Expected Return" widget="date"/>
-                <field name="fridge_qty_dispatched" string="Dispatched" sum="Total Dispatched"/>
-                <field name="fridge_qty_returned" string="Returned" sum="Total Returned"/>
-                <field name="fridge_qty_missing" string="Missing / Pending" sum="Total Missing"
-                       decoration-danger="fridge_qty_missing &gt; 0"
-                       decoration-success="fridge_qty_missing == 0"/>
-                <field name="is_fridge_overdue" column_invisible="1"/>
-                <field name="fridge_return_status" widget="badge" string="Return Status"
-                       decoration-danger="fridge_return_status == 'pending'"
-                       decoration-warning="fridge_return_status == 'partial'"
-                       decoration-success="fridge_return_status == 'returned'"/>
+                <field name="phone" widget="phone" optional="show"/>
+                <field name="email" widget="email" optional="show"/>
+                <field name="city" optional="show"/>
+                <field name="state_id" optional="hide"/>
+                <field name="last_order_id" string="Last Order Ref" optional="show"/>
+                <field name="last_order_date" string="Last Order Date" widget="date"/>
+                <field name="days_since_last_order" string="Days Inactive"
+                       decoration-danger="days_since_last_order &gt; 90"
+                       decoration-warning="days_since_last_order &gt; 60 and days_since_last_order &lt;= 90"
+                       decoration-info="days_since_last_order &gt; 30 and days_since_last_order &lt;= 60"
+                       decoration-success="days_since_last_order &lt;= 30"/>
+                <field name="inactivity_status" widget="badge" string="Status"
+                       decoration-danger="inactivity_status in ('dormant_90', 'never_ordered')"
+                       decoration-warning="inactivity_status == 'inactive_60'"
+                       decoration-info="inactivity_status == 'inactive_30'"
+                       decoration-success="inactivity_status == 'active'"/>
+                <field name="order_count" string="Total Orders" sum="Total Orders" optional="show"/>
+                <field name="total_spent" string="Total Spent" widget="monetary" sum="Total Revenue" optional="show"/>
+                <field name="currency_id" column_invisible="1"/>
                 <field name="user_id" string="Salesperson" optional="show"/>
-                <field name="state" widget="badge" string="Order Status" optional="hide"
-                       decoration-info="state == 'draft'"
-                       decoration-success="state == 'sale'"/>
-                <button name="action_open_fridge_return_wizard"
-                        string="Log Return"
-                        type="object"
-                        icon="fa-reply"
-                        invisible="fridge_qty_missing == 0"/>
+                <button name="action_view_partner" string="View Customer" type="object" icon="fa-user"/>
+                <button name="action_create_quotation" string="New Quote" type="object" icon="fa-shopping-cart"/>
             </list>
         </field>
     </record>
@@ -46,31 +45,40 @@
          PARTY REPORT — Search View
     ═══════════════════════════════════════════════════════ -->
     <record id="view_party_report_search" model="ir.ui.view">
-        <field name="name">sale.order.party.report.search</field>
-        <field name="model">sale.order</field>
+        <field name="name">l4e.party.report.search</field>
+        <field name="model">l4e.party.report</field>
         <field name="arch" type="xml">
             <search string="Search Party Report">
-                <field name="partner_id" string="Customer"/>
-                <field name="name" string="Order Reference"/>
-                <field name="fridge_serial_no" string="Fridge Serial No"/>
-                <field name="partner_phone" string="Phone"/>
-                <field name="partner_email" string="Email"/>
+                <field name="partner_id" string="Customer / Party"/>
+                <field name="phone" string="Phone"/>
+                <field name="email" string="Email"/>
+                <field name="city" string="City"/>
+                <field name="user_id" string="Salesperson"/>
+                <field name="last_order_id" string="Last Order"/>
 
-                <!-- Filters -->
-                <filter string="🚨 Missing / Pending Return" name="filter_missing" domain="[('fridge_qty_missing', '&gt;', 0)]"/>
-                <filter string="⏰ Overdue Returns" name="filter_overdue" domain="[('fridge_qty_missing', '&gt;', 0), ('fridge_expected_return_date', '&lt;', context_today)]"/>
-                <filter string="🔄 Partially Returned" name="filter_partial" domain="[('fridge_return_status', '=', 'partial')]"/>
-                <filter string="🟢 Fully Returned" name="filter_returned" domain="[('fridge_return_status', '=', 'returned')]"/>
+                <!-- Inactivity Time Filters -->
+                <filter string="🚨 Inactive > 1 Month (30+ Days)" name="filter_inactive_30"
+                        domain="[('days_since_last_order', '&gt;=', 30)]"/>
+                <filter string="⚠️ Inactive > 2 Months (60+ Days)" name="filter_inactive_60"
+                        domain="[('days_since_last_order', '&gt;=', 60)]"/>
+                <filter string="🛑 Dormant > 3 Months (90+ Days)" name="filter_dormant_90"
+                        domain="[('days_since_last_order', '&gt;=', 90)]"/>
                 <separator/>
-                <filter string="Today's Orders" name="filter_today" domain="[('date_order', '&gt;=', context_today)]"/>
+                <filter string="🟢 Active (≤ 30 Days)" name="filter_active"
+                        domain="[('inactivity_status', '=', 'active')]"/>
+                <filter string="⚪ Never Ordered" name="filter_never_ordered"
+                        domain="[('inactivity_status', '=', 'never_ordered')]"/>
+                <separator/>
+                <filter string="📞 Has Phone Number" name="filter_has_phone"
+                        domain="[('phone', '!=', False)]"/>
 
                 <!-- Group By -->
                 <group>
-                    <filter string="Customer" name="groupby_partner" context="{'group_by': 'partner_id'}"/>
-                    <filter string="Return Status" name="groupby_status" context="{'group_by': 'fridge_return_status'}"/>
-                    <filter string="Expected Return Date" name="groupby_expected_date" context="{'group_by': 'fridge_expected_return_date:day'}"/>
-                    <filter string="Order Month" name="groupby_order_date" context="{'group_by': 'date_order:month'}"/>
+                    <filter string="Inactivity Status" name="groupby_status" context="{'group_by': 'inactivity_status'}"/>
                     <filter string="Salesperson" name="groupby_user" context="{'group_by': 'user_id'}"/>
+                    <filter string="City" name="groupby_city" context="{'group_by': 'city'}"/>
+                    <filter string="State" name="groupby_state" context="{'group_by': 'state_id'}"/>
+                    <filter string="Last Order Month" name="groupby_last_order_month" context="{'group_by': 'last_order_date:month'}"/>
                 </group>
             </search>
         </field>
@@ -80,15 +88,15 @@
          PARTY REPORT — Pivot View
     ═══════════════════════════════════════════════════════ -->
     <record id="view_party_report_pivot" model="ir.ui.view">
-        <field name="name">sale.order.party.report.pivot</field>
-        <field name="model">sale.order</field>
+        <field name="name">l4e.party.report.pivot</field>
+        <field name="model">l4e.party.report</field>
         <field name="arch" type="xml">
-            <pivot string="Party Refrigerator Pivot Report">
-                <field name="partner_id" type="row"/>
-                <field name="fridge_expected_return_date" type="col" interval="month"/>
-                <field name="fridge_qty_dispatched" type="measure"/>
-                <field name="fridge_qty_returned" type="measure"/>
-                <field name="fridge_qty_missing" type="measure"/>
+            <pivot string="Party Inactivity Pivot Analysis">
+                <field name="inactivity_status" type="row"/>
+                <field name="last_order_date" type="col" interval="month"/>
+                <field name="partner_id" type="measure"/>
+                <field name="order_count" type="measure"/>
+                <field name="total_spent" type="measure"/>
             </pivot>
         </field>
     </record>
@@ -97,12 +105,12 @@
          PARTY REPORT — Graph View
     ═══════════════════════════════════════════════════════ -->
     <record id="view_party_report_graph" model="ir.ui.view">
-        <field name="name">sale.order.party.report.graph</field>
-        <field name="model">sale.order</field>
+        <field name="name">l4e.party.report.graph</field>
+        <field name="model">l4e.party.report</field>
         <field name="arch" type="xml">
-            <graph string="Missing Refrigerator by Customer" type="bar">
-                <field name="partner_id"/>
-                <field name="fridge_qty_missing" type="measure"/>
+            <graph string="Customers by Inactivity Status" type="bar">
+                <field name="inactivity_status"/>
+                <field name="partner_id" type="measure"/>
             </graph>
         </field>
     </record>
@@ -112,18 +120,17 @@
     ═══════════════════════════════════════════════════════ -->
     <record id="action_party_report" model="ir.actions.act_window">
         <field name="name">Party Report</field>
-        <field name="res_model">sale.order</field>
-        <field name="view_mode">list,pivot,graph,form</field>
-        <field name="domain">[('is_party_order', '=', True)]</field>
+        <field name="res_model">l4e.party.report</field>
+        <field name="view_mode">list,pivot,graph</field>
+        <field name="domain">[]</field>
         <field name="search_view_id" ref="view_party_report_search"/>
-        <field name="context">{'search_default_filter_missing': 1, 'default_is_party_order': True}</field>
+        <field name="context">{'search_default_filter_inactive_30': 1}</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">
-                No party orders with refrigerator dispatches found.
+                All customers are currently active!
             </p>
             <p>
-                When ice cream is sold for parties with portable refrigerators/freezers, enable <b>Party Order / Fridge Issued</b> on the Sales Order.
-                You can track missing refrigerators, contact customers, and log returns here.
+                This report monitors customer ordering frequency and highlights parties who haven't ordered recently so your sales team can contact them.
             </p>
         </field>
     </record>
@@ -149,4 +156,5 @@
         <field name="view_id" ref="view_party_report_graph"/>
         <field name="act_window_id" ref="action_party_report"/>
     </record>
+
 </odoo>

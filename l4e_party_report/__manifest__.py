@@ -1,26 +1,23 @@
 # -*- coding: utf-8 -*-
 {
-    'name': 'MegaCream Party & Refrigerator Tracking',
+    'name': 'MegaCream Party & Customer Inactivity Report',
     'version': '19.0.1.0.0',
     'category': 'Sales/Sales',
-    'summary': 'Track Ice Cream Party Orders, Refrigerator Dispatches, Missing Fridges & Returns',
+    'summary': 'Track Inactive Customers & Last Sale Order Activity for Customer Retention',
     'description': """
-MegaCream Party & Refrigerator Tracking Module (Odoo 19)
-=========================================================
+MegaCream Party & Customer Inactivity Report Module (Odoo 19)
+==============================================================
 Features:
-- Track portable refrigerators/deep freezers dispatched with ice cream party orders.
-- Monitor missing / pending refrigerator returns in real-time.
-- Quick customer contact details (Phone, Email) for easy recovery follow-up.
-- Wizard to quickly log refrigerator returns.
+- Track customer inactivity based on days elapsed since their last Sales Order.
+- Quick customer contact details (Phone, Email, City/State) for follow-up calls.
+- Time-based filters: Inactive > 1 Month (30 Days), > 2 Months (60 Days), > 3 Months (90 Days), Dormant, Active.
 - Dedicated Party Report under Sales -> Reporting -> Party Report (below Customers).
-- Pivot, Graph, and List views with filters for Missing, Overdue, and Completed returns.
+- Pivot, Graph, and List views with tier grouping and lifetime revenue metrics.
     """,
     'author': 'L4E',
-    'depends': ['sale', 'sale_management', 'stock'],
+    'depends': ['sale', 'sale_management'],
     'data': [
         'security/ir.model.access.csv',
-        'wizards/fridge_return_wizard_views.xml',
-        'views/sale_order_views.xml',
         'views/party_report_views.xml',
         'views/menu_views.xml',
     ],
