@@ -344,21 +344,19 @@ class L4eIceCreamProcessingBatch(models.Model):
         return picking_type
 
     def _get_production_or_adjustment_location(self):
-        # Must always be a Virtual Production location (not internal shop floor WIP)
-        loc = self.env["stock.location"].search(
-            [
-                ("usage", "=", "production"),
-                ("location_id.usage", "!=", "internal"),
-            ],
-            limit=1,
-        )
+        # Must always be the standard Virtual Production location OUTSIDE any warehouse
+        loc = self.env.ref("stock.location_production", raise_if_not_found=False)
         if not loc:
-            loc = self.env.ref("stock.location_production", raise_if_not_found=False)
-        if not loc:
+            wh_view_ids = self.env["stock.warehouse"].search([]).mapped("view_location_id").ids
             loc = self.env["stock.location"].search(
-                [("usage", "=", "inventory"), ("location_id.usage", "!=", "internal")],
+                [
+                    ("usage", "=", "production"),
+                    ("id", "not child_of", wh_view_ids),
+                ],
                 limit=1,
             )
+        if not loc:
+            loc = self.env.ref("stock.location_inventory", raise_if_not_found=False)
         return loc
 
     # ─── Button Actions ────────────────────────────────────────────────────────
