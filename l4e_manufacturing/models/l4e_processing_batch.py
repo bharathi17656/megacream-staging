@@ -368,7 +368,13 @@ class L4eIceCreamProcessingBatch(models.Model):
 
         # 4. Fallback to inventory adjustment virtual location
         if not loc:
-            loc = self.env.ref("stock.stock_location_inventory", raise_if_not_found=False) or self.env.ref("stock.location_inventory", raise_if_not_found=False)
+            loc = self.env["stock.location"].search(
+                [
+                    ("usage", "=", "inventory"),
+                    ("id", "not in", wh_loc_ids),
+                ],
+                limit=1,
+            ) or self.env["stock.location"].search([("usage", "=", "inventory")], limit=1)
         return loc
 
     # ─── Button Actions ────────────────────────────────────────────────────────
