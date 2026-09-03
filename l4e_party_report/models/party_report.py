@@ -7,7 +7,7 @@ class L4ePartyReport(models.Model):
     _name = "l4e.party.report"
     _description = "Party & Customer Inactivity Report"
     _auto = False
-    _order = "days_since_last_order desc, last_order_date desc"
+    _order = "days_since_last_order desc nulls last, last_order_date desc"
 
     partner_id = fields.Many2one("res.partner", string="Customer / Party", readonly=True)
     phone = fields.Char(string="Phone", readonly=True)
@@ -19,7 +19,8 @@ class L4ePartyReport(models.Model):
     is_party_order = fields.Boolean(string="Party Order", readonly=True)
     last_order_id = fields.Many2one("sale.order", string="Last Sale Order", readonly=True)
     last_order_date = fields.Date(string="Last Order Date", readonly=True)
-    days_since_last_order = fields.Integer(string="Days Since Last Order", readonly=True)
+    days_since_last_order = fields.Integer(string="Days Inactive", readonly=True)
+    inactivity_duration = fields.Char(string="Last Purchased", readonly=True)
     order_count = fields.Integer(string="Total Orders", readonly=True)
     total_spent = fields.Float(string="Total Spent", readonly=True)
     currency_id = fields.Many2one(
@@ -30,13 +31,13 @@ class L4ePartyReport(models.Model):
     )
     inactivity_status = fields.Selection(
         [
-            ("active", "Active (≤ 30 Days)"),
-            ("inactive_30", "Inactive (1–2 Months)"),
-            ("inactive_60", "Inactive (2–3 Months)"),
-            ("dormant_90", "Dormant (> 3 Months)"),
+            ("active", "Active (< 1 Month)"),
+            ("inactive_30", "1–2 Months Inactive"),
+            ("inactive_60", "2–3 Months Inactive"),
+            ("dormant_90", "3+ Months Inactive"),
             ("never_ordered", "Never Ordered"),
         ],
-        string="Inactivity Status",
+        string="Inactivity Tier",
         readonly=True,
     )
 
@@ -75,9 +76,20 @@ class L4ePartyReport(models.Model):
                     lo.last_order_id AS last_order_id,
                     lo.last_order_date AS last_order_date,
                     CASE 
-                        WHEN lo.last_order_date IS NOT NULL THEN (CURRENT_DATE - lo.last_order_date)
-                        ELSE 99999
+                        WHEN lo.last_order_date IS NOT NULL THEN (CURRENT_DATE - lo.last_order_date)::integer
+                        ELSE NULL
                     END AS days_since_last_order,
+                    CASE
+                        WHEN lo.last_order_date IS NULL THEN 'Never Ordered'
+                        WHEN (CURRENT_DATE - lo.last_order_date) = 0 THEN 'Today'
+                        WHEN (CURRENT_DATE - lo.last_order_date) = 1 THEN 'Yesterday'
+                        WHEN (CURRENT_DATE - lo.last_order_date) < 30 THEN CONCAT((CURRENT_DATE - lo.last_order_date), ' days ago')
+                        WHEN (CURRENT_DATE - lo.last_order_date) < 60 THEN '1 Month ago'
+                        WHEN (CURRENT_DATE - lo.last_order_date) < 90 THEN '2 Months ago'
+                        WHEN (CURRENT_DATE - lo.last_order_date) < 180 THEN '3–5 Months ago'
+                        WHEN (CURRENT_DATE - lo.last_order_date) < 365 THEN '6–11 Months ago'
+                        ELSE '1+ Year ago'
+                    END AS inactivity_duration,
                     COALESCE(os.order_count, 0) AS order_count,
                     COALESCE(os.total_spent, 0.0) AS total_spent,
                     CASE

@@ -9,10 +9,11 @@
         <field name="model">l4e.party.report</field>
         <field name="arch" type="xml">
             <list string="Party Inactivity Report"
-                  decoration-danger="inactivity_status in ('dormant_90', 'never_ordered')"
+                  decoration-danger="inactivity_status == 'dormant_90'"
                   decoration-warning="inactivity_status == 'inactive_60'"
                   decoration-info="inactivity_status == 'inactive_30'"
                   decoration-success="inactivity_status == 'active'"
+                  decoration-muted="inactivity_status == 'never_ordered'"
                   create="false" edit="false" delete="false">
                 <field name="partner_id" string="Customer / Party"/>
                 <field name="phone" widget="phone" optional="show"/>
@@ -21,16 +22,18 @@
                 <field name="state_id" optional="hide"/>
                 <field name="last_order_id" string="Last Order Ref" optional="show"/>
                 <field name="last_order_date" string="Last Order Date" widget="date"/>
-                <field name="days_since_last_order" string="Days Inactive"
+                <field name="inactivity_duration" string="Last Purchased" optional="show"/>
+                <field name="days_since_last_order" string="Days Inactive" optional="show"
                        decoration-danger="days_since_last_order &gt; 90"
                        decoration-warning="days_since_last_order &gt; 60 and days_since_last_order &lt;= 90"
                        decoration-info="days_since_last_order &gt; 30 and days_since_last_order &lt;= 60"
                        decoration-success="days_since_last_order &lt;= 30"/>
-                <field name="inactivity_status" widget="badge" string="Status"
-                       decoration-danger="inactivity_status in ('dormant_90', 'never_ordered')"
+                <field name="inactivity_status" widget="badge" string="Inactivity Tier"
+                       decoration-danger="inactivity_status == 'dormant_90'"
                        decoration-warning="inactivity_status == 'inactive_60'"
                        decoration-info="inactivity_status == 'inactive_30'"
-                       decoration-success="inactivity_status == 'active'"/>
+                       decoration-success="inactivity_status == 'active'"
+                       decoration-muted="inactivity_status == 'never_ordered'"/>
                 <field name="order_count" string="Total Orders" sum="Total Orders" optional="show"/>
                 <field name="total_spent" string="Total Spent" widget="monetary" sum="Total Revenue" optional="show"/>
                 <field name="currency_id" column_invisible="1"/>
@@ -74,7 +77,7 @@
 
                 <!-- Group By -->
                 <group>
-                    <filter string="Inactivity Status" name="groupby_status" context="{'group_by': 'inactivity_status'}"/>
+                    <filter string="Inactivity Tier" name="groupby_status" context="{'group_by': 'inactivity_status'}"/>
                     <filter string="Salesperson" name="groupby_user" context="{'group_by': 'user_id'}"/>
                     <filter string="City" name="groupby_city" context="{'group_by': 'city'}"/>
                     <filter string="State" name="groupby_state" context="{'group_by': 'state_id'}"/>
