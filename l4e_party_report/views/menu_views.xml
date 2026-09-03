@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ═══════════════════════════════════════════════════════
+         MENU: Sales -> Reporting -> Party Report (below Customers)
+    ═══════════════════════════════════════════════════════ -->
+    <menuitem id="menu_party_report"
+              name="Party Report"
+              parent="sale.menu_sale_report"
+              action="action_party_report"
+              sequence="50"/>
+</odoo>

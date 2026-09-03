@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ═══════════════════════════════════════════════════════
+         PARTY REPORT — List View
+    ═══════════════════════════════════════════════════════ -->
+    <record id="view_party_report_list" model="ir.ui.view">
+        <field name="name">sale.order.party.report.list</field>
+        <field name="model">sale.order</field>
+        <field name="arch" type="xml">
+            <list string="Party Refrigerator Report"
+                  decoration-danger="fridge_qty_missing &gt; 0 and is_fridge_overdue"
+                  decoration-warning="fridge_qty_missing &gt; 0 and not is_fridge_overdue"
+                  decoration-success="fridge_return_status == 'returned'"
+                  create="false">
+                <field name="name" string="Order Ref"/>
+                <field name="date_order" string="Order Date" widget="date"/>
+                <field name="partner_id" string="Customer / Party"/>
+                <field name="partner_phone" string="Phone" widget="phone" optional="show"/>
+                <field name="partner_email" string="Email" widget="email" optional="show"/>
+                <field name="fridge_serial_no" string="Fridge / Tag No" optional="show"/>
+                <field name="fridge_expected_return_date" string="Expected Return" widget="date"/>
+                <field name="fridge_qty_dispatched" string="Dispatched" sum="Total Dispatched"/>
+                <field name="fridge_qty_returned" string="Returned" sum="Total Returned"/>
+                <field name="fridge_qty_missing" string="Missing / Pending" sum="Total Missing"
+                       decoration-danger="fridge_qty_missing &gt; 0"
+                       decoration-success="fridge_qty_missing == 0"/>
+                <field name="is_fridge_overdue" column_invisible="1"/>
+                <field name="fridge_return_status" widget="badge" string="Return Status"
+                       decoration-danger="fridge_return_status == 'pending'"
+                       decoration-warning="fridge_return_status == 'partial'"
+                       decoration-success="fridge_return_status == 'returned'"/>
+                <field name="user_id" string="Salesperson" optional="show"/>
+                <field name="state" widget="badge" string="Order Status" optional="hide"
+                       decoration-info="state == 'draft'"
+                       decoration-success="state == 'sale'"/>
+                <button name="action_open_fridge_return_wizard"
+                        string="Log Return"
+                        type="object"
+                        icon="fa-reply"
+                        invisible="fridge_qty_missing == 0"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- ═══════════════════════════════════════════════════════
+         PARTY REPORT — Search View
+    ═══════════════════════════════════════════════════════ -->
+    <record id="view_party_report_search" model="ir.ui.view">
+        <field name="name">sale.order.party.report.search</field>
+        <field name="model">sale.order</field>
+        <field name="arch" type="xml">
+            <search string="Search Party Report">
+                <field name="partner_id" string="Customer"/>
+                <field name="name" string="Order Reference"/>
+                <field name="fridge_serial_no" string="Fridge Serial No"/>
+                <field name="partner_phone" string="Phone"/>
+                <field name="partner_email" string="Email"/>
+
+                <!-- Filters -->
+                <filter string="🚨 Missing / Pending Return" name="filter_missing" domain="[('fridge_qty_missing', '&gt;', 0)]"/>
+                <filter string="⏰ Overdue Returns" name="filter_overdue" domain="[('fridge_qty_missing', '&gt;', 0), ('fridge_expected_return_date', '&lt;', context_today)]"/>
+                <filter string="🔄 Partially Returned" name="filter_partial" domain="[('fridge_return_status', '=', 'partial')]"/>
+                <filter string="🟢 Fully Returned" name="filter_returned" domain="[('fridge_return_status', '=', 'returned')]"/>
+                <separator/>
+                <filter string="Today's Orders" name="filter_today" domain="[('date_order', '&gt;=', context_today)]"/>
+
+                <!-- Group By -->
+                <group>
+                    <filter string="Customer" name="groupby_partner" context="{'group_by': 'partner_id'}"/>
+                    <filter string="Return Status" name="groupby_status" context="{'group_by': 'fridge_return_status'}"/>
+                    <filter string="Expected Return Date" name="groupby_expected_date" context="{'group_by': 'fridge_expected_return_date:day'}"/>
+                    <filter string="Order Month" name="groupby_order_date" context="{'group_by': 'date_order:month'}"/>
+                    <filter string="Salesperson" name="groupby_user" context="{'group_by': 'user_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- ═══════════════════════════════════════════════════════
+         PARTY REPORT — Pivot View
+    ═══════════════════════════════════════════════════════ -->
+    <record id="view_party_report_pivot" model="ir.ui.view">
+        <field name="name">sale.order.party.report.pivot</field>
+        <field name="model">sale.order</field>
+        <field name="arch" type="xml">
+            <pivot string="Party Refrigerator Pivot Report">
+                <field name="partner_id" type="row"/>
+                <field name="fridge_expected_return_date" type="col" interval="month"/>
+                <field name="fridge_qty_dispatched" type="measure"/>
+                <field name="fridge_qty_returned" type="measure"/>
+                <field name="fridge_qty_missing" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <!-- ═══════════════════════════════════════════════════════
+         PARTY REPORT — Graph View
+    ═══════════════════════════════════════════════════════ -->
+    <record id="view_party_report_graph" model="ir.ui.view">
+        <field name="name">sale.order.party.report.graph</field>
+        <field name="model">sale.order</field>
+        <field name="arch" type="xml">
+            <graph string="Missing Refrigerator by Customer" type="bar">
+                <field name="partner_id"/>
+                <field name="fridge_qty_missing" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+    <!-- ═══════════════════════════════════════════════════════
+         PARTY REPORT — Window Action
+    ═══════════════════════════════════════════════════════ -->
+    <record id="action_party_report" model="ir.actions.act_window">
+        <field name="name">Party Report</field>
+        <field name="res_model">sale.order</field>
+        <field name="view_mode">list,pivot,graph,form</field>
+        <field name="domain">[('is_party_order', '=', True)]</field>
+        <field name="search_view_id" ref="view_party_report_search"/>
+        <field name="context">{'search_default_filter_missing': 1, 'default_is_party_order': True}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No party orders with refrigerator dispatches found.
+            </p>
+            <p>
+                When ice cream is sold for parties with portable refrigerators/freezers, enable <b>Party Order / Fridge Issued</b> on the Sales Order.
+                You can track missing refrigerators, contact customers, and log returns here.
+            </p>
+        </field>
+    </record>
+
+    <!-- Action View Bindings -->
+    <record id="action_party_report_list_binding" model="ir.actions.act_window.view">
+        <field name="sequence" eval="1"/>
+        <field name="view_mode">list</field>
+        <field name="view_id" ref="view_party_report_list"/>
+        <field name="act_window_id" ref="action_party_report"/>
+    </record>
+
+    <record id="action_party_report_pivot_binding" model="ir.actions.act_window.view">
+        <field name="sequence" eval="2"/>
+        <field name="view_mode">pivot</field>
+        <field name="view_id" ref="view_party_report_pivot"/>
+        <field name="act_window_id" ref="action_party_report"/>
+    </record>
+
+    <record id="action_party_report_graph_binding" model="ir.actions.act_window.view">
+        <field name="sequence" eval="3"/>
+        <field name="view_mode">graph</field>
+        <field name="view_id" ref="view_party_report_graph"/>
+        <field name="act_window_id" ref="action_party_report"/>
+    </record>
+</odoo>

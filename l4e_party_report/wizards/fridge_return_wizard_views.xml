@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_fridge_return_wizard_form" model="ir.ui.view">
+        <field name="name">fridge.return.wizard.form</field>
+        <field name="model">fridge.return.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Log Refrigerator Return">
+                <sheet>
+                    <group>
+                        <group string="Order &amp; Customer">
+                            <field name="sale_order_id"/>
+                            <field name="partner_id"/>
+                        </group>
+                        <group string="Current Status">
+                            <field name="fridge_qty_dispatched"/>
+                            <field name="already_returned"/>
+                            <field name="current_missing" class="oe_bold text-danger"/>
+                        </group>
+                    </group>
+                    <group string="Return Details">
+                        <group>
+                            <field name="qty_to_return"/>
+                            <field name="return_date"/>
+                        </group>
+                        <group>
+                            <field name="return_notes" placeholder="Enter condition, serial tags checked, etc..."/>
+                        </group>
+                    </group>
+                </sheet>
+                <footer>
+                    <button name="action_confirm_return" string="Confirm Return" type="object" class="btn-primary"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>
