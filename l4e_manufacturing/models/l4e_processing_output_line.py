@@ -17,7 +17,7 @@ class L4eIceCreamOutputLine(models.Model):
 
     product_id = fields.Many2one(
         "product.product",
-        string="Finished Ice Cream Product",
+        string="Finished Product",
         required=True,
         domain="[('type', 'in', ['product', 'consu'])]",
     )

@@ -16,7 +16,7 @@
                 <field name="name" string="Order Reference"/>
                 <field name="batch_number" string="Batch Number"/>
                 <field name="date" string="Processing Date"/>
-                <field name="product_id" string="Finished Ice Cream"/>
+                <field name="product_id" string="Finished Product"/>
                 <field name="total_raw_qty" string="Total Raw Qty" sum="Total Raw Material"/>
                 <field name="total_output_qty" string="Total Output" sum="Total Output"/>
                 <field name="yield_percentage" string="Yield %"/>
@@ -133,10 +133,10 @@
                     </group>
 
                     <notebook>
-                        <page string="Raw Materials Consumed (Ingredients)" name="raw_ingredients">
+                        <page string="Raw Materials" name="raw_ingredients">
                             <field name="raw_line_ids" readonly="state != 'draft'">
                                 <list editable="bottom">
-                                    <field name="product_id" string="Ingredient (e.g. Milk, Cream, Sugar)"/>
+                                    <field name="product_id" string="Ingredient"/>
                                     <field name="raw_lot_ids" widget="many2many_tags" options="{'no_create': True}" optional="show"/>
                                     <field name="quantity" string="Quantity Consumed"/>
                                     <field name="uom_id" readonly="1" string="UoM"/>
@@ -146,10 +146,10 @@
                             </field>
                         </page>
 
-                        <page string="Finished Ice Cream Output" name="finished_output">
+                        <page string="Finished Product" name="finished_output">
                             <field name="output_line_ids" readonly="state not in ('draft', 'processing')">
                                 <list editable="bottom">
-                                    <field name="product_id" string="Finished Product (e.g. Vanilla 1L, Chocolate 500ml)"/>
+                                    <field name="product_id" string="Finished Product"/>
                                     <field name="packaging_no" string="Tub / Packaging No" optional="show"/>
                                     <field name="quantity" string="Quantity Produced"/>
                                     <field name="uom_id" readonly="1" string="UoM"/>

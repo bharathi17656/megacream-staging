@@ -61,7 +61,7 @@ class L4eIceCreamProcessingBatch(models.Model):
 
     product_id = fields.Many2one(
         "product.product",
-        string="Finished Ice Cream",
+        string="Finished Product",
         compute="_compute_product_id",
         store=True,
     )
@@ -119,7 +119,7 @@ class L4eIceCreamProcessingBatch(models.Model):
     raw_line_ids = fields.One2many(
         "l4e.icecream.raw.line",
         "batch_id",
-        string="Raw Materials / Ingredients Consumed",
+        string="Raw Materials",
     )
 
     total_raw_qty = fields.Float(
@@ -134,7 +134,7 @@ class L4eIceCreamProcessingBatch(models.Model):
     output_line_ids = fields.One2many(
         "l4e.icecream.output.line",
         "batch_id",
-        string="Finished Ice Cream Output",
+        string="Finished Product",
     )
 
     total_output_qty = fields.Float(
@@ -436,7 +436,7 @@ class L4eIceCreamProcessingBatch(models.Model):
         if self.state != "processing":
             raise ValidationError(_("Only Processing batches can be completed."))
         if not self.output_line_ids:
-            raise ValidationError(_("Please add at least one finished ice cream output line in the Finished Output tab."))
+            raise ValidationError(_("Please add at least one finished product output line in the Finished Product tab."))
         for line in self.output_line_ids:
             if line.quantity <= 0:
                 raise ValidationError(_("Output quantity for %s must be greater than zero.") % line.product_id.display_name)

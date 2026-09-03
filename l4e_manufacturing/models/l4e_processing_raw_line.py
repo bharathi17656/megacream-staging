@@ -17,7 +17,7 @@ class L4eIceCreamRawLine(models.Model):
 
     product_id = fields.Many2one(
         "product.product",
-        string="Raw Material Ingredient",
+        string="Ingredient",
         required=True,
         domain="[('type', 'in', ['product', 'consu'])]",
     )
