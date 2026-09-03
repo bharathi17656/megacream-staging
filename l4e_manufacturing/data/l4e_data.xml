@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+
+        <!-- Auto-sequence for Ice Cream Processing Batches: MC2026-00001 ... -->
+        <record id="seq_ice_cream_processing_batch" model="ir.sequence">
+            <field name="name">Ice Cream Processing Batch</field>
+            <field name="code">l4e.icecream.processing.batch</field>
+            <field name="prefix">MC%(year)s-</field>
+            <field name="padding">5</field>
+            <field name="number_next">1</field>
+            <field name="number_increment">1</field>
+            <field name="company_id" eval="False"/>
+        </record>
+
+        <!-- Product Categories -->
+        <record id="product_category_finished_goods" model="product.category">
+            <field name="name">Finished Goods</field>
+        </record>
+
+        <record id="product_category_raw_materials" model="product.category">
+            <field name="name">Raw Materials</field>
+        </record>
+
+    </data>
+</odoo>

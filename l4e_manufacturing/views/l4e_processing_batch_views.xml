@@ -1,0 +1,212 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ═══════════════════════════════════════════════════════
+         PROCESSING BATCHES — List View
+    ═══════════════════════════════════════════════════════ -->
+    <record id="view_ice_cream_processing_batch_list" model="ir.ui.view">
+        <field name="name">l4e.icecream.processing.batch.list</field>
+        <field name="model">l4e.icecream.processing.batch</field>
+        <field name="arch" type="xml">
+            <list string="Processing Batches"
+                  decoration-info="state == 'draft'"
+                  decoration-warning="state == 'processing'"
+                  decoration-success="state == 'completed'"
+                  decoration-muted="state == 'cancel'">
+                <field name="name" string="Order Reference"/>
+                <field name="batch_number" string="Batch Number"/>
+                <field name="date" string="Processing Date"/>
+                <field name="product_id" string="Finished Ice Cream"/>
+                <field name="total_raw_qty" string="Total Raw Qty" sum="Total Raw Material"/>
+                <field name="total_output_qty" string="Total Output" sum="Total Output"/>
+                <field name="yield_percentage" string="Yield %"/>
+                <field name="state" widget="badge" string="Status"
+                       decoration-info="state == 'draft'"
+                       decoration-warning="state == 'processing'"
+                       decoration-success="state == 'completed'"
+                       decoration-danger="state == 'cancel'"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- ═══════════════════════════════════════════════════════
+         PROCESSING COST REPORT — List View
+    ═══════════════════════════════════════════════════════ -->
+    <record id="view_ice_cream_processing_cost_report_list" model="ir.ui.view">
+        <field name="name">l4e.icecream.processing.cost.report.list</field>
+        <field name="model">l4e.icecream.processing.batch</field>
+        <field name="arch" type="xml">
+            <list string="Processing Cost Report" create="false" edit="false" delete="false"
+                  decoration-info="state == 'draft'"
+                  decoration-warning="state == 'processing'"
+                  decoration-success="state == 'completed'"
+                  decoration-muted="state == 'cancel'">
+                <field name="name" string="Order Reference"/>
+                <field name="batch_number" string="Batch Number"/>
+                <field name="date" string="Processing Date"/>
+                <field name="product_id" string="Finished Product"/>
+                <field name="total_raw_qty" string="Total Raw Qty" sum="Total Raw Qty"/>
+                <field name="raw_cost_issued" string="Raw Cost Issued" sum="Total Raw Cost Issued" widget="monetary"/>
+                <field name="total_output_qty" string="Total Output" sum="Total Output Qty"/>
+                <field name="finished_goods_value" string="Finished Goods Value" sum="Total FG Value Recorded" widget="monetary"/>
+                <field name="value_difference" string="Value Variance / Gain" sum="Total Variance / Gain" widget="monetary"
+                       decoration-success="value_difference &gt; 0"
+                       decoration-danger="value_difference &lt; 0"/>
+                <field name="yield_percentage" string="Yield %"/>
+                <field name="state" widget="badge" string="Status"
+                       decoration-info="state == 'draft'"
+                       decoration-warning="state == 'processing'"
+                       decoration-success="state == 'completed'"
+                       decoration-danger="state == 'cancel'"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- ═══════════════════════════════════════════════════════
+         PROCESSING BATCH — Form View
+    ═══════════════════════════════════════════════════════ -->
+    <record id="view_ice_cream_processing_batch_form" model="ir.ui.view">
+        <field name="name">l4e.icecream.processing.batch.form</field>
+        <field name="model">l4e.icecream.processing.batch</field>
+        <field name="arch" type="xml">
+            <form string="Processing Batch">
+                <header>
+                    <button name="action_start_processing"
+                            string="Start Processing"
+                            type="object"
+                            class="oe_highlight"
+                            invisible="state != 'draft'"/>
+                    <button name="action_complete_processing"
+                            string="Complete Processing"
+                            type="object"
+                            class="oe_highlight"
+                            invisible="state != 'processing'"/>
+                    <button name="action_reset_draft"
+                            string="Reset to Draft"
+                            type="object"
+                            invisible="state == 'draft'"/>
+                    <button name="action_cancel"
+                            string="Cancel"
+                            type="object"
+                            invisible="state in ('completed', 'cancel')"
+                            confirm="Are you sure you want to cancel this processing batch?"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,processing,completed"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_raw_transfer"
+                                type="object"
+                                class="oe_stat_button"
+                                icon="fa-truck"
+                                invisible="not raw_transfer_id">
+                            <field name="raw_transfer_state" widget="statinfo" string="Raw Transfer"/>
+                        </button>
+                        <button name="action_view_finished_transfer"
+                                type="object"
+                                class="oe_stat_button"
+                                icon="fa-truck"
+                                invisible="not finished_transfer_id">
+                            <field name="finished_transfer_state" widget="statinfo" string="Finished Transfer"/>
+                        </button>
+                    </div>
+
+                    <widget name="web_ribbon" title="Completed" bg_color="text-bg-success" invisible="state != 'completed'"/>
+                    <widget name="web_ribbon" title="Cancelled" bg_color="text-bg-danger" invisible="state != 'cancel'"/>
+
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" readonly="1"/>
+                        </h1>
+                    </div>
+
+                    <group>
+                        <group string="Batch Information">
+                            <field name="date" readonly="state != 'draft'"/>
+                            <field name="batch_number" readonly="state != 'draft'"/>
+                            <field name="company_id" groups="base.group_multi_company" readonly="state != 'draft'"/>
+                        </group>
+                        <group string="Locations">
+                            <field name="source_location_id" readonly="state != 'draft'"/>
+                            <field name="wip_location_id" readonly="state != 'draft'"/>
+                            <field name="finished_location_id" readonly="state != 'draft'"/>
+                        </group>
+                    </group>
+
+                    <notebook>
+                        <page string="Raw Materials Consumed (Ingredients)" name="raw_ingredients">
+                            <field name="raw_line_ids" readonly="state != 'draft'">
+                                <list editable="bottom">
+                                    <field name="product_id" string="Ingredient (e.g. Milk, Cream, Sugar)"/>
+                                    <field name="raw_lot_ids" widget="many2many_tags" options="{'no_create': True}" optional="show"/>
+                                    <field name="quantity" string="Quantity Consumed"/>
+                                    <field name="uom_id" readonly="1" string="UoM"/>
+                                    <field name="unit_cost" readonly="1" string="Unit Cost" widget="monetary" optional="show"/>
+                                    <field name="total_cost" readonly="1" string="Total Cost" widget="monetary" sum="Total Raw Cost"/>
+                                </list>
+                            </field>
+                        </page>
+
+                        <page string="Finished Ice Cream Output" name="finished_output">
+                            <field name="output_line_ids" readonly="state not in ('draft', 'processing')">
+                                <list editable="bottom">
+                                    <field name="product_id" string="Finished Product (e.g. Vanilla 1L, Chocolate 500ml)"/>
+                                    <field name="packaging_no" string="Tub / Packaging No" optional="show"/>
+                                    <field name="quantity" string="Quantity Produced"/>
+                                    <field name="uom_id" readonly="1" string="UoM"/>
+                                    <field name="unit_price" string="Unit Price" widget="monetary" optional="show"/>
+                                    <field name="total_value" readonly="1" string="Total Value" widget="monetary" sum="Total FG Value"/>
+                                    <field name="remarks" string="Remarks" optional="hide"/>
+                                </list>
+                            </field>
+                        </page>
+
+                        <page string="Transfers &amp; Audit" name="transfers_audit">
+                            <group>
+                                <group string="Stock Pickings">
+                                    <field name="raw_transfer_id" readonly="1"/>
+                                    <field name="finished_transfer_id" readonly="1"/>
+                                </group>
+                                <group string="Audit Timestamps">
+                                    <field name="processing_started_by" readonly="1" invisible="not processing_started_by"/>
+                                    <field name="processing_started_on" readonly="1" invisible="not processing_started_on"/>
+                                    <field name="processing_completed_by" readonly="1" invisible="not processing_completed_by"/>
+                                    <field name="processing_completed_on" readonly="1" invisible="not processing_completed_on"/>
+                                </group>
+                            </group>
+                            <group string="Remarks">
+                                <field name="remarks" nolabel="1" placeholder="Enter processing remarks / quality notes..."/>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <!-- ═══════════════════════════════════════════════════════
+         PROCESSING BATCH — Search View
+    ═══════════════════════════════════════════════════════ -->
+    <record id="view_ice_cream_processing_batch_search" model="ir.ui.view">
+        <field name="name">l4e.icecream.processing.batch.search</field>
+        <field name="model">l4e.icecream.processing.batch</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name" string="Order Reference"/>
+                <field name="batch_number" string="Batch Number"/>
+                <field name="product_id"/>
+                <field name="source_location_id"/>
+                <field name="finished_location_id"/>
+                <filter string="Draft" name="filter_draft" domain="[('state', '=', 'draft')]"/>
+                <filter string="Processing" name="filter_processing" domain="[('state', '=', 'processing')]"/>
+                <filter string="Completed" name="filter_completed" domain="[('state', '=', 'completed')]"/>
+                <group>
+                    <filter string="Finished Product" name="groupby_product" context="{'group_by': 'product_id'}"/>
+                    <filter string="Status" name="groupby_state" context="{'group_by': 'state'}"/>
+                    <filter string="Processing Date" name="groupby_date" context="{'group_by': 'date:month'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+</odoo>

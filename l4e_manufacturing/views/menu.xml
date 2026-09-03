@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ═══════════════════════════════════════════════════════
+         ROOT MENU — Ice Cream Processing (Matches Picture 2)
+    ═══════════════════════════════════════════════════════ -->
+    <menuitem
+        id="menu_ice_cream_processing_root"
+        name="Ice Cream Processing"
+        parent="stock.menu_stock_root"
+        sequence="50"/>
+
+    <menuitem
+        id="menu_ice_cream_processing_batch"
+        name="Processing Batches"
+        parent="menu_ice_cream_processing_root"
+        action="action_ice_cream_processing_batch"
+        sequence="1"/>
+
+    <menuitem
+        id="menu_ice_cream_processing_cost_report"
+        name="Processing Cost Report"
+        parent="menu_ice_cream_processing_root"
+        action="action_ice_cream_processing_cost_report"
+        sequence="2"/>
+
+</odoo>
