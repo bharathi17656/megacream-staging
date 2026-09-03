@@ -13,14 +13,5 @@
             <field name="company_id" eval="False"/>
         </record>
 
-        <!-- Product Categories -->
-        <record id="product_category_finished_goods" model="product.category">
-            <field name="name">Finished Goods</field>
-        </record>
-
-        <record id="product_category_raw_materials" model="product.category">
-            <field name="name">Raw Materials</field>
-        </record>
-
     </data>
 </odoo>
