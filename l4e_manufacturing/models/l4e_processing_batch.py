@@ -344,15 +344,19 @@ class L4eIceCreamProcessingBatch(models.Model):
         return picking_type
 
     def _get_production_or_adjustment_location(self):
-        loc = self.env.ref("stock.location_production", raise_if_not_found=False)
+        # Must always be a Virtual Production location (not internal shop floor WIP)
+        loc = self.env["stock.location"].search(
+            [
+                ("usage", "=", "production"),
+                ("location_id.usage", "!=", "internal"),
+            ],
+            limit=1,
+        )
+        if not loc:
+            loc = self.env.ref("stock.location_production", raise_if_not_found=False)
         if not loc:
             loc = self.env["stock.location"].search(
-                [("usage", "=", "production"), ("company_id", "in", [self.company_id.id, False])],
-                limit=1,
-            )
-        if not loc:
-            loc = self.env["stock.location"].search(
-                [("usage", "=", "inventory"), ("company_id", "in", [self.company_id.id, False])],
+                [("usage", "=", "inventory"), ("location_id.usage", "!=", "internal")],
                 limit=1,
             )
         return loc
@@ -371,7 +375,6 @@ class L4eIceCreamProcessingBatch(models.Model):
         self._check_stock_availability()
 
         picking_type = self._get_internal_picking_type()
-        
         raw_picking = self.env["stock.picking"].create({
             "picking_type_id": picking_type.id,
             "location_id": self.source_location_id.id,
@@ -380,8 +383,9 @@ class L4eIceCreamProcessingBatch(models.Model):
             "company_id": self.company_id.id,
         })
 
+        moves = self.env["stock.move"]
         for line in self.raw_line_ids:
-            self.env["stock.move"].create({
+            move = self.env["stock.move"].create({
                 "description_picking": _("Issue: %s") % line.product_id.display_name,
                 "product_id": line.product_id.id,
                 "product_uom_qty": line.quantity,
@@ -391,12 +395,13 @@ class L4eIceCreamProcessingBatch(models.Model):
                 "picking_id": raw_picking.id,
                 "company_id": self.company_id.id,
             })
+            moves |= move
 
-        raw_picking.action_confirm()
-        for move in raw_picking.move_ids:
+        moves._action_confirm()
+        for move in moves:
             move.quantity = move.product_uom_qty
             move.picked = True
-        raw_picking._action_done()
+        moves._action_done()
 
         self.write({
             "state": "processing",
@@ -425,7 +430,6 @@ class L4eIceCreamProcessingBatch(models.Model):
             raise ValidationError(_("No Virtual Production or Inventory Adjustment location found."))
 
         picking_type = self._get_internal_picking_type()
-
         finished_picking = self.env["stock.picking"].create({
             "picking_type_id": picking_type.id,
             "location_id": self.wip_location_id.id,
@@ -434,9 +438,9 @@ class L4eIceCreamProcessingBatch(models.Model):
             "company_id": self.company_id.id,
         })
 
-        # Step 1: Consume Moves (WIP/Production -> Virtual Production for all ingredients)
+        consume_moves = self.env["stock.move"]
         for r_line in self.raw_line_ids:
-            self.env["stock.move"].create({
+            cm = self.env["stock.move"].create({
                 "description_picking": _("Consume: %s") % r_line.product_id.display_name,
                 "product_id": r_line.product_id.id,
                 "product_uom_qty": r_line.quantity,
@@ -446,10 +450,11 @@ class L4eIceCreamProcessingBatch(models.Model):
                 "picking_id": finished_picking.id,
                 "company_id": self.company_id.id,
             })
+            consume_moves |= cm
 
-        # Step 2: Produce Moves (Virtual Production -> Finished Goods for all output products)
+        produce_moves = self.env["stock.move"]
         for out_line in self.output_line_ids:
-            self.env["stock.move"].create({
+            pm = self.env["stock.move"].create({
                 "description_picking": _("Produce: %s") % out_line.product_id.display_name,
                 "product_id": out_line.product_id.id,
                 "product_uom_qty": out_line.quantity,
@@ -459,16 +464,16 @@ class L4eIceCreamProcessingBatch(models.Model):
                 "picking_id": finished_picking.id,
                 "company_id": self.company_id.id,
             })
+            produce_moves |= pm
 
-        finished_picking.action_confirm()
+        all_moves = consume_moves | produce_moves
+        all_moves._action_confirm()
 
-        # Handle Lots & Quantities directly without action_assign collision
-        for move in finished_picking.move_ids:
+        # Set quantity, picked, and lot
+        for move in all_moves:
             move.quantity = move.product_uom_qty
             move.picked = True
-
-            # If finished product tracking lot is required
-            if move.location_dest_id.id == self.finished_location_id.id and move.product_id.tracking != "none" and self.batch_number:
+            if move in produce_moves and move.product_id.tracking != "none" and self.batch_number:
                 lot = self.env["stock.lot"].search([
                     ("name", "=", self.batch_number),
                     ("product_id", "=", move.product_id.id),
@@ -480,7 +485,6 @@ class L4eIceCreamProcessingBatch(models.Model):
                         "product_id": move.product_id.id,
                         "company_id": self.company_id.id,
                     })
-
                 if move.move_line_ids:
                     for ml in move.move_line_ids:
                         ml.lot_id = lot.id
@@ -496,7 +500,7 @@ class L4eIceCreamProcessingBatch(models.Model):
                         "lot_id": lot.id,
                     })
 
-        finished_picking._action_done()
+        all_moves._action_done()
 
         self.write({
             "state": "completed",
