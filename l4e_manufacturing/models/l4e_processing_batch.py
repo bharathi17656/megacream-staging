@@ -344,19 +344,31 @@ class L4eIceCreamProcessingBatch(models.Model):
         return picking_type
 
     def _get_production_or_adjustment_location(self):
-        # Must always be the standard Virtual Production location OUTSIDE any warehouse
-        loc = self.env.ref("stock.location_production", raise_if_not_found=False)
+        # 1. Standard virtual production location from XML ID
+        loc = self.env.ref("stock.stock_location_production", raise_if_not_found=False)
         if not loc:
-            wh_view_ids = self.env["stock.warehouse"].search([]).mapped("view_location_id").ids
+            loc = self.env.ref("stock.location_production", raise_if_not_found=False)
+
+        # 2. Fallback to product property
+        if not loc and self.output_line_ids and self.output_line_ids[0].product_id:
+            loc = self.output_line_ids[0].product_id.property_stock_production
+
+        # 3. Fallback: Search for any production location NOT inside warehouse
+        wh_view_ids = self.env["stock.warehouse"].search([]).mapped("view_location_id").ids
+        wh_loc_ids = self.env["stock.location"].search([("id", "child_of", wh_view_ids)]).ids if wh_view_ids else []
+
+        if not loc or (loc and loc.id in wh_loc_ids):
             loc = self.env["stock.location"].search(
                 [
                     ("usage", "=", "production"),
-                    ("id", "not child_of", wh_view_ids),
+                    ("id", "not in", wh_loc_ids),
                 ],
                 limit=1,
             )
+
+        # 4. Fallback to inventory adjustment virtual location
         if not loc:
-            loc = self.env.ref("stock.location_inventory", raise_if_not_found=False)
+            loc = self.env.ref("stock.stock_location_inventory", raise_if_not_found=False) or self.env.ref("stock.location_inventory", raise_if_not_found=False)
         return loc
 
     # ─── Button Actions ────────────────────────────────────────────────────────
