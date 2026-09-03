@@ -170,7 +170,7 @@ class L4eIceCreamProcessingBatch(models.Model):
         string="Source Location (Store)",
         required=True,
         tracking=True,
-        default=lambda self: self._default_location("Store"),
+        default=lambda self: self._default_location("Store") or self._default_location("Stock"),
         domain="[('usage', '=', 'internal')]",
     )
 
@@ -357,54 +357,10 @@ class L4eIceCreamProcessingBatch(models.Model):
             )
         return loc
 
-    def _validate_picking_moves(self, picking, finished_lot_name=None):
-        picking.action_confirm()
-        picking.action_assign()
-
-        for move in picking.move_ids:
-            if "quantity" in move._fields:
-                move.quantity = move.product_uom_qty
-
-            lot_to_assign = False
-            if finished_lot_name and move.product_id.tracking != "none":
-                lot = self.env["stock.lot"].search([
-                    ("name", "=", finished_lot_name),
-                    ("product_id", "=", move.product_id.id),
-                    ("company_id", "=", self.company_id.id),
-                ], limit=1)
-                if not lot:
-                    lot = self.env["stock.lot"].create({
-                        "name": finished_lot_name,
-                        "product_id": move.product_id.id,
-                        "company_id": self.company_id.id,
-                    })
-                lot_to_assign = lot.id
-
-            if move.move_line_ids:
-                for ml in move.move_line_ids:
-                    if hasattr(ml, "quantity") and not ml.quantity:
-                        ml.quantity = move.product_uom_qty
-                    if lot_to_assign and hasattr(ml, "lot_id"):
-                        ml.lot_id = lot_to_assign
-            else:
-                line_vals = {
-                    "move_id": move.id,
-                    "picking_id": picking.id,
-                    "product_id": move.product_id.id,
-                    "product_uom_id": move.product_uom.id,
-                    "quantity": move.product_uom_qty,
-                    "location_id": move.location_id.id,
-                    "location_dest_id": move.location_dest_id.id,
-                    "lot_id": lot_to_assign or False,
-                }
-                self.env["stock.move.line"].create(line_vals)
-
-        picking.with_context(skip_backorder=True).button_validate()
-
     # ─── Button Actions ────────────────────────────────────────────────────────
 
     def action_start_processing(self):
-        """Move all raw material ingredients from Store -> Production."""
+        """Move all raw material ingredients from Store -> Production location."""
         self.ensure_one()
         if self.state != "draft":
             raise ValidationError(_("Only Draft batches can be started."))
@@ -415,31 +371,32 @@ class L4eIceCreamProcessingBatch(models.Model):
         self._check_stock_availability()
 
         picking_type = self._get_internal_picking_type()
-        move_vals = []
-        for line in self.raw_line_ids:
-            move_vals.append((
-                0,
-                0,
-                {
-                    "description_picking": _("Issue: %s") % line.product_id.display_name,
-                    "product_id": line.product_id.id,
-                    "product_uom_qty": line.quantity,
-                    "product_uom": line.uom_id.id,
-                    "location_id": self.source_location_id.id,
-                    "location_dest_id": self.wip_location_id.id,
-                    "company_id": self.company_id.id,
-                }
-            ))
-
+        
         raw_picking = self.env["stock.picking"].create({
             "picking_type_id": picking_type.id,
             "location_id": self.source_location_id.id,
             "location_dest_id": self.wip_location_id.id,
             "origin": self.name,
             "company_id": self.company_id.id,
-            "move_ids": move_vals,
         })
-        self._validate_picking_moves(raw_picking)
+
+        for line in self.raw_line_ids:
+            self.env["stock.move"].create({
+                "description_picking": _("Issue: %s") % line.product_id.display_name,
+                "product_id": line.product_id.id,
+                "product_uom_qty": line.quantity,
+                "product_uom": line.uom_id.id,
+                "location_id": self.source_location_id.id,
+                "location_dest_id": self.wip_location_id.id,
+                "picking_id": raw_picking.id,
+                "company_id": self.company_id.id,
+            })
+
+        raw_picking.action_confirm()
+        for move in raw_picking.move_ids:
+            move.quantity = move.product_uom_qty
+            move.picked = True
+        raw_picking._action_done()
 
         self.write({
             "state": "processing",
@@ -452,7 +409,7 @@ class L4eIceCreamProcessingBatch(models.Model):
         """
         Complete processing:
         1. Consume all raw ingredients from Production -> Virtual/Production.
-        2. Produce all finished ice cream goods from Virtual/Production -> Finished Goods.
+        2. Produce all finished ice cream goods from Virtual/Production -> Finished Goods Location.
         """
         self.ensure_one()
         if self.state != "processing":
@@ -468,39 +425,6 @@ class L4eIceCreamProcessingBatch(models.Model):
             raise ValidationError(_("No Virtual Production or Inventory Adjustment location found."))
 
         picking_type = self._get_internal_picking_type()
-        move_vals = []
-
-        # Step 1: Consume Moves (Production -> Virtual Production for all ingredients)
-        for r_line in self.raw_line_ids:
-            move_vals.append((
-                0,
-                0,
-                {
-                    "description_picking": _("Consume: %s") % r_line.product_id.display_name,
-                    "product_id": r_line.product_id.id,
-                    "product_uom_qty": r_line.quantity,
-                    "product_uom": r_line.uom_id.id,
-                    "location_id": self.wip_location_id.id,
-                    "location_dest_id": prod_location.id,
-                    "company_id": self.company_id.id,
-                }
-            ))
-
-        # Step 2: Produce Moves (Virtual Production -> Finished Goods for all output products)
-        for out_line in self.output_line_ids:
-            move_vals.append((
-                0,
-                0,
-                {
-                    "description_picking": _("Produce: %s") % out_line.product_id.display_name,
-                    "product_id": out_line.product_id.id,
-                    "product_uom_qty": out_line.quantity,
-                    "product_uom": out_line.uom_id.id,
-                    "location_id": prod_location.id,
-                    "location_dest_id": self.finished_location_id.id,
-                    "company_id": self.company_id.id,
-                }
-            ))
 
         finished_picking = self.env["stock.picking"].create({
             "picking_type_id": picking_type.id,
@@ -508,10 +432,71 @@ class L4eIceCreamProcessingBatch(models.Model):
             "location_dest_id": self.finished_location_id.id,
             "origin": self.name,
             "company_id": self.company_id.id,
-            "move_ids": move_vals,
         })
-        # Pass batch number as finished goods lot
-        self._validate_picking_moves(finished_picking, finished_lot_name=self.batch_number)
+
+        # Step 1: Consume Moves (WIP/Production -> Virtual Production for all ingredients)
+        for r_line in self.raw_line_ids:
+            self.env["stock.move"].create({
+                "description_picking": _("Consume: %s") % r_line.product_id.display_name,
+                "product_id": r_line.product_id.id,
+                "product_uom_qty": r_line.quantity,
+                "product_uom": r_line.uom_id.id,
+                "location_id": self.wip_location_id.id,
+                "location_dest_id": prod_location.id,
+                "picking_id": finished_picking.id,
+                "company_id": self.company_id.id,
+            })
+
+        # Step 2: Produce Moves (Virtual Production -> Finished Goods for all output products)
+        for out_line in self.output_line_ids:
+            self.env["stock.move"].create({
+                "description_picking": _("Produce: %s") % out_line.product_id.display_name,
+                "product_id": out_line.product_id.id,
+                "product_uom_qty": out_line.quantity,
+                "product_uom": out_line.uom_id.id,
+                "location_id": prod_location.id,
+                "location_dest_id": self.finished_location_id.id,
+                "picking_id": finished_picking.id,
+                "company_id": self.company_id.id,
+            })
+
+        finished_picking.action_confirm()
+
+        # Handle Lots & Quantities directly without action_assign collision
+        for move in finished_picking.move_ids:
+            move.quantity = move.product_uom_qty
+            move.picked = True
+
+            # If finished product tracking lot is required
+            if move.location_dest_id.id == self.finished_location_id.id and move.product_id.tracking != "none" and self.batch_number:
+                lot = self.env["stock.lot"].search([
+                    ("name", "=", self.batch_number),
+                    ("product_id", "=", move.product_id.id),
+                    ("company_id", "=", self.company_id.id),
+                ], limit=1)
+                if not lot:
+                    lot = self.env["stock.lot"].create({
+                        "name": self.batch_number,
+                        "product_id": move.product_id.id,
+                        "company_id": self.company_id.id,
+                    })
+
+                if move.move_line_ids:
+                    for ml in move.move_line_ids:
+                        ml.lot_id = lot.id
+                else:
+                    self.env["stock.move.line"].create({
+                        "move_id": move.id,
+                        "picking_id": finished_picking.id,
+                        "product_id": move.product_id.id,
+                        "product_uom_id": move.product_uom.id,
+                        "quantity": move.product_uom_qty,
+                        "location_id": move.location_id.id,
+                        "location_dest_id": move.location_dest_id.id,
+                        "lot_id": lot.id,
+                    })
+
+        finished_picking._action_done()
 
         self.write({
             "state": "completed",
