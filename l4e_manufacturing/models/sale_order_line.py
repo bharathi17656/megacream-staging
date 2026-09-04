@@ -9,7 +9,7 @@ class SaleOrderLine(models.Model):
     batch_id = fields.Many2one(
         "l4e.icecream.processing.batch",
         string="Batch Number",
-        domain="['|', ('product_id', '=', product_id), ('output_line_ids.product_id', '=', product_id)]",
+        domain="['&', '|', ('product_id', '=', product_id), ('output_line_ids.product_id', '=', product_id), ('batch_stock_status', '=', 'in_stock')]",
         help="Select the manufacturing processing batch issued to the customer.",
     )
 

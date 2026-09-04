@@ -24,8 +24,7 @@
         action="action_ice_cream_processing_cost_report"
         sequence="2"/>
 
-
-    <!-- Also under Inventory -> Reporting -->
+    <!-- Under Inventory -> Reporting -->
     <menuitem
         id="menu_inventory_batch_dispatch_report"
         name="Batch Dispatch &amp; Sales Report"
