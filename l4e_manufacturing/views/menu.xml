@@ -2,7 +2,7 @@
 <odoo>
 
     <!-- ═══════════════════════════════════════════════════════
-         ROOT MENU — Ice Cream Processing (Matches Picture 2)
+         ROOT MENU — Ice Cream Processing
     ═══════════════════════════════════════════════════════ -->
     <menuitem
         id="menu_ice_cream_processing_root"
@@ -23,5 +23,14 @@
         parent="menu_ice_cream_processing_root"
         action="action_ice_cream_processing_cost_report"
         sequence="2"/>
+
+
+    <!-- Also under Inventory -> Reporting -->
+    <menuitem
+        id="menu_inventory_batch_dispatch_report"
+        name="Batch Dispatch &amp; Sales Report"
+        parent="stock.menu_warehouse_report"
+        action="action_l4e_batch_dispatch_report"
+        sequence="15"/>
 
 </odoo>

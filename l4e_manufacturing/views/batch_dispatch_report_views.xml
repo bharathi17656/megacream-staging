@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ═══════════════════════════════════════════════════════
+         BATCH DISPATCH & SALES REPORT — List View
+    ═══════════════════════════════════════════════════════ -->
+    <record id="view_l4e_batch_dispatch_report_list" model="ir.ui.view">
+        <field name="name">l4e.batch.dispatch.report.list</field>
+        <field name="model">l4e.batch.dispatch.report</field>
+        <field name="arch" type="xml">
+            <list string="Batch Dispatch &amp; Sales Report"
+                  decoration-success="batch_status == 'in_stock'"
+                  decoration-muted="batch_status == 'finished'"
+                  create="false" edit="false" delete="false">
+                <field name="batch_id" string="Batch Number"/>
+                <field name="product_id" string="Product"/>
+                <field name="partner_id" string="Given To (Customer)"/>
+                <field name="order_id" string="Sales Order"/>
+                <field name="date" string="Sale Date" widget="date"/>
+                <field name="qty_sold" string="Quantity Sold" sum="Total Sold"/>
+                <field name="uom_id" string="UoM"/>
+                <field name="price_unit" string="Unit Price" optional="show"/>
+                <field name="price_total" string="Total Amount" widget="monetary" sum="Total Revenue"/>
+                <field name="currency_id" column_invisible="1"/>
+                <field name="batch_available_qty" string="Remaining Batch Stock" optional="show"
+                       decoration-danger="batch_available_qty &lt;= 0"
+                       decoration-success="batch_available_qty &gt; 0"/>
+                <field name="batch_status" widget="badge" string="Batch Stock Status"
+                       decoration-success="batch_status == 'in_stock'"
+                       decoration-danger="batch_status == 'finished'"/>
+                <field name="user_id" string="Salesperson" optional="show"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- ═══════════════════════════════════════════════════════
+         BATCH DISPATCH & SALES REPORT — Search View
+    ═══════════════════════════════════════════════════════ -->
+    <record id="view_l4e_batch_dispatch_report_search" model="ir.ui.view">
+        <field name="name">l4e.batch.dispatch.report.search</field>
+        <field name="model">l4e.batch.dispatch.report</field>
+        <field name="arch" type="xml">
+            <search string="Search Batch Dispatch Report">
+                <field name="batch_id" string="Batch Number"/>
+                <field name="product_id" string="Product"/>
+                <field name="partner_id" string="Customer"/>
+                <field name="order_id" string="Order Reference"/>
+                <field name="user_id" string="Salesperson"/>
+
+                <!-- Filters -->
+                <filter string="🟢 Batches In Stock" name="filter_in_stock" domain="[('batch_status', '=', 'in_stock')]"/>
+                <filter string="🔴 Finished / Depleted Batches" name="filter_finished" domain="[('batch_status', '=', 'finished')]"/>
+                <separator/>
+                <filter string="Today's Sales" name="filter_today" domain="[('date', '&gt;=', context_today)]"/>
+
+                <!-- Group By -->
+                <group>
+                    <filter string="Batch Number" name="groupby_batch" context="{'group_by': 'batch_id'}"/>
+                    <filter string="Customer (Given To)" name="groupby_partner" context="{'group_by': 'partner_id'}"/>
+                    <filter string="Product" name="groupby_product" context="{'group_by': 'product_id'}"/>
+                    <filter string="Batch Stock Status" name="groupby_batch_status" context="{'group_by': 'batch_status'}"/>
+                    <filter string="Sale Month" name="groupby_month" context="{'group_by': 'date:month'}"/>
+                    <filter string="Salesperson" name="groupby_user" context="{'group_by': 'user_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- ═══════════════════════════════════════════════════════
+         BATCH DISPATCH & SALES REPORT — Pivot View
+    ═══════════════════════════════════════════════════════ -->
+    <record id="view_l4e_batch_dispatch_report_pivot" model="ir.ui.view">
+        <field name="name">l4e.batch.dispatch.report.pivot</field>
+        <field name="model">l4e.batch.dispatch.report</field>
+        <field name="arch" type="xml">
+            <pivot string="Batch Dispatch &amp; Sales Pivot">
+                <field name="batch_id" type="row"/>
+                <field name="partner_id" type="row"/>
+                <field name="date" type="col" interval="month"/>
+                <field name="qty_sold" type="measure"/>
+                <field name="price_total" type="measure"/>
+                <field name="batch_available_qty" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <!-- ═══════════════════════════════════════════════════════
+         BATCH DISPATCH & SALES REPORT — Graph View
+    ═══════════════════════════════════════════════════════ -->
+    <record id="view_l4e_batch_dispatch_report_graph" model="ir.ui.view">
+        <field name="name">l4e.batch.dispatch.report.graph</field>
+        <field name="model">l4e.batch.dispatch.report</field>
+        <field name="arch" type="xml">
+            <graph string="Quantity Sold by Batch" type="bar">
+                <field name="batch_id"/>
+                <field name="qty_sold" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+    <!-- ═══════════════════════════════════════════════════════
+         BATCH DISPATCH & SALES REPORT — Action
+    ═══════════════════════════════════════════════════════ -->
+    <record id="action_l4e_batch_dispatch_report" model="ir.actions.act_window">
+        <field name="name">Batch Dispatch &amp; Sales Report</field>
+        <field name="res_model">l4e.batch.dispatch.report</field>
+        <field name="view_mode">list,pivot,graph</field>
+        <field name="domain">[]</field>
+        <field name="search_view_id" ref="view_l4e_batch_dispatch_report_search"/>
+        <field name="context">{'search_default_groupby_batch': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No batch dispatches recorded yet.
+            </p>
+            <p>
+                When creating Sales Orders and Invoices, select the Batch Number on order lines to track which customers received products from each batch.
+            </p>
+        </field>
+    </record>
+
+    <!-- Action View Bindings -->
+    <record id="action_l4e_batch_dispatch_report_list_binding" model="ir.actions.act_window.view">
+        <field name="sequence" eval="1"/>
+        <field name="view_mode">list</field>
+        <field name="view_id" ref="view_l4e_batch_dispatch_report_list"/>
+        <field name="act_window_id" ref="action_l4e_batch_dispatch_report"/>
+    </record>
+
+    <record id="action_l4e_batch_dispatch_report_pivot_binding" model="ir.actions.act_window.view">
+        <field name="sequence" eval="2"/>
+        <field name="view_mode">pivot</field>
+        <field name="view_id" ref="view_l4e_batch_dispatch_report_pivot"/>
+        <field name="act_window_id" ref="action_l4e_batch_dispatch_report"/>
+    </record>
+
+    <record id="action_l4e_batch_dispatch_report_graph_binding" model="ir.actions.act_window.view">
+        <field name="sequence" eval="3"/>
+        <field name="view_mode">graph</field>
+        <field name="view_id" ref="view_l4e_batch_dispatch_report_graph"/>
+        <field name="act_window_id" ref="action_l4e_batch_dispatch_report"/>
+    </record>
+
+</odoo>

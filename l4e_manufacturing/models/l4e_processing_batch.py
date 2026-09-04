@@ -12,7 +12,7 @@ class L4eIceCreamProcessingBatch(models.Model):
     _description = "Ice Cream Processing Batch"
     _inherit = ["mail.thread", "mail.activity.mixin"]
     _order = "date desc, id desc"
-    _rec_name = "name"
+    _rec_name = "batch_number"
 
     # Processing Order Reference (e.g. MC2026-00001)
     name = fields.Char(
@@ -82,6 +82,50 @@ class L4eIceCreamProcessingBatch(models.Model):
     def _compute_raw_product_id(self):
         for rec in self:
             rec.raw_product_id = rec.raw_line_ids[0].product_id if rec.raw_line_ids else False
+
+    qty_sold = fields.Float(
+        string="Quantity Sold",
+        compute="_compute_qty_sold_available",
+    )
+    qty_available = fields.Float(
+        string="Available Quantity",
+        compute="_compute_qty_sold_available",
+    )
+    batch_stock_status = fields.Selection(
+        [
+            ("in_stock", "In Stock"),
+            ("finished", "Finished / Depleted"),
+        ],
+        string="Stock Status",
+        compute="_compute_qty_sold_available",
+    )
+
+    def _compute_qty_sold_available(self):
+        for rec in self:
+            sold_lines = self.env["sale.order.line"].sudo().search([
+                ("batch_id", "=", rec.id),
+                ("order_id.state", "in", ("sale", "done")),
+            ])
+            total_sold = sum(sold_lines.mapped("product_uom_qty"))
+            rec.qty_sold = total_sold
+            avail = rec.total_output_qty - total_sold
+            rec.qty_available = max(avail, 0.0)
+            rec.batch_stock_status = "in_stock" if avail > 0 else "finished"
+
+    @api.depends("batch_number", "total_output_qty")
+    def _compute_display_name(self):
+        for batch in self:
+            b_name = batch.batch_number or batch.name or ""
+            sold_lines = self.env["sale.order.line"].sudo().search([
+                ("batch_id", "=", batch.id),
+                ("order_id.state", "in", ("sale", "done")),
+            ])
+            total_sold = sum(sold_lines.mapped("product_uom_qty"))
+            avail = batch.total_output_qty - total_sold
+            if avail > 0:
+                batch.display_name = f"{b_name} ({avail:g} Available)"
+            else:
+                batch.display_name = f"{b_name} (Finished / Out of Stock)"
 
     # ─── Daily Auto-Sequencing: BATCH-DD-MMM-YY-001 (Resets Daily) ────────────
 
@@ -500,7 +544,10 @@ class L4eIceCreamProcessingBatch(models.Model):
                         "name": self.batch_number,
                         "product_id": move.product_id.id,
                         "company_id": self.company_id.id,
+                        "batch_id": self.id,
                     })
+                elif not lot.batch_id:
+                    lot.batch_id = self.id
                 if move.move_line_ids:
                     for ml in move.move_line_ids:
                         ml.lot_id = lot.id
