@@ -9,7 +9,8 @@ class AccountMoveLine(models.Model):
     batch_id = fields.Many2one(
         "l4e.icecream.processing.batch",
         string="Batch Number",
-        domain="['&', '|', ('product_id', '=', product_id), ('output_line_ids.product_id', '=', product_id), ('batch_stock_status', '=', 'in_stock')]",
+        domain="['|', ('product_id', '=', product_id), ('output_line_ids.product_id', '=', product_id)]",
+        context="{'hide_depleted_batches': True}",
         help="Select the manufacturing processing batch associated with this invoice line.",
     )
 

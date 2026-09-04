@@ -8,7 +8,8 @@
             <xpath expr="//field[@name='order_line']/list/field[@name='product_template_id']" position="after">
                 <field name="batch_id"
                        string="Batch Number"
-                       domain="['&amp;', '|', ('product_id', '=', product_id), ('output_line_ids.product_id', '=', product_id), ('batch_stock_status', '=', 'in_stock')]"
+                       domain="['|', ('product_id', '=', product_id), ('output_line_ids.product_id', '=', product_id)]"
+                       context="{'hide_depleted_batches': True}"
                        options="{'no_create': True}"
                        optional="show"/>
                 <field name="batch_available_qty"

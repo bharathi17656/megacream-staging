@@ -90,6 +90,7 @@ class L4eIceCreamProcessingBatch(models.Model):
     qty_available = fields.Float(
         string="Available Quantity",
         compute="_compute_qty_sold_available",
+        search="_search_qty_available",
     )
     batch_stock_status = fields.Selection(
         [
@@ -98,6 +99,7 @@ class L4eIceCreamProcessingBatch(models.Model):
         ],
         string="Stock Status",
         compute="_compute_qty_sold_available",
+        search="_search_batch_stock_status",
     )
 
     def _compute_qty_sold_available(self):
@@ -111,6 +113,91 @@ class L4eIceCreamProcessingBatch(models.Model):
             avail = rec.total_output_qty - total_sold
             rec.qty_available = max(avail, 0.0)
             rec.batch_stock_status = "in_stock" if avail > 0 else "finished"
+
+    def _search_batch_stock_status(self, operator, value):
+        if operator in ("=", "!="):
+            self.env.cr.execute("""
+                SELECT pb.id
+                FROM l4e_icecream_processing_batch pb
+                LEFT JOIN (
+                    SELECT sol.batch_id, SUM(sol.product_uom_qty) AS total_sold
+                    FROM sale_order_line sol
+                    JOIN sale_order so ON so.id = sol.order_id
+                    WHERE so.state IN ('sale', 'done') AND sol.batch_id IS NOT NULL
+                    GROUP BY sol.batch_id
+                ) sales ON sales.batch_id = pb.id
+                WHERE (pb.total_output_qty - COALESCE(sales.total_sold, 0.0)) > 0
+            """)
+            in_stock_ids = [row[0] for row in self.env.cr.fetchall()]
+            if (operator == "=" and value == "in_stock") or (operator == "!=" and value == "finished"):
+                return [("id", "in", in_stock_ids)]
+            else:
+                return [("id", "not in", in_stock_ids)]
+        return []
+
+    def _search_qty_available(self, operator, value):
+        self.env.cr.execute("""
+            SELECT pb.id
+            FROM l4e_icecream_processing_batch pb
+            LEFT JOIN (
+                SELECT sol.batch_id, SUM(sol.product_uom_qty) AS total_sold
+                FROM sale_order_line sol
+                JOIN sale_order so ON so.id = sol.order_id
+                WHERE so.state IN ('sale', 'done') AND sol.batch_id IS NOT NULL
+                GROUP BY sol.batch_id
+            ) sales ON sales.batch_id = pb.id
+            WHERE (pb.total_output_qty - COALESCE(sales.total_sold, 0.0)) > 0
+        """)
+        ids = [row[0] for row in self.env.cr.fetchall()]
+        return [("id", "in", ids)]
+
+    @api.model
+    def _search(self, domain, offset=0, limit=None, order=None, **kwargs):
+        if self.env.context.get("hide_depleted_batches"):
+            self.env.cr.execute("""
+                SELECT pb.id
+                FROM l4e_icecream_processing_batch pb
+                LEFT JOIN (
+                    SELECT sol.batch_id, SUM(sol.product_uom_qty) AS total_sold
+                    FROM sale_order_line sol
+                    JOIN sale_order so ON so.id = sol.order_id
+                    WHERE so.state IN ('sale', 'done') AND sol.batch_id IS NOT NULL
+                    GROUP BY sol.batch_id
+                ) sales ON sales.batch_id = pb.id
+                WHERE (pb.total_output_qty - COALESCE(sales.total_sold, 0.0)) > 0
+            """)
+            in_stock_ids = [row[0] for row in self.env.cr.fetchall()]
+            extra = [("id", "in", in_stock_ids)]
+            try:
+                from odoo.fields import Domain
+                domain = Domain(extra) & Domain(domain or [])
+            except Exception:
+                domain = extra + list(domain or [])
+        return super()._search(domain, offset=offset, limit=limit, order=order, **kwargs)
+
+    @api.model
+    def name_search(self, name="", domain=None, operator="ilike", limit=100):
+        if self.env.context.get("hide_depleted_batches"):
+            self.env.cr.execute("""
+                SELECT pb.id
+                FROM l4e_icecream_processing_batch pb
+                LEFT JOIN (
+                    SELECT sol.batch_id, SUM(sol.product_uom_qty) AS total_sold
+                    FROM sale_order_line sol
+                    JOIN sale_order so ON so.id = sol.order_id
+                    WHERE so.state IN ('sale', 'done') AND sol.batch_id IS NOT NULL
+                    GROUP BY sol.batch_id
+                ) sales ON sales.batch_id = pb.id
+                WHERE (pb.total_output_qty - COALESCE(sales.total_sold, 0.0)) > 0
+            """)
+            in_stock_ids = [row[0] for row in self.env.cr.fetchall()]
+            extra = [("id", "in", in_stock_ids)]
+            try:
+                from odoo.fields import Domain
+                domain = Domain(extra) & Domain(domain or [])
+            except Exception:
+                domain = extra + list(domain or [])
+        return super().name_search(name=name, domain=domain, operator=operator, limit=limit)
 
     @api.depends("batch_number", "total_output_qty")
     def _compute_display_name(self):
