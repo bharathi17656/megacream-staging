@@ -6,6 +6,10 @@ from odoo import api, models
 class SaleOrderLine(models.Model):
     _inherit = "sale.order.line"
 
+    @api.onchange("product_id")
+    def _onchange_product_id_l4e_customer_price(self):
+        self._apply_l4e_customer_price()
+
     def _compute_price_unit(self):
         super()._compute_price_unit()
         self._apply_l4e_customer_price()
