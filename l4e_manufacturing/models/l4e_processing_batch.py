@@ -152,8 +152,54 @@ class L4eIceCreamProcessingBatch(models.Model):
         return [("id", "in", ids)]
 
     @api.model
-    def _search(self, domain, offset=0, limit=None, order=None, **kwargs):
-        if self.env.context.get("hide_depleted_batches"):
+    def _extract_filter_product_id(self, domain):
+        prod_id = self.env.context.get("filter_product_id")
+        if prod_id and isinstance(prod_id, int):
+            return prod_id
+        if domain:
+            try:
+                from odoo.fields import Domain
+                dom_obj = Domain(domain)
+                for leaf in dom_obj.iter_conditions():
+                    if leaf.operator == "=" and leaf.field_expr in ("product_id", "output_line_ids.product_id"):
+                        if isinstance(leaf.value, int):
+                            return leaf.value
+            except Exception:
+                pass
+            if isinstance(domain, list):
+                for item in domain:
+                    if isinstance(item, (list, tuple)) and len(item) == 3:
+                        if item[1] == "=" and item[0] in ("product_id", "output_line_ids.product_id") and isinstance(item[2], int):
+                            return item[2]
+        return None
+
+    @api.model
+    def _get_in_stock_batch_ids_by_product(self, product_id=None):
+        if product_id:
+            self.env.cr.execute("""
+                SELECT pb.id
+                FROM l4e_icecream_processing_batch pb
+                LEFT JOIN (
+                    SELECT batch_id, SUM(quantity) AS prod_qty
+                    FROM l4e_icecream_output_line
+                    WHERE product_id = %s
+                    GROUP BY batch_id
+                ) prod ON prod.batch_id = pb.id
+                LEFT JOIN (
+                    SELECT sol.batch_id, SUM(sol.product_uom_qty) AS sold_qty
+                    FROM sale_order_line sol
+                    JOIN sale_order so ON so.id = sol.order_id
+                    WHERE so.state IN ('sale', 'done') AND sol.batch_id IS NOT NULL AND sol.product_id = %s
+                    GROUP BY sol.batch_id
+                ) sales ON sales.batch_id = pb.id
+                WHERE pb.state != 'cancel'
+                  AND (
+                      (prod.prod_qty IS NOT NULL AND (prod.prod_qty - COALESCE(sales.sold_qty, 0.0)) > 0)
+                      OR
+                      (prod.prod_qty IS NULL AND pb.product_id = %s AND (pb.total_output_qty - COALESCE(sales.sold_qty, 0.0)) > 0)
+                  )
+            """, (product_id, product_id, product_id))
+        else:
             self.env.cr.execute("""
                 SELECT pb.id
                 FROM l4e_icecream_processing_batch pb
@@ -164,9 +210,16 @@ class L4eIceCreamProcessingBatch(models.Model):
                     WHERE so.state IN ('sale', 'done') AND sol.batch_id IS NOT NULL
                     GROUP BY sol.batch_id
                 ) sales ON sales.batch_id = pb.id
-                WHERE (pb.total_output_qty - COALESCE(sales.total_sold, 0.0)) > 0
+                WHERE pb.state != 'cancel'
+                  AND (pb.total_output_qty - COALESCE(sales.total_sold, 0.0)) > 0
             """)
-            in_stock_ids = [row[0] for row in self.env.cr.fetchall()]
+        return [row[0] for row in self.env.cr.fetchall()]
+
+    @api.model
+    def _search(self, domain, offset=0, limit=None, order=None, **kwargs):
+        if self.env.context.get("hide_depleted_batches"):
+            prod_id = self._extract_filter_product_id(domain)
+            in_stock_ids = self._get_in_stock_batch_ids_by_product(prod_id)
             extra = [("id", "in", in_stock_ids)]
             try:
                 from odoo.fields import Domain
@@ -178,19 +231,8 @@ class L4eIceCreamProcessingBatch(models.Model):
     @api.model
     def name_search(self, name="", domain=None, operator="ilike", limit=100):
         if self.env.context.get("hide_depleted_batches"):
-            self.env.cr.execute("""
-                SELECT pb.id
-                FROM l4e_icecream_processing_batch pb
-                LEFT JOIN (
-                    SELECT sol.batch_id, SUM(sol.product_uom_qty) AS total_sold
-                    FROM sale_order_line sol
-                    JOIN sale_order so ON so.id = sol.order_id
-                    WHERE so.state IN ('sale', 'done') AND sol.batch_id IS NOT NULL
-                    GROUP BY sol.batch_id
-                ) sales ON sales.batch_id = pb.id
-                WHERE (pb.total_output_qty - COALESCE(sales.total_sold, 0.0)) > 0
-            """)
-            in_stock_ids = [row[0] for row in self.env.cr.fetchall()]
+            prod_id = self._extract_filter_product_id(domain)
+            in_stock_ids = self._get_in_stock_batch_ids_by_product(prod_id)
             extra = [("id", "in", in_stock_ids)]
             try:
                 from odoo.fields import Domain

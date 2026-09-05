@@ -9,7 +9,7 @@
                 <field name="batch_id"
                        string="Batch Number"
                        domain="['|', ('product_id', '=', product_id), ('output_line_ids.product_id', '=', product_id)]"
-                       context="{'hide_depleted_batches': True}"
+                       context="{'hide_depleted_batches': True, 'filter_product_id': product_id}"
                        options="{'no_create': True}"
                        optional="show"/>
                 <field name="batch_available_qty"
