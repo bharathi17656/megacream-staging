@@ -10,7 +10,6 @@ class AccountMoveLine(models.Model):
         "l4e.icecream.processing.batch",
         string="Batch Number",
         domain="['|', ('product_id', '=', product_id), ('output_line_ids.product_id', '=', product_id)]",
-        context="{'hide_depleted_batches': True, 'filter_product_id': product_id}",
         help="Select the manufacturing processing batch associated with this invoice line.",
     )
 

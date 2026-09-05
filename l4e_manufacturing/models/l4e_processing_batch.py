@@ -216,19 +216,6 @@ class L4eIceCreamProcessingBatch(models.Model):
         return [row[0] for row in self.env.cr.fetchall()]
 
     @api.model
-    def _search(self, domain, offset=0, limit=None, order=None, **kwargs):
-        if self.env.context.get("hide_depleted_batches"):
-            prod_id = self._extract_filter_product_id(domain)
-            in_stock_ids = self._get_in_stock_batch_ids_by_product(prod_id)
-            extra = [("id", "in", in_stock_ids)]
-            try:
-                from odoo.fields import Domain
-                domain = Domain(extra) & Domain(domain or [])
-            except Exception:
-                domain = extra + list(domain or [])
-        return super()._search(domain, offset=offset, limit=limit, order=order, **kwargs)
-
-    @api.model
     def name_search(self, name="", domain=None, operator="ilike", limit=100):
         if self.env.context.get("hide_depleted_batches"):
             prod_id = self._extract_filter_product_id(domain)
@@ -240,6 +227,26 @@ class L4eIceCreamProcessingBatch(models.Model):
             except Exception:
                 domain = extra + list(domain or [])
         return super().name_search(name=name, domain=domain, operator=operator, limit=limit)
+
+    @api.model
+    def web_search_read(self, domain=None, specification=None, offset=0, limit=None, order=None, count_limit=None):
+        if self.env.context.get("hide_depleted_batches"):
+            prod_id = self._extract_filter_product_id(domain)
+            in_stock_ids = self._get_in_stock_batch_ids_by_product(prod_id)
+            extra = [("id", "in", in_stock_ids)]
+            try:
+                from odoo.fields import Domain
+                domain = Domain(extra) & Domain(domain or [])
+            except Exception:
+                domain = extra + list(domain or [])
+        return super().web_search_read(
+            domain=domain,
+            specification=specification,
+            offset=offset,
+            limit=limit,
+            order=order,
+            count_limit=count_limit,
+        )
 
     @api.depends("batch_number", "name")
     def _compute_display_name(self):
