@@ -46,8 +46,9 @@
                 <separator/>
                 <filter string="Recent Batches" name="filter_recent" domain="[('date', '&gt;=', context_today)]"/>
 
-                <!-- Group By -->
+                <!-- Group By (Expandable Drop-down Accordion) -->
                 <group>
+                    <filter string="Batch Number" name="groupby_batch" context="{'group_by': 'batch_id'}"/>
                     <filter string="Product" name="groupby_product" context="{'group_by': 'product_id'}"/>
                     <filter string="Batch Stock Status" name="groupby_batch_status" context="{'group_by': 'batch_status'}"/>
                     <filter string="Batch Month" name="groupby_month" context="{'group_by': 'date:month'}"/>
@@ -64,8 +65,8 @@
         <field name="model">l4e.batch.dispatch.report</field>
         <field name="arch" type="xml">
             <pivot string="Batch Stock Pivot">
-                <field name="product_id" type="row"/>
                 <field name="batch_id" type="row"/>
+                <field name="product_id" type="row"/>
                 <field name="date" type="col" interval="month"/>
                 <field name="qty_produced" type="measure"/>
                 <field name="qty_sold" type="measure"/>
@@ -97,12 +98,13 @@
         <field name="view_mode">list,pivot,graph</field>
         <field name="domain">[]</field>
         <field name="search_view_id" ref="view_l4e_batch_dispatch_report_search"/>
+        <field name="context">{'search_default_groupby_batch': 1}</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">
                 No manufacturing processing batches found.
             </p>
             <p>
-                All manufactured processing batches appear here with real-time stock availability and sold quantities.
+                All manufactured processing batches and finished products appear here with real-time stock availability and sold quantities. Click any batch to expand and see all products produced within it.
             </p>
         </field>
     </record>

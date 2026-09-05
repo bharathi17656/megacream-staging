@@ -7,14 +7,14 @@ class L4eBatchDispatchReport(models.Model):
     _name = "l4e.batch.dispatch.report"
     _description = "Batch Stock"
     _auto = False
-    _order = "date desc, batch_id desc, id desc"
+    _order = "batch_id desc, product_id asc, id desc"
 
     batch_id = fields.Many2one("l4e.icecream.processing.batch", string="Batch Number", readonly=True)
     lot_id = fields.Many2one("l4e.icecream.processing.batch", string="Batch Number", readonly=True)
     batch_number = fields.Char(string="Batch Name", readonly=True)
     date = fields.Date(string="Batch Date", readonly=True)
     product_id = fields.Many2one("product.product", string="Product", readonly=True)
-    qty_produced = fields.Float(string="Produced Quantity", readonly=True)
+    qty_produced = fields.Float(string="Produced Qty", readonly=True)
     qty_sold = fields.Float(string="Quantity Sold", readonly=True)
     uom_id = fields.Many2one("uom.uom", string="UoM", readonly=True)
     batch_available_qty = fields.Float(string="Remaining Batch Stock", readonly=True)
@@ -33,37 +33,49 @@ class L4eBatchDispatchReport(models.Model):
         self.env.cr.execute("""
             CREATE OR REPLACE VIEW l4e_batch_dispatch_report AS (
                 SELECT 
-                    pb.id AS id,
+                    ROW_NUMBER() OVER () AS id,
                     pb.id AS batch_id,
                     pb.id AS lot_id,
                     pb.batch_number AS batch_number,
                     pb.date AS date,
-                    pb.product_id AS product_id,
-                    pb.total_output_qty AS qty_produced,
+                    COALESCE(ol.product_id, pb.product_id) AS product_id,
+                    COALESCE(ol.total_prod_qty, pb.total_output_qty, 0.0) AS qty_produced,
                     COALESCE(sales.total_sold, 0.0) AS qty_sold,
-                    (
-                        SELECT pt.uom_id 
-                        FROM product_product pp 
-                        JOIN product_template pt ON pt.id = pp.product_tmpl_id 
-                        WHERE pp.id = pb.product_id 
-                        LIMIT 1
+                    COALESCE(
+                        (
+                            SELECT pt.uom_id 
+                            FROM product_product pp 
+                            JOIN product_template pt ON pt.id = pp.product_tmpl_id 
+                            WHERE pp.id = COALESCE(ol.product_id, pb.product_id) 
+                            LIMIT 1
+                        ),
+                        1
                     ) AS uom_id,
-                    GREATEST(pb.total_output_qty - COALESCE(sales.total_sold, 0.0), 0.0) AS batch_available_qty,
+                    GREATEST(COALESCE(ol.total_prod_qty, pb.total_output_qty, 0.0) - COALESCE(sales.total_sold, 0.0), 0.0) AS batch_available_qty,
                     CASE
-                        WHEN (pb.total_output_qty - COALESCE(sales.total_sold, 0.0)) > 0 THEN 'in_stock'
+                        WHEN (COALESCE(ol.total_prod_qty, pb.total_output_qty, 0.0) - COALESCE(sales.total_sold, 0.0)) > 0 THEN 'in_stock'
                         ELSE 'finished'
                     END AS batch_status,
                     pb.company_id AS company_id
                 FROM l4e_icecream_processing_batch pb
                 LEFT JOIN (
                     SELECT 
+                        batch_id, 
+                        product_id, 
+                        SUM(quantity) AS total_prod_qty 
+                    FROM l4e_icecream_output_line 
+                    GROUP BY batch_id, product_id
+                ) ol ON ol.batch_id = pb.id
+                LEFT JOIN (
+                    SELECT 
                         sol.batch_id,
+                        sol.product_id,
                         SUM(sol.product_uom_qty) AS total_sold
                     FROM sale_order_line sol
                     JOIN sale_order so ON so.id = sol.order_id
                     WHERE so.state IN ('sale', 'done') AND sol.batch_id IS NOT NULL
-                    GROUP BY sol.batch_id
-                ) sales ON sales.batch_id = pb.id
+                    GROUP BY sol.batch_id, sol.product_id
+                ) sales ON sales.batch_id = pb.id AND sales.product_id = COALESCE(ol.product_id, pb.product_id)
                 WHERE pb.state != 'cancel'
             )
         """)
