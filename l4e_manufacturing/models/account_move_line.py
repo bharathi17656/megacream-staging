@@ -42,16 +42,17 @@ class AccountMoveLine(models.Model):
                 line.batch_available_qty = 0.0
                 line.batch_status = False
                 continue
-            output_lines = line.batch_id.output_line_ids.filtered(lambda ol: ol.product_id == line.product_id)
+            batch_sudo = line.batch_id.sudo()
+            output_lines = batch_sudo.output_line_ids.filtered(lambda ol: ol.product_id == line.product_id)
             if output_lines:
                 prod_qty = sum(output_lines.mapped("quantity"))
-            elif line.batch_id.product_id == line.product_id:
-                prod_qty = line.batch_id.total_output_qty
+            elif batch_sudo.product_id == line.product_id:
+                prod_qty = batch_sudo.total_output_qty
             else:
                 prod_qty = 0.0
 
             sold_lines = self.env["sale.order.line"].sudo().search([
-                ("batch_id", "=", line.batch_id.id),
+                ("batch_id", "=", batch_sudo.id),
                 ("product_id", "=", line.product_id.id),
                 ("order_id.state", "in", ("sale", "done")),
             ])
