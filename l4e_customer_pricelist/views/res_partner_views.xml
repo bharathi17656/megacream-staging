@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_partner_form_inherit_l4e_customer_pricelist" model="ir.ui.view">
+        <field name="name">res.partner.form.inherit.l4e.customer.pricelist</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_partner_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//page[@string='Partner Assignment']" position="after">
+                <page string="Products" name="l4e_customer_products" invisible="not is_customer">
+                    <field name="customer_product_price_ids">
+                        <list editable="bottom">
+                            <field name="sequence" string="S.No" readonly="1" width="60px"/>
+                            <field name="product_id"/>
+                            <field name="actual_price"/>
+                            <field name="customer_price"/>
+                        </list>
+                    </field>
+                </page>
+            </xpath>
+        </field>
+    </record>
+</odoo>
