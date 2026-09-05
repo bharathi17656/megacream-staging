@@ -2,13 +2,13 @@
 <odoo>
 
     <!-- ═══════════════════════════════════════════════════════
-         BATCH STOCK — List View
+         BATCH WISE STOCK REPORT — List View
     ═══════════════════════════════════════════════════════ -->
     <record id="view_l4e_batch_dispatch_report_list" model="ir.ui.view">
         <field name="name">l4e.batch.dispatch.report.list</field>
         <field name="model">l4e.batch.dispatch.report</field>
         <field name="arch" type="xml">
-            <list string="Batch Stock"
+            <list string="Batch Wise Stock Report"
                   decoration-success="batch_status == 'in_stock'"
                   decoration-muted="batch_status == 'finished'"
                   create="false" edit="false" delete="false">
@@ -30,13 +30,13 @@
     </record>
 
     <!-- ═══════════════════════════════════════════════════════
-         BATCH STOCK — Search View
+         BATCH WISE STOCK REPORT — Search View
     ═══════════════════════════════════════════════════════ -->
     <record id="view_l4e_batch_dispatch_report_search" model="ir.ui.view">
         <field name="name">l4e.batch.dispatch.report.search</field>
         <field name="model">l4e.batch.dispatch.report</field>
         <field name="arch" type="xml">
-            <search string="Search Batch Stock">
+            <search string="Search Batch Wise Stock Report">
                 <field name="batch_id" string="Batch Number"/>
                 <field name="product_id" string="Product"/>
 
@@ -58,13 +58,13 @@
     </record>
 
     <!-- ═══════════════════════════════════════════════════════
-         BATCH STOCK — Pivot View
+         BATCH WISE STOCK REPORT — Pivot View
     ═══════════════════════════════════════════════════════ -->
     <record id="view_l4e_batch_dispatch_report_pivot" model="ir.ui.view">
         <field name="name">l4e.batch.dispatch.report.pivot</field>
         <field name="model">l4e.batch.dispatch.report</field>
         <field name="arch" type="xml">
-            <pivot string="Batch Stock Pivot">
+            <pivot string="Batch Wise Stock Report Pivot">
                 <field name="batch_id" type="row"/>
                 <field name="product_id" type="row"/>
                 <field name="date" type="col" interval="month"/>
@@ -76,13 +76,13 @@
     </record>
 
     <!-- ═══════════════════════════════════════════════════════
-         BATCH STOCK — Graph View
+         BATCH WISE STOCK REPORT — Graph View
     ═══════════════════════════════════════════════════════ -->
     <record id="view_l4e_batch_dispatch_report_graph" model="ir.ui.view">
         <field name="name">l4e.batch.dispatch.report.graph</field>
         <field name="model">l4e.batch.dispatch.report</field>
         <field name="arch" type="xml">
-            <graph string="Batch Stock Availability" type="bar">
+            <graph string="Batch Wise Stock Report" type="bar">
                 <field name="batch_id"/>
                 <field name="batch_available_qty" type="measure"/>
             </graph>
@@ -90,10 +90,10 @@
     </record>
 
     <!-- ═══════════════════════════════════════════════════════
-         BATCH STOCK — Action
+         BATCH WISE STOCK REPORT — Action
     ═══════════════════════════════════════════════════════ -->
     <record id="action_l4e_batch_dispatch_report" model="ir.actions.act_window">
-        <field name="name">Batch Stock</field>
+        <field name="name">Batch Wise Stock Report</field>
         <field name="res_model">l4e.batch.dispatch.report</field>
         <field name="view_mode">list,pivot,graph</field>
         <field name="domain">[]</field>

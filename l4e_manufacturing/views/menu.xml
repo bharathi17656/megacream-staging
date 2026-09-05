@@ -17,19 +17,21 @@
         action="action_ice_cream_processing_batch"
         sequence="1"/>
 
+    <!-- Batch Wise Stock Report under Ice Cream Processing -->
+    <menuitem
+        id="menu_inventory_batch_dispatch_report"
+        name="Batch Wise Stock Report"
+        parent="menu_ice_cream_processing_root"
+        action="action_l4e_batch_dispatch_report"
+        sequence="2"/>
+
+    <!-- Processing Cost Report: Hidden for now -->
     <menuitem
         id="menu_ice_cream_processing_cost_report"
         name="Processing Cost Report"
         parent="menu_ice_cream_processing_root"
         action="action_ice_cream_processing_cost_report"
-        sequence="2"/>
-
-    <!-- Under Inventory -> Reporting -->
-    <menuitem
-        id="menu_inventory_batch_dispatch_report"
-        name="Batch Stock"
-        parent="stock.menu_warehouse_report"
-        action="action_l4e_batch_dispatch_report"
-        sequence="15"/>
+        active="False"
+        sequence="99"/>
 
 </odoo>
