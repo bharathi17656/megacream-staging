@@ -33,7 +33,7 @@ class L4eBatchDispatchReport(models.Model):
         self.env.cr.execute("""
             CREATE OR REPLACE VIEW l4e_batch_dispatch_report AS (
                 SELECT 
-                    ROW_NUMBER() OVER () AS id,
+                    (pb.id * 100000 + COALESCE(ol.product_id, 0))::bigint AS id,
                     pb.id AS batch_id,
                     pb.id AS lot_id,
                     pb.batch_number AS batch_number,
