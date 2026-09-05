@@ -17,6 +17,7 @@ L4E Customer Pricelist
     'data': [
         'security/ir.model.access.csv',
         'views/res_partner_views.xml',
+        'views/l4e_customer_group_views.xml',
     ],
     'installable': True,
     'application': False,

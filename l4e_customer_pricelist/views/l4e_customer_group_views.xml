@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_l4e_customer_group_list" model="ir.ui.view">
+        <field name="name">l4e.customer.group.list</field>
+        <field name="model">l4e.customer.group</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="name"/>
+                <field name="customer_count"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_l4e_customer_group_form" model="ir.ui.view">
+        <field name="name">l4e.customer.group.form</field>
+        <field name="model">l4e.customer.group</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                    </group>
+                    <notebook>
+                        <page string="Customers" name="customers">
+                            <field name="customer_ids" widget="many2many_tags"/>
+                        </page>
+                        <page string="Products" name="products">
+                            <field name="price_line_ids">
+                                <list editable="bottom">
+                                    <field name="sequence" string="S.No" readonly="1" width="60px"/>
+                                    <field name="product_id"/>
+                                    <field name="actual_price"/>
+                                    <field name="group_price"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_l4e_customer_group" model="ir.actions.act_window">
+        <field name="name">Customer Groups</field>
+        <field name="res_model">l4e.customer.group</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <menuitem id="menu_l4e_customer_pricing_root" name="Customer Pricing" sequence="90"/>
+    <menuitem
+        id="menu_l4e_customer_group"
+        name="Customer Groups"
+        parent="menu_l4e_customer_pricing_root"
+        action="action_l4e_customer_group"
+        sequence="10"/>
+</odoo>

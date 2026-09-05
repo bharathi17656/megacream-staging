@@ -19,15 +19,33 @@ class SaleOrderLine(models.Model):
             partner = line.order_id.partner_id
             if not line.product_id or not partner:
                 continue
-            custom_price = self.env["l4e.customer.product.price"].search(
+
+            price = False
+
+            # 1. Group price takes precedence
+            group_price = self.env["l4e.customer.group.price"].search(
                 [
-                    ("partner_id", "=", partner.id),
+                    ("group_id.customer_ids", "in", partner.id),
                     ("product_id", "=", line.product_id.id),
                 ],
                 limit=1,
             )
-            if custom_price:
-                line.price_unit = custom_price.customer_price
+            if group_price:
+                price = group_price.group_price
+            else:
+                # 2. Fall back to the individual customer price
+                custom_price = self.env["l4e.customer.product.price"].search(
+                    [
+                        ("partner_id", "=", partner.id),
+                        ("product_id", "=", line.product_id.id),
+                    ],
+                    limit=1,
+                )
+                if custom_price:
+                    price = custom_price.customer_price
+
+            if price:
+                line.price_unit = price
 
     @api.model_create_multi
     def create(self, vals_list):
