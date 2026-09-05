@@ -27,7 +27,7 @@
     <!-- Under Inventory -> Reporting -->
     <menuitem
         id="menu_inventory_batch_dispatch_report"
-        name="Batch Dispatch &amp; Sales Report"
+        name="Batch Stock"
         parent="stock.menu_warehouse_report"
         action="action_l4e_batch_dispatch_report"
         sequence="15"/>

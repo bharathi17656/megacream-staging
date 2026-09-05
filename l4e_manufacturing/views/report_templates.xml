@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ═══════════════════════════════════════════════════════
+         SALES ORDER REPORT: Add Batch Number column
+    ═══════════════════════════════════════════════════════ -->
+    <template id="report_saleorder_document_inherit_batch" inherit_id="sale.report_saleorder_document">
+        <xpath expr="//th[@name='th_description']" position="after">
+            <th name="th_batch_number" class="text-start">Batch Number</th>
+        </xpath>
+        <xpath expr="//td[@name='td_product_name']" position="after">
+            <td name="td_batch_number">
+                <span t-if="line.batch_id" t-field="line.batch_id.batch_number"/>
+            </td>
+        </xpath>
+    </template>
+
+    <!-- ═══════════════════════════════════════════════════════
+         CUSTOMER INVOICE REPORT: Add Batch Number column
+    ═══════════════════════════════════════════════════════ -->
+    <template id="report_invoice_document_inherit_batch" inherit_id="account.report_invoice_document">
+        <xpath expr="//th[@name='th_description']" position="after">
+            <th name="th_batch_number" class="text-start"><span>Batch Number</span></th>
+        </xpath>
+        <xpath expr="//td[@name='account_invoice_line_name']" position="after">
+            <td name="td_batch_number">
+                <span t-if="line.batch_id" t-field="line.batch_id.batch_number"/>
+            </td>
+        </xpath>
+    </template>
+
+</odoo>

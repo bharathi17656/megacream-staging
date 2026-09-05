@@ -3,7 +3,7 @@
     'name': 'MegaCream Processing & Batch Management',
     'version': '19.0.1.0.0',
     'category': 'Inventory/Manufacturing',
-    'summary': 'Ice Cream Manufacturing, Batch Tracking & Sales Dispatch Reporting',
+    'summary': 'Ice Cream Manufacturing, Batch Tracking & Batch Stock Reporting',
     'description': """
 MegaCream Ice Cream Manufacturing & Batch Management Module (Odoo 19)
 =======================================================================
@@ -12,8 +12,9 @@ Features:
 - Batch Sequencing: Daily resetting batch numbers (BATCH-DD-MMM-YY-001)
 - Batch Selection: Dropdown on Sales Orders and Invoices with live availability status
 - Inactivity / Finished Batch Indicators: Real-time stock status (In Stock vs Finished/Depleted)
-- Inventory Batch Dispatch & Sales Report: Traceability of whom batches were given/sold to, quantities, and values
+- Inventory Batch Stock Report: Live traceability of batch production, sales, and remaining stock
 - Processing Cost Report: Financial variance and yield tracking
+- Print Reports: Batch numbers printed on Sale Order and Customer Invoice tables
     """,
     'author': 'L4E',
     'depends': ['stock', 'mail', 'sale', 'sale_management', 'account'],
@@ -24,6 +25,7 @@ Features:
         'views/sale_order_views.xml',
         'views/account_move_views.xml',
         'views/batch_dispatch_report_views.xml',
+        'views/report_templates.xml',
         'views/actions.xml',
         'views/menu.xml',
     ],

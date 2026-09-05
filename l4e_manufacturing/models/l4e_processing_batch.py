@@ -199,20 +199,10 @@ class L4eIceCreamProcessingBatch(models.Model):
                 domain = extra + list(domain or [])
         return super().name_search(name=name, domain=domain, operator=operator, limit=limit)
 
-    @api.depends("batch_number", "total_output_qty")
+    @api.depends("batch_number", "name")
     def _compute_display_name(self):
         for batch in self:
-            b_name = batch.batch_number or batch.name or ""
-            sold_lines = self.env["sale.order.line"].sudo().search([
-                ("batch_id", "=", batch.id),
-                ("order_id.state", "in", ("sale", "done")),
-            ])
-            total_sold = sum(sold_lines.mapped("product_uom_qty"))
-            avail = batch.total_output_qty - total_sold
-            if avail > 0:
-                batch.display_name = f"{b_name} ({avail:g} Available)"
-            else:
-                batch.display_name = f"{b_name} (Finished / Out of Stock)"
+            batch.display_name = batch.batch_number or batch.name or ""
 
     # ─── Daily Auto-Sequencing: BATCH-DD-MMM-YY-001 (Resets Daily) ────────────
 
