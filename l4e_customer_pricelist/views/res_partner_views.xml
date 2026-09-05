@@ -5,7 +5,7 @@
         <field name="model">res.partner</field>
         <field name="inherit_id" ref="base.view_partner_form"/>
         <field name="arch" type="xml">
-            <xpath expr="//page[@string='Partner Assignment']" position="after">
+            <xpath expr="//notebook" position="inside">
                 <page string="Products" name="l4e_customer_products" invisible="not is_customer">
                     <field name="customer_product_price_ids">
                         <list editable="bottom">
