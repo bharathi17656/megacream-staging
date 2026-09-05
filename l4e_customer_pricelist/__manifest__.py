@@ -13,7 +13,7 @@ L4E Customer Pricelist
   as the line's price_unit. The product's own Sales Price in Inventory/Sales is never modified.
     """,
     'author': 'L4E',
-    'depends': ['base', 'sale', 'l4e_partner_custom_fields'],
+    'depends': ['base', 'contacts', 'sale', 'l4e_partner_custom_fields'],
     'data': [
         'security/ir.model.access.csv',
         'views/res_partner_views.xml',

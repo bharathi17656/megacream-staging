@@ -46,11 +46,10 @@
         <field name="view_mode">list,form</field>
     </record>
 
-    <menuitem id="menu_l4e_customer_pricing_root" name="Customer Pricing" sequence="90"/>
     <menuitem
         id="menu_l4e_customer_group"
         name="Customer Groups"
-        parent="menu_l4e_customer_pricing_root"
+        parent="contacts.res_partner_menu_config"
         action="action_l4e_customer_group"
         sequence="10"/>
 </odoo>
