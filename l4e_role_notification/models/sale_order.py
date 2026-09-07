@@ -1,7 +1,9 @@
-# -*- coding: utf-8 -*-
+import logging
 
 from markupsafe import Markup
 from odoo import api, models
+
+_logger = logging.getLogger(__name__)
 
 
 class SaleOrder(models.Model):
@@ -11,13 +13,19 @@ class SaleOrder(models.Model):
     def create(self, vals_list):
         orders = super().create(vals_list)
         for order in orders:
-            order._notify_store_production_users(event="created")
+            try:
+                order._notify_store_production_users(event="created")
+            except Exception as e:
+                _logger.exception("Error sending role notification on order create: %s", e)
         return orders
 
     def action_confirm(self):
         res = super().action_confirm()
         for order in self:
-            order._notify_store_production_users(event="confirmed")
+            try:
+                order._notify_store_production_users(event="confirmed")
+            except Exception as e:
+                _logger.exception("Error sending role notification on order confirm: %s", e)
         return res
 
     def _notify_store_production_users(self, event="created"):
@@ -48,11 +56,16 @@ class SaleOrder(models.Model):
         lines_html = ""
         order_lines = self.order_line.filtered(lambda l: not l.display_type)
         if order_lines:
-            item_rows = "".join(
-                f"<li><b>{line.product_id.display_name or line.name}</b>: {line.product_uom_qty} {line.product_uom.name or ''}</li>"
-                for line in order_lines
-            )
-            lines_html = f"<p><b>Items:</b></p><ul>{item_rows}</ul>"
+            item_rows = []
+            for line in order_lines:
+                uom = getattr(line, "product_uom_id", None) or getattr(line, "product_uom", None)
+                uom_name = uom.name if uom else ""
+                prod_name = line.product_id.display_name or line.name or "Item"
+                item_rows.append(
+                    f"<li><b>{prod_name}</b>: {line.product_uom_qty} {uom_name}</li>"
+                )
+            if item_rows:
+                lines_html = f"<p><b>Items:</b></p><ul>{''.join(item_rows)}</ul>"
 
         currency_name = self.currency_id.symbol or self.currency_id.name or ""
         customer_name = self.partner_id.name or ""
