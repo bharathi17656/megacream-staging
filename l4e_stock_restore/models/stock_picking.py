@@ -249,7 +249,7 @@ class StockPicking(models.Model):
             if (
                 picking._is_stock_restore_transfer()
                 and not picking.stock_restore_notified
-                and ("move_ids" in vals or "move_ids_without_package" in vals)
+                and "move_ids" in vals
             ):
                 try:
                     picking._notify_store_users_stock_restore()
@@ -295,14 +295,14 @@ class StockPicking(models.Model):
 
         # Build product lines list
         lines_html = ""
-        moves = self.move_ids_without_package or self.move_ids
+        moves = getattr(self, "move_ids", None)
         if moves:
             item_rows = []
             for move in moves:
-                uom = getattr(move, "product_uom", None) or getattr(move, "product_uom_id", None)
+                uom = getattr(move, "product_uom_id", None) or getattr(move, "product_uom", None)
                 uom_name = uom.name if uom else ""
                 prod_name = move.product_id.display_name or move.name or "Item"
-                qty = getattr(move, "product_uom_qty", 0)
+                qty = getattr(move, "product_uom_qty", 0) or getattr(move, "quantity", 0)
                 item_rows.append(
                     f"<li><b>{prod_name}</b>: {qty} {uom_name}</li>"
                 )
