@@ -7,8 +7,8 @@
     <menuitem
         id="menu_ice_cream_processing_root"
         name="Ice Cream Processing"
-        parent="stock.menu_stock_root"
-        sequence="50"/>
+        parent="mrp.menu_mrp_root"
+        sequence="12"/>
 
     <menuitem
         id="menu_ice_cream_processing_batch"

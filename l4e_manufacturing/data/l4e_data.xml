@@ -13,6 +13,17 @@
             <field name="company_id" eval="False"/>
         </record>
 
+        <!-- Auto-sequence for Ice Cream Wastage Lines: WST2026-00001 ... -->
+        <record id="seq_ice_cream_wastage_line" model="ir.sequence">
+            <field name="name">Ice Cream Wastage Line</field>
+            <field name="code">l4e.icecream.wastage.line</field>
+            <field name="prefix">WST%(year)s-</field>
+            <field name="padding">5</field>
+            <field name="number_next">1</field>
+            <field name="number_increment">1</field>
+            <field name="company_id" eval="False"/>
+        </record>
+
         <!-- Default Wastage Reasons -->
         <record id="wastage_reason_spillage" model="l4e.icecream.wastage.reason">
             <field name="name">Machine / Line Spillage</field>

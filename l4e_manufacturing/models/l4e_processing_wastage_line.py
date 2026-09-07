@@ -20,6 +20,16 @@ class L4eIceCreamWastageLine(models.Model):
     _name = "l4e.icecream.wastage.line"
     _description = "Ice Cream Processing Wastage Line"
     _order = "date desc, id desc"
+    _rec_name = "name"
+
+    name = fields.Char(
+        string="Reference",
+        required=True,
+        copy=False,
+        readonly=True,
+        index=True,
+        default=lambda self: _("New"),
+    )
 
     batch_id = fields.Many2one(
         "l4e.icecream.processing.batch",
@@ -149,3 +159,31 @@ class L4eIceCreamWastageLine(models.Model):
     def _compute_total_loss_value(self):
         for line in self:
             line.total_loss_value = (line.quantity or 0.0) * (line.unit_cost or 0.0)
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        for vals in vals_list:
+            if not vals.get("name") or vals.get("name") == _("New"):
+                vals["name"] = (
+                    self.env["ir.sequence"].next_by_code("l4e.icecream.wastage.line")
+                    or _("New")
+                )
+        return super().create(vals_list)
+
+    @api.depends("name")
+    def _compute_display_name(self):
+        for line in self:
+            if line.name and line.name != _("New"):
+                line.display_name = line.name
+            elif line.id:
+                line.display_name = f"WST-{line.id:05d}"
+            else:
+                line.display_name = _("New")
+
+    def init(self):
+        super().init()
+        self.env.cr.execute("""
+            UPDATE l4e_icecream_wastage_line
+            SET name = 'WST2026-' || LPAD(id::text, 5, '0')
+            WHERE name IS NULL OR name = 'New' OR name = '';
+        """)

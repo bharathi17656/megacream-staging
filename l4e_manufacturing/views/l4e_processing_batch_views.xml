@@ -168,6 +168,7 @@
                             <field name="wastage_line_ids" readonly="state != 'processing'">
                                 <list editable="bottom">
                                     <field name="allowed_product_ids" column_invisible="1"/>
+                                    <field name="name" string="Wastage Ref" readonly="1" optional="show"/>
                                     <field name="product_id" string="Finished Product" domain="[('id', 'in', allowed_product_ids)]"/>
                                     <field name="packaging_no" string="Tub / Packaging No" optional="show"/>
                                     <field name="quantity" string="Wastage Quantity"/>

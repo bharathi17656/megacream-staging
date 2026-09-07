@@ -46,6 +46,7 @@
         <field name="model">l4e.icecream.wastage.line</field>
         <field name="arch" type="xml">
             <list string="Wastage Master" create="false" edit="false">
+                <field name="name" string="Wastage Ref"/>
                 <field name="date" string="Processing Date"/>
                 <field name="batch_id" string="Batch Number"/>
                 <field name="product_id" string="Finished Product"/>
@@ -71,6 +72,12 @@
         <field name="arch" type="xml">
             <form string="Wastage Detail" create="false" edit="false">
                 <sheet>
+                    <div class="oe_title">
+                        <label for="name" string="Wastage Reference"/>
+                        <h1>
+                            <field name="name" readonly="1"/>
+                        </h1>
+                    </div>
                     <group>
                         <group string="Batch Details">
                             <field name="batch_id" readonly="1"/>
@@ -141,6 +148,7 @@
         <field name="model">l4e.icecream.wastage.line</field>
         <field name="arch" type="xml">
             <search>
+                <field name="name" string="Wastage Reference"/>
                 <field name="product_id"/>
                 <field name="batch_id"/>
                 <field name="reason_id"/>

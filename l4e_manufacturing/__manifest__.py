@@ -17,7 +17,7 @@ Features:
 - Print Reports: Batch numbers printed on Sale Order and Customer Invoice tables
     """,
     'author': 'L4E',
-    'depends': ['stock', 'mail', 'sale', 'sale_management', 'account'],
+    'depends': ['stock', 'mrp', 'mail', 'sale', 'sale_management', 'account'],
     'data': [
         'security/ir.model.access.csv',
         'data/l4e_data.xml',
