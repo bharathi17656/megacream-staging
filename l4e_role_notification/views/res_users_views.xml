@@ -3,14 +3,14 @@
 
     <!-- ============================================================
          Inherit res.users form to add Role checkboxes
-         in the Access Rights tab
+         in the Access Rights tab (visible without dev mode)
          ============================================================ -->
     <record id="res_users_form_l4e_roles" model="ir.ui.view">
         <field name="name">res.users.form.l4e.roles</field>
         <field name="model">res.users</field>
         <field name="inherit_id" ref="base.view_users_form"/>
         <field name="arch" type="xml">
-            <xpath expr="//page[@name='access_rights']" position="inside">
+            <xpath expr="//page[@name='access_rights']/group[1]" position="before">
                 <group string="User Group">
                     <field name="is_store_user" widget="boolean_toggle"/>
                     <field name="is_production_user" widget="boolean_toggle"/>
@@ -22,13 +22,14 @@
 
     <!-- ============================================================
          Inherit res.users simplified form (Settings > Users list)
+         Placed directly under sheet so it shows without dev mode
          ============================================================ -->
     <record id="res_users_simple_form_l4e_roles" model="ir.ui.view">
         <field name="name">res.users.simple.form.l4e.roles</field>
         <field name="model">res.users</field>
         <field name="inherit_id" ref="base.view_users_simple_form"/>
         <field name="arch" type="xml">
-            <xpath expr="//sheet/group" position="inside">
+            <xpath expr="//sheet" position="inside">
                 <group string="User Group">
                     <field name="is_store_user" widget="boolean_toggle"/>
                     <field name="is_production_user" widget="boolean_toggle"/>
