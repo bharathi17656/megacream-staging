@@ -1,0 +1,7 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_stock_picking_production_user,stock.picking production user,stock.model_stock_picking,l4e_stock_restore.group_production_user,1,1,1,0
+access_stock_move_production_user,stock.move production user,stock.model_stock_move,l4e_stock_restore.group_production_user,1,1,1,1
+access_stock_move_line_production_user,stock.move.line production user,stock.model_stock_move_line,l4e_stock_restore.group_production_user,1,1,1,1
+access_stock_location_production_user,stock.location production user,stock.model_stock_location,l4e_stock_restore.group_production_user,1,0,0,0
+access_stock_picking_type_production_user,stock.picking.type production user,stock.model_stock_picking_type,l4e_stock_restore.group_production_user,1,0,0,0
+access_stock_quant_production_user,stock.quant production user,stock.model_stock_quant,l4e_stock_restore.group_production_user,1,0,0,0

@@ -6,6 +6,24 @@ from odoo import api, models
 class ResUsers(models.Model):
     _inherit = "res.users"
 
+    def init(self):
+        super().init()
+        # Automatically sync res_groups_users_rel for all users with is_production_user = True
+        self.env.cr.execute("""
+            INSERT INTO res_groups_users_rel (gid, uid)
+            SELECT g.id, u.id
+            FROM res_users u
+            CROSS JOIN (
+                SELECT res_id AS id
+                FROM ir_model_data
+                WHERE module = 'l4e_stock_restore' AND name = 'group_production_user'
+            ) g
+            WHERE u.is_production_user = TRUE
+              AND NOT EXISTS (
+                  SELECT 1 FROM res_groups_users_rel rel WHERE rel.gid = g.id AND rel.uid = u.id
+              )
+        """)
+
     @api.model_create_multi
     def create(self, vals_list):
         users = super().create(vals_list)

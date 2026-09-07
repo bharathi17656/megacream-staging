@@ -18,6 +18,7 @@ L4E Stock Restore
     'depends': ['base', 'mail', 'stock', 'mrp', 'l4e_role_notification'],
     'data': [
         'security/stock_restore_security.xml',
+        'security/ir.model.access.csv',
         'views/stock_picking_views.xml',
         'views/mrp_menu_views.xml',
     ],
