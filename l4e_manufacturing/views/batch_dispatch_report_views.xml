@@ -15,7 +15,9 @@
                 <field name="batch_id" string="Batch Number"/>
                 <field name="product_id" string="Product"/>
                 <field name="date" string="Batch Date" widget="date" optional="show"/>
-                <field name="qty_produced" string="Produced Qty" sum="Total Produced"/>
+                <field name="qty_gross" string="Gross Qty" optional="show" sum="Total Gross"/>
+                <field name="qty_wastage" string="Wastage Qty" optional="show" sum="Total Wastage"/>
+                <field name="qty_produced" string="Final Qty" sum="Total Final Qty"/>
                 <field name="qty_sold" string="Quantity Sold" sum="Total Sold"/>
                 <field name="uom_id" string="UoM"/>
                 <field name="batch_available_qty" string="Remaining Batch Stock"
@@ -44,6 +46,8 @@
                 <filter string="🟢 Batches In Stock" name="filter_in_stock" domain="[('batch_status', '=', 'in_stock')]"/>
                 <filter string="🔴 Finished / Depleted" name="filter_finished" domain="[('batch_status', '=', 'finished')]"/>
                 <separator/>
+                <filter string="Batches with Wastage" name="filter_has_wastage" domain="[('qty_wastage', '&gt;', 0)]"/>
+                <separator/>
                 <filter string="Recent Batches" name="filter_recent" domain="[('date', '&gt;=', context_today)]"/>
 
                 <!-- Group By (Expandable Drop-down Accordion) -->
@@ -68,7 +72,9 @@
                 <field name="batch_id" type="row"/>
                 <field name="product_id" type="row"/>
                 <field name="date" type="col" interval="month"/>
-                <field name="qty_produced" type="measure"/>
+                <field name="qty_gross" type="measure"/>
+                <field name="qty_wastage" type="measure"/>
+                <field name="qty_produced" string="Final Qty" type="measure"/>
                 <field name="qty_sold" type="measure"/>
                 <field name="batch_available_qty" type="measure"/>
             </pivot>

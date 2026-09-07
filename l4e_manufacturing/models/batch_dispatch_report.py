@@ -14,7 +14,9 @@ class L4eBatchDispatchReport(models.Model):
     batch_number = fields.Char(string="Batch Name", readonly=True)
     date = fields.Date(string="Batch Date", readonly=True)
     product_id = fields.Many2one("product.product", string="Product", readonly=True)
-    qty_produced = fields.Float(string="Produced Qty", readonly=True)
+    qty_gross = fields.Float(string="Gross Qty", readonly=True)
+    qty_wastage = fields.Float(string="Wastage Qty", readonly=True)
+    qty_produced = fields.Float(string="Final Qty", readonly=True)
     qty_sold = fields.Float(string="Quantity Sold", readonly=True)
     uom_id = fields.Many2one("uom.uom", string="UoM", readonly=True)
     batch_available_qty = fields.Float(string="Remaining Batch Stock", readonly=True)
@@ -39,7 +41,9 @@ class L4eBatchDispatchReport(models.Model):
                     pb.batch_number AS batch_number,
                     pb.date AS date,
                     COALESCE(ol.product_id, pb.product_id) AS product_id,
-                    COALESCE(ol.total_prod_qty, pb.total_output_qty, 0.0) AS qty_produced,
+                    COALESCE(ol.total_gross_qty, pb.total_output_qty, 0.0) AS qty_gross,
+                    COALESCE(ol.total_wastage_qty, pb.total_wastage_qty, 0.0) AS qty_wastage,
+                    COALESCE(ol.total_net_qty, pb.total_net_output_qty, 0.0) AS qty_produced,
                     COALESCE(sales.total_sold, 0.0) AS qty_sold,
                     COALESCE(
                         (
@@ -51,9 +55,9 @@ class L4eBatchDispatchReport(models.Model):
                         ),
                         1
                     ) AS uom_id,
-                    GREATEST(COALESCE(ol.total_prod_qty, pb.total_output_qty, 0.0) - COALESCE(sales.total_sold, 0.0), 0.0) AS batch_available_qty,
+                    GREATEST(COALESCE(ol.total_net_qty, pb.total_net_output_qty, 0.0) - COALESCE(sales.total_sold, 0.0), 0.0) AS batch_available_qty,
                     CASE
-                        WHEN (COALESCE(ol.total_prod_qty, pb.total_output_qty, 0.0) - COALESCE(sales.total_sold, 0.0)) > 0 THEN 'in_stock'
+                        WHEN (COALESCE(ol.total_net_qty, pb.total_net_output_qty, 0.0) - COALESCE(sales.total_sold, 0.0)) > 0 THEN 'in_stock'
                         ELSE 'finished'
                     END AS batch_status,
                     pb.company_id AS company_id
@@ -62,7 +66,9 @@ class L4eBatchDispatchReport(models.Model):
                     SELECT 
                         batch_id, 
                         product_id, 
-                        SUM(quantity) AS total_prod_qty 
+                        SUM(quantity) AS total_gross_qty,
+                        SUM(COALESCE(wastage_quantity, 0.0)) AS total_wastage_qty,
+                        SUM(COALESCE(net_quantity, quantity)) AS total_net_qty
                     FROM l4e_icecream_output_line 
                     GROUP BY batch_id, product_id
                 ) ol ON ol.batch_id = pb.id
