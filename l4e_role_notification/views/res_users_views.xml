@@ -10,7 +10,7 @@
         <field name="model">res.users</field>
         <field name="inherit_id" ref="base.view_users_form"/>
         <field name="arch" type="xml">
-            <xpath expr="//page[@name='access_rights']/group[1]" position="before">
+            <xpath expr="//page[@name='access_rights']" position="inside">
                 <group string="User Group">
                     <field name="is_store_user" widget="boolean_toggle"/>
                     <field name="is_production_user" widget="boolean_toggle"/>

@@ -9,26 +9,16 @@ _logger = logging.getLogger(__name__)
 class SaleOrder(models.Model):
     _inherit = "sale.order"
 
-    @api.model_create_multi
-    def create(self, vals_list):
-        orders = super().create(vals_list)
-        for order in orders:
-            try:
-                order._notify_store_production_users(event="created")
-            except Exception as e:
-                _logger.exception("Error sending role notification on order create: %s", e)
-        return orders
-
     def action_confirm(self):
         res = super().action_confirm()
         for order in self:
             try:
-                order._notify_store_production_users(event="confirmed")
+                order._notify_store_production_users()
             except Exception as e:
                 _logger.exception("Error sending role notification on order confirm: %s", e)
         return res
 
-    def _notify_store_production_users(self, event="created"):
+    def _notify_store_production_users(self):
         self.ensure_one()
         # Check if the creator/salesperson is a Sales User
         is_sales = self.env.user.is_sales_user or (self.user_id and self.user_id.is_sales_user)
@@ -50,7 +40,6 @@ class SaleOrder(models.Model):
             return
 
         partner_ids = notify_users.mapped("partner_id").ids
-        event_label = "Created" if event == "created" else "Confirmed"
 
         # Build order items list
         lines_html = ""
@@ -73,7 +62,7 @@ class SaleOrder(models.Model):
         order_date = self.date_order or ""
 
         body = Markup(
-            f"<p><b>Sales Order {event_label}</b></p>"
+            f"<p><b>Sales Order Confirmed</b></p>"
             f"<ul>"
             f"<li><b>Order:</b> {self.name}</li>"
             f"<li><b>Customer:</b> {customer_name}</li>"
@@ -83,7 +72,7 @@ class SaleOrder(models.Model):
             f"</ul>"
             f"{lines_html}"
         )
-        subject = f"Sales Order {event_label}: {self.name}"
+        subject = f"Sales Order Confirmed: {self.name}"
 
         # 1. Post to order chatter
         message = self.message_post(
