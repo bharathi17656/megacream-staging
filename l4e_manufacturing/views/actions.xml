@@ -9,6 +9,7 @@
         <field name="res_model">l4e.icecream.processing.batch</field>
         <field name="view_mode">list,form</field>
         <field name="search_view_id" ref="view_ice_cream_processing_batch_search"/>
+        <field name="view_id" ref="view_ice_cream_processing_batch_list"/>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">
                 Create your first Ice Cream Processing Batch
@@ -17,6 +18,20 @@
                 Track raw materials (milk, cream, sugar, flavors) through processing into finished ice cream goods.
             </p>
         </field>
+    </record>
+
+    <record id="action_ice_cream_batch_list_binding" model="ir.actions.act_window.view">
+        <field name="sequence" eval="1"/>
+        <field name="view_mode">list</field>
+        <field name="view_id" ref="view_ice_cream_processing_batch_list"/>
+        <field name="act_window_id" ref="action_ice_cream_processing_batch"/>
+    </record>
+
+    <record id="action_ice_cream_batch_form_binding" model="ir.actions.act_window.view">
+        <field name="sequence" eval="2"/>
+        <field name="view_mode">form</field>
+        <field name="view_id" ref="view_ice_cream_processing_batch_form"/>
+        <field name="act_window_id" ref="action_ice_cream_processing_batch"/>
     </record>
 
     <!-- ═══════════════════════════════════════════════════════

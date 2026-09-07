@@ -65,6 +65,23 @@
     </record>
 
     <!-- ═══════════════════════════════════════════════════════
+         BATCH SELECTION LIST VIEW (FOR SALES & INVOICES)
+    ═══════════════════════════════════════════════════════ -->
+    <record id="view_ice_cream_batch_sale_selection_list" model="ir.ui.view">
+        <field name="name">l4e.icecream.processing.batch.sale.selection.list</field>
+        <field name="model">l4e.icecream.processing.batch</field>
+        <field name="priority">30</field>
+        <field name="arch" type="xml">
+            <list string="Select Batch" create="false" edit="false" delete="false">
+                <field name="batch_number" string="Batch Number"/>
+                <field name="product_id" string="Product Name"/>
+                <field name="batch_available_qty" string="Available Quantity"/>
+                <field name="date" string="Date" widget="date"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- ═══════════════════════════════════════════════════════
          PROCESSING BATCH — Form View
     ═══════════════════════════════════════════════════════ -->
     <record id="view_ice_cream_processing_batch_form" model="ir.ui.view">

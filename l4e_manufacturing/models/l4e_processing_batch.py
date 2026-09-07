@@ -92,6 +92,10 @@ class L4eIceCreamProcessingBatch(models.Model):
         compute="_compute_qty_sold_available",
         search="_search_qty_available",
     )
+    batch_available_qty = fields.Float(
+        string="Available Quantity",
+        compute="_compute_qty_sold_available",
+    )
     batch_stock_status = fields.Selection(
         [
             ("in_stock", "In Stock"),
@@ -103,16 +107,40 @@ class L4eIceCreamProcessingBatch(models.Model):
     )
 
     def _compute_qty_sold_available(self):
+        filter_product_id = self.env.context.get("filter_product_id")
         for rec in self:
-            sold_lines = self.env["sale.order.line"].sudo().search([
-                ("batch_id", "=", rec.id),
-                ("order_id.state", "in", ("sale", "done")),
-            ])
-            total_sold = sum(sold_lines.mapped("product_uom_qty"))
-            rec.qty_sold = total_sold
-            avail = rec.total_output_qty - total_sold
-            rec.qty_available = max(avail, 0.0)
-            rec.batch_stock_status = "in_stock" if avail > 0 else "finished"
+            prod_id = filter_product_id or (rec.product_id.id if rec.product_id else False)
+            if prod_id:
+                matching_output = rec.output_line_ids.filtered(lambda ol: ol.product_id.id == prod_id)
+                if matching_output:
+                    prod_qty = sum(matching_output.mapped("net_quantity"))
+                elif rec.product_id.id == prod_id:
+                    prod_qty = rec.total_net_output_qty
+                else:
+                    prod_qty = 0.0
+
+                sold_lines = self.env["sale.order.line"].sudo().search([
+                    ("batch_id", "=", rec.id),
+                    ("product_id", "=", prod_id),
+                    ("order_id.state", "in", ("sale", "done")),
+                ])
+                total_sold = sum(sold_lines.mapped("product_uom_qty"))
+                rec.qty_sold = total_sold
+                avail = prod_qty - total_sold
+                rec.qty_available = max(avail, 0.0)
+                rec.batch_available_qty = max(avail, 0.0)
+                rec.batch_stock_status = "in_stock" if avail > 0 else "finished"
+            else:
+                sold_lines = self.env["sale.order.line"].sudo().search([
+                    ("batch_id", "=", rec.id),
+                    ("order_id.state", "in", ("sale", "done")),
+                ])
+                total_sold = sum(sold_lines.mapped("product_uom_qty"))
+                rec.qty_sold = total_sold
+                avail = rec.total_net_output_qty - total_sold
+                rec.qty_available = max(avail, 0.0)
+                rec.batch_available_qty = max(avail, 0.0)
+                rec.batch_stock_status = "in_stock" if avail > 0 else "finished"
 
     def _search_batch_stock_status(self, operator, value):
         if operator in ("=", "!="):
@@ -126,7 +154,7 @@ class L4eIceCreamProcessingBatch(models.Model):
                     WHERE so.state IN ('sale', 'done') AND sol.batch_id IS NOT NULL
                     GROUP BY sol.batch_id
                 ) sales ON sales.batch_id = pb.id
-                WHERE (pb.total_output_qty - COALESCE(sales.total_sold, 0.0)) > 0
+                WHERE (pb.total_net_output_qty - COALESCE(sales.total_sold, 0.0)) > 0
             """)
             in_stock_ids = [row[0] for row in self.env.cr.fetchall()]
             if (operator == "=" and value == "in_stock") or (operator == "!=" and value == "finished"):
@@ -146,7 +174,7 @@ class L4eIceCreamProcessingBatch(models.Model):
                 WHERE so.state IN ('sale', 'done') AND sol.batch_id IS NOT NULL
                 GROUP BY sol.batch_id
             ) sales ON sales.batch_id = pb.id
-            WHERE (pb.total_output_qty - COALESCE(sales.total_sold, 0.0)) > 0
+            WHERE (pb.total_net_output_qty - COALESCE(sales.total_sold, 0.0)) > 0
         """)
         ids = [row[0] for row in self.env.cr.fetchall()]
         return [("id", "in", ids)]
@@ -180,7 +208,7 @@ class L4eIceCreamProcessingBatch(models.Model):
                 SELECT pb.id
                 FROM l4e_icecream_processing_batch pb
                 LEFT JOIN (
-                    SELECT batch_id, SUM(quantity) AS prod_qty
+                    SELECT batch_id, SUM(COALESCE(net_quantity, quantity)) AS prod_qty
                     FROM l4e_icecream_output_line
                     WHERE product_id = %s
                     GROUP BY batch_id
@@ -196,7 +224,7 @@ class L4eIceCreamProcessingBatch(models.Model):
                   AND (
                       (prod.prod_qty IS NOT NULL AND (prod.prod_qty - COALESCE(sales.sold_qty, 0.0)) > 0)
                       OR
-                      (prod.prod_qty IS NULL AND pb.product_id = %s AND (pb.total_output_qty - COALESCE(sales.sold_qty, 0.0)) > 0)
+                      (prod.prod_qty IS NULL AND pb.product_id = %s AND (pb.total_net_output_qty - COALESCE(sales.sold_qty, 0.0)) > 0)
                   )
             """, (product_id, product_id, product_id))
         else:
@@ -211,7 +239,7 @@ class L4eIceCreamProcessingBatch(models.Model):
                     GROUP BY sol.batch_id
                 ) sales ON sales.batch_id = pb.id
                 WHERE pb.state != 'cancel'
-                  AND (pb.total_output_qty - COALESCE(sales.total_sold, 0.0)) > 0
+                  AND (pb.total_net_output_qty - COALESCE(sales.total_sold, 0.0)) > 0
             """)
         return [row[0] for row in self.env.cr.fetchall()]
 

@@ -44,9 +44,9 @@ class AccountMoveLine(models.Model):
             batch_sudo = line.batch_id.sudo()
             output_lines = batch_sudo.output_line_ids.filtered(lambda ol: ol.product_id == line.product_id)
             if output_lines:
-                prod_qty = sum(output_lines.mapped("quantity"))
+                prod_qty = sum(output_lines.mapped("net_quantity"))
             elif batch_sudo.product_id == line.product_id:
-                prod_qty = batch_sudo.total_output_qty
+                prod_qty = batch_sudo.total_net_output_qty
             else:
                 prod_qty = 0.0
 
