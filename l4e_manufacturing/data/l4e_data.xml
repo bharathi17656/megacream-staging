@@ -13,5 +13,37 @@
             <field name="company_id" eval="False"/>
         </record>
 
+        <!-- Default Wastage Reasons -->
+        <record id="wastage_reason_spillage" model="l4e.icecream.wastage.reason">
+            <field name="name">Machine / Line Spillage</field>
+            <field name="code">SPILLAGE</field>
+            <field name="sequence">10</field>
+        </record>
+        <record id="wastage_reason_quality" model="l4e.icecream.wastage.reason">
+            <field name="name">QC / Texture Defect</field>
+            <field name="code">QC_DEFECT</field>
+            <field name="sequence">20</field>
+        </record>
+        <record id="wastage_reason_packaging" model="l4e.icecream.wastage.reason">
+            <field name="name">Packaging Damage</field>
+            <field name="code">PKG_DAMAGE</field>
+            <field name="sequence">30</field>
+        </record>
+        <record id="wastage_reason_melting" model="l4e.icecream.wastage.reason">
+            <field name="name">Melting / Temperature Issue</field>
+            <field name="code">MELTING</field>
+            <field name="sequence">40</field>
+        </record>
+        <record id="wastage_reason_sample" model="l4e.icecream.wastage.reason">
+            <field name="name">Quality Testing Sample</field>
+            <field name="code">SAMPLE</field>
+            <field name="sequence">50</field>
+        </record>
+        <record id="wastage_reason_other" model="l4e.icecream.wastage.reason">
+            <field name="name">Other</field>
+            <field name="code">OTHER</field>
+            <field name="sequence">60</field>
+        </record>
+
     </data>
 </odoo>

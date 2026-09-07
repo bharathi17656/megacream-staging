@@ -321,6 +321,28 @@ class L4eIceCreamProcessingBatch(models.Model):
         digits=(16, 2),
     )
 
+    # ─── Wastage Lines ─────────────────────────────────────────────────────────
+
+    wastage_line_ids = fields.One2many(
+        "l4e.icecream.wastage.line",
+        "batch_id",
+        string="Wastage",
+    )
+
+    total_wastage_qty = fields.Float(
+        string="Total Wastage",
+        compute="_compute_totals_and_yield",
+        store=True,
+        digits="Product Unit of Measure",
+    )
+
+    total_net_output_qty = fields.Float(
+        string="Total Net Output",
+        compute="_compute_totals_and_yield",
+        store=True,
+        digits="Product Unit of Measure",
+    )
+
     # ─── Locations ─────────────────────────────────────────────────────────────
 
     @api.model
@@ -427,15 +449,19 @@ class L4eIceCreamProcessingBatch(models.Model):
 
     # ─── Compute Methods ──────────────────────────────────────────────────────
 
-    @api.depends("raw_line_ids.quantity", "output_line_ids.quantity")
+    @api.depends("raw_line_ids.quantity", "output_line_ids.quantity", "wastage_line_ids.quantity")
     def _compute_totals_and_yield(self):
         for rec in self:
             total_raw = sum(rec.raw_line_ids.mapped("quantity"))
             total_out = sum(rec.output_line_ids.mapped("quantity"))
+            total_waste = sum(rec.wastage_line_ids.mapped("quantity"))
+            net_out = max(0.0, total_out - total_waste)
             rec.total_raw_qty = total_raw
             rec.total_output_qty = total_out
+            rec.total_wastage_qty = total_waste
+            rec.total_net_output_qty = net_out
             if total_raw > 0:
-                rec.yield_percentage = (total_out / total_raw) * 100.0
+                rec.yield_percentage = (net_out / total_raw) * 100.0
             else:
                 rec.yield_percentage = 0.0
 
@@ -547,6 +573,20 @@ class L4eIceCreamProcessingBatch(models.Model):
             ) or self.env["stock.location"].search([("usage", "=", "inventory")], limit=1)
         return loc
 
+    def _get_scrap_location(self):
+        loc = self.env.ref("stock.stock_location_scrapped", raise_if_not_found=False)
+        if not loc:
+            loc = self.env.ref("stock.location_scrapped", raise_if_not_found=False)
+        if not loc:
+            loc = self.env["stock.location"].search(
+                [("usage", "=", "inventory"), ("company_id", "in", [self.company_id.id, False])],
+                order="company_id desc, id asc",
+                limit=1,
+            )
+        if not loc:
+            loc = self.env["stock.location"].search([("usage", "=", "inventory")], limit=1)
+        return loc
+
     # ─── Button Actions ────────────────────────────────────────────────────────
 
     def action_start_processing(self):
@@ -611,6 +651,24 @@ class L4eIceCreamProcessingBatch(models.Model):
             if line.quantity <= 0:
                 raise ValidationError(_("Output quantity for %s must be greater than zero.") % line.product_id.display_name)
 
+        # Wastage validations
+        for w_line in self.wastage_line_ids:
+            if w_line.quantity < 0:
+                raise ValidationError(_("Wastage quantity cannot be negative."))
+
+        for out_line in self.output_line_ids:
+            total_produced = sum(o.quantity for o in self.output_line_ids if o.product_id == out_line.product_id)
+            total_waste = sum(w.quantity for w in self.wastage_line_ids if w.product_id == out_line.product_id)
+            if total_waste > total_produced:
+                raise ValidationError(
+                    _("Total wastage for %(product)s (%(waste)s) cannot exceed total quantity produced (%(produced)s).")
+                    % {
+                        "product": out_line.product_id.display_name,
+                        "waste": total_waste,
+                        "produced": total_produced,
+                    }
+                )
+
         prod_location = self._get_production_or_adjustment_location()
         if not prod_location:
             raise ValidationError(_("No Virtual Production or Inventory Adjustment location found."))
@@ -640,26 +698,49 @@ class L4eIceCreamProcessingBatch(models.Model):
 
         produce_moves = self.env["stock.move"]
         for out_line in self.output_line_ids:
-            pm = self.env["stock.move"].create({
-                "description_picking": _("Produce: %s") % out_line.product_id.display_name,
-                "product_id": out_line.product_id.id,
-                "product_uom_qty": out_line.quantity,
-                "product_uom": out_line.uom_id.id,
-                "location_id": prod_location.id,
-                "location_dest_id": self.finished_location_id.id,
-                "picking_id": finished_picking.id,
-                "company_id": self.company_id.id,
-            })
-            produce_moves |= pm
+            net_qty = out_line.net_quantity if out_line.net_quantity is not False else out_line.quantity
+            if net_qty > 0:
+                pm = self.env["stock.move"].create({
+                    "description_picking": _("Produce: %s") % out_line.product_id.display_name,
+                    "product_id": out_line.product_id.id,
+                    "product_uom_qty": net_qty,
+                    "product_uom": out_line.uom_id.id,
+                    "location_id": prod_location.id,
+                    "location_dest_id": self.finished_location_id.id,
+                    "picking_id": finished_picking.id,
+                    "company_id": self.company_id.id,
+                })
+                produce_moves |= pm
 
-        all_moves = consume_moves | produce_moves
+        scrap_moves = self.env["stock.move"]
+        if self.wastage_line_ids:
+            scrap_loc = self._get_scrap_location()
+            for w_line in self.wastage_line_ids:
+                if w_line.quantity > 0:
+                    reason_label = w_line.reason_id.name if w_line.reason_id else "Wastage"
+                    sm = self.env["stock.move"].create({
+                        "description_picking": _("Wastage: %s (%s)") % (
+                            w_line.product_id.display_name,
+                            reason_label,
+                        ),
+                        "product_id": w_line.product_id.id,
+                        "product_uom_qty": w_line.quantity,
+                        "product_uom": w_line.uom_id.id,
+                        "location_id": prod_location.id,
+                        "location_dest_id": scrap_loc.id if scrap_loc else self.finished_location_id.id,
+                        "picking_id": finished_picking.id,
+                        "company_id": self.company_id.id,
+                    })
+                    scrap_moves |= sm
+
+        all_moves = consume_moves | produce_moves | scrap_moves
         all_moves._action_confirm()
 
         # Set quantity, picked, and lot
         for move in all_moves:
             move.quantity = move.product_uom_qty
             move.picked = True
-            if move in produce_moves and move.product_id.tracking != "none" and self.batch_number:
+            if move in (produce_moves | scrap_moves) and move.product_id.tracking != "none" and self.batch_number:
                 lot = self.env["stock.lot"].search([
                     ("name", "=", self.batch_number),
                     ("product_id", "=", move.product_id.id),

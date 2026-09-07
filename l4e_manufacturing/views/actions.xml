@@ -53,4 +53,40 @@
         <field name="act_window_id" ref="action_ice_cream_processing_cost_report"/>
     </record>
 
+    <!-- ═══════════════════════════════════════════════════════
+         WASTAGE MASTER — Action
+    ═══════════════════════════════════════════════════════ -->
+    <record id="action_ice_cream_wastage_master" model="ir.actions.act_window">
+        <field name="name">Wastage Master</field>
+        <field name="res_model">l4e.icecream.wastage.line</field>
+        <field name="view_mode">list,pivot,graph,form</field>
+        <field name="search_view_id" ref="view_l4e_icecream_wastage_line_search"/>
+        <field name="context">{'search_default_group_by_date': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No Wastage Recorded Yet
+            </p>
+            <p>
+                Track and analyze ice cream manufacturing wastages by date, finished product, and reason.
+            </p>
+        </field>
+    </record>
+
+    <!-- ═══════════════════════════════════════════════════════
+         WASTAGE REASONS — Action
+    ═══════════════════════════════════════════════════════ -->
+    <record id="action_ice_cream_wastage_reason" model="ir.actions.act_window">
+        <field name="name">Wastage Reasons</field>
+        <field name="res_model">l4e.icecream.wastage.reason</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Define Wastage Reasons
+            </p>
+            <p>
+                Configure causes of manufacturing wastages (e.g., Spillage, QC Defect, Packaging Damage).
+            </p>
+        </field>
+    </record>
+
 </odoo>

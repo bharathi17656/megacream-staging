@@ -25,6 +25,22 @@
         action="action_l4e_batch_dispatch_report"
         sequence="2"/>
 
+    <!-- Wastage Master under Ice Cream Processing -->
+    <menuitem
+        id="menu_ice_cream_wastage_master"
+        name="Wastage Master"
+        parent="menu_ice_cream_processing_root"
+        action="action_ice_cream_wastage_master"
+        sequence="3"/>
+
+    <!-- Wastage Reasons Configuration -->
+    <menuitem
+        id="menu_ice_cream_wastage_reason"
+        name="Wastage Reasons"
+        parent="menu_ice_cream_processing_root"
+        action="action_ice_cream_wastage_reason"
+        sequence="4"/>
+
     <!-- Processing Cost Report: Hidden for now -->
     <menuitem
         id="menu_ice_cream_processing_cost_report"

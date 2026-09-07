@@ -1,0 +1,159 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- =======================================================
+         WASTAGE REASON MASTER — Views
+    ======================================================= -->
+    <record id="view_l4e_icecream_wastage_reason_list" model="ir.ui.view">
+        <field name="name">l4e.icecream.wastage.reason.list</field>
+        <field name="model">l4e.icecream.wastage.reason</field>
+        <field name="arch" type="xml">
+            <list string="Wastage Reasons" editable="bottom">
+                <field name="sequence" widget="handle"/>
+                <field name="name" string="Reason Name"/>
+                <field name="code" string="Code"/>
+                <field name="description" string="Description"/>
+                <field name="active" widget="boolean_toggle"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_l4e_icecream_wastage_reason_form" model="ir.ui.view">
+        <field name="name">l4e.icecream.wastage.reason.form</field>
+        <field name="model">l4e.icecream.wastage.reason</field>
+        <field name="arch" type="xml">
+            <form string="Wastage Reason">
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                        <field name="code"/>
+                        <field name="sequence"/>
+                        <field name="active"/>
+                    </group>
+                    <group string="Description">
+                        <field name="description" nolabel="1"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- =======================================================
+         WASTAGE MASTER — List View
+    ======================================================= -->
+    <record id="view_l4e_icecream_wastage_line_list" model="ir.ui.view">
+        <field name="name">l4e.icecream.wastage.line.list</field>
+        <field name="model">l4e.icecream.wastage.line</field>
+        <field name="arch" type="xml">
+            <list string="Wastage Master" create="false" edit="false">
+                <field name="date" string="Processing Date"/>
+                <field name="batch_id" string="Batch Number"/>
+                <field name="product_id" string="Finished Product"/>
+                <field name="lot_id" string="Lot / Batch" optional="show"/>
+                <field name="packaging_no" string="Tub / Pkg No" optional="show"/>
+                <field name="quantity" string="Wastage Qty" sum="Total Wastage"/>
+                <field name="uom_id" string="UoM"/>
+                <field name="reason_id" string="Reason" widget="badge"/>
+                <field name="unit_cost" string="Unit Cost" widget="monetary" optional="show"/>
+                <field name="total_loss_value" string="Loss Value" widget="monetary" sum="Total Loss Value"/>
+                <field name="remarks" string="Remarks" optional="show"/>
+                <field name="company_id" groups="base.group_multi_company" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- =======================================================
+         WASTAGE MASTER — Form View
+    ======================================================= -->
+    <record id="view_l4e_icecream_wastage_line_form" model="ir.ui.view">
+        <field name="name">l4e.icecream.wastage.line.form</field>
+        <field name="model">l4e.icecream.wastage.line</field>
+        <field name="arch" type="xml">
+            <form string="Wastage Detail" create="false" edit="false">
+                <sheet>
+                    <group>
+                        <group string="Batch Details">
+                            <field name="batch_id" readonly="1"/>
+                            <field name="date" readonly="1"/>
+                            <field name="company_id" groups="base.group_multi_company" readonly="1"/>
+                        </group>
+                        <group string="Product Details">
+                            <field name="product_id" readonly="1"/>
+                            <field name="lot_id" readonly="1"/>
+                            <field name="packaging_no" readonly="1"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="Wastage Information">
+                            <field name="quantity" readonly="1"/>
+                            <field name="uom_id" readonly="1"/>
+                            <field name="reason_id" readonly="1"/>
+                        </group>
+                        <group string="Valuation Loss">
+                            <field name="unit_cost" readonly="1" widget="monetary"/>
+                            <field name="total_loss_value" readonly="1" widget="monetary"/>
+                        </group>
+                    </group>
+                    <group string="Remarks">
+                        <field name="remarks" readonly="1" nolabel="1"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- =======================================================
+         WASTAGE MASTER — Pivot View
+    ======================================================= -->
+    <record id="view_l4e_icecream_wastage_line_pivot" model="ir.ui.view">
+        <field name="name">l4e.icecream.wastage.line.pivot</field>
+        <field name="model">l4e.icecream.wastage.line</field>
+        <field name="arch" type="xml">
+            <pivot string="Wastage Analysis" sample="1">
+                <field name="product_id" type="row"/>
+                <field name="reason_id" type="row"/>
+                <field name="date" interval="month" type="col"/>
+                <field name="quantity" type="measure"/>
+                <field name="total_loss_value" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <!-- =======================================================
+         WASTAGE MASTER — Graph View
+    ======================================================= -->
+    <record id="view_l4e_icecream_wastage_line_graph" model="ir.ui.view">
+        <field name="name">l4e.icecream.wastage.line.graph</field>
+        <field name="model">l4e.icecream.wastage.line</field>
+        <field name="arch" type="xml">
+            <graph string="Wastage by Product" type="bar" sample="1">
+                <field name="product_id"/>
+                <field name="quantity" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+    <!-- =======================================================
+         WASTAGE MASTER — Search View
+    ======================================================= -->
+    <record id="view_l4e_icecream_wastage_line_search" model="ir.ui.view">
+        <field name="name">l4e.icecream.wastage.line.search</field>
+        <field name="model">l4e.icecream.wastage.line</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="product_id"/>
+                <field name="batch_id"/>
+                <field name="reason_id"/>
+                <field name="date"/>
+
+                <group>
+                    <filter name="group_by_date" string="Date (Month)" context="{'group_by': 'date:month'}"/>
+                    <filter name="group_by_product" string="Product" context="{'group_by': 'product_id'}"/>
+                    <filter name="group_by_reason" string="Reason" context="{'group_by': 'reason_id'}"/>
+                    <filter name="group_by_batch" string="Batch" context="{'group_by': 'batch_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+</odoo>

@@ -18,7 +18,9 @@
                 <field name="date" string="Processing Date"/>
                 <field name="product_id" string="Finished Product"/>
                 <field name="total_raw_qty" string="Total Raw Qty" sum="Total Raw Material"/>
-                <field name="total_output_qty" string="Total Output" sum="Total Output"/>
+                <field name="total_output_qty" string="Gross Output" sum="Total Gross Output"/>
+                <field name="total_wastage_qty" string="Total Wastage" sum="Total Wastage" optional="show"/>
+                <field name="total_net_output_qty" string="Net Output" sum="Total Net Output" optional="show"/>
                 <field name="yield_percentage" string="Yield %"/>
                 <field name="state" widget="badge" string="Status"
                        decoration-info="state == 'draft'"
@@ -151,11 +153,29 @@
                                 <list editable="bottom">
                                     <field name="product_id" string="Finished Product"/>
                                     <field name="packaging_no" string="Tub / Packaging No" optional="show"/>
-                                    <field name="quantity" string="Quantity Produced"/>
+                                    <field name="quantity" string="Gross Produced"/>
+                                    <field name="wastage_quantity" string="Wastage Qty" readonly="1" sum="Total Wastage"/>
+                                    <field name="net_quantity" string="Net FG Qty" readonly="1" sum="Total Net FG"/>
                                     <field name="uom_id" readonly="1" string="UoM"/>
                                     <field name="unit_price" string="Unit Price" widget="monetary" optional="show"/>
                                     <field name="total_value" readonly="1" string="Total Value" widget="monetary" sum="Total FG Value"/>
                                     <field name="remarks" string="Remarks" optional="hide"/>
+                                </list>
+                            </field>
+                        </page>
+
+                        <page string="Wastage" name="wastage" invisible="state in ('draft', 'cancel')">
+                            <field name="wastage_line_ids" readonly="state != 'processing'">
+                                <list editable="bottom">
+                                    <field name="allowed_product_ids" column_invisible="1"/>
+                                    <field name="product_id" string="Finished Product" domain="[('id', 'in', allowed_product_ids)]"/>
+                                    <field name="packaging_no" string="Tub / Packaging No" optional="show"/>
+                                    <field name="quantity" string="Wastage Quantity"/>
+                                    <field name="uom_id" readonly="1" string="UoM"/>
+                                    <field name="reason_id" string="Reason" options="{'no_open': False, 'no_create_edit': False}"/>
+                                    <field name="unit_cost" readonly="1" string="Unit Cost" widget="monetary" optional="show"/>
+                                    <field name="total_loss_value" readonly="1" string="Loss Value" widget="monetary" sum="Total Loss Value"/>
+                                    <field name="remarks" string="Remarks" optional="show"/>
                                 </list>
                             </field>
                         </page>

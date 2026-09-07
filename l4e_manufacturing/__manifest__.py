@@ -25,6 +25,7 @@ Features:
         'views/sale_order_views.xml',
         'views/account_move_views.xml',
         'views/batch_dispatch_report_views.xml',
+        'views/l4e_processing_wastage_views.xml',
         'views/report_templates.xml',
         'views/actions.xml',
         'views/menu.xml',
