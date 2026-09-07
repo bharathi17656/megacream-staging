@@ -8,6 +8,8 @@
         <field name="inherit_id" ref="stock.view_picking_form"/>
         <field name="arch" type="xml">
             <xpath expr="//field[@name='state'][1]" position="before">
+                <field name="is_stock_restore" invisible="1"/>
+                <field name="stock_restore_notified" invisible="1"/>
                 <field name="is_production_only_user" invisible="1"/>
             </xpath>
             <xpath expr="//header/button[@name='action_confirm']" position="attributes">
