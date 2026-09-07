@@ -12,8 +12,10 @@ class ResUsers(models.Model):
         group = self.env.ref("l4e_stock_restore.group_production_user", raise_if_not_found=False)
         if group:
             for user in users:
-                if user.is_production_user and group not in user.groups_id:
-                    user.groups_id = [(4, group.id)]
+                if user.is_production_user:
+                    groups_field = "group_ids" if hasattr(user, "group_ids") else "groups_id"
+                    if group not in getattr(user, groups_field):
+                        setattr(user, groups_field, [(4, group.id)])
         return users
 
     def write(self, vals):
@@ -22,8 +24,10 @@ class ResUsers(models.Model):
             group = self.env.ref("l4e_stock_restore.group_production_user", raise_if_not_found=False)
             if group:
                 for user in self:
-                    if user.is_production_user and group not in user.groups_id:
-                        user.groups_id = [(4, group.id)]
-                    elif not user.is_production_user and group in user.groups_id:
-                        user.groups_id = [(3, group.id)]
+                    groups_field = "group_ids" if hasattr(user, "group_ids") else "groups_id"
+                    current_groups = getattr(user, groups_field)
+                    if user.is_production_user and group not in current_groups:
+                        setattr(user, groups_field, [(4, group.id)])
+                    elif not user.is_production_user and group in current_groups:
+                        setattr(user, groups_field, [(3, group.id)])
         return res

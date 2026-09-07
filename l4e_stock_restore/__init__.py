@@ -8,5 +8,6 @@ def _post_init_hook(env):
     if group:
         prod_users = env["res.users"].sudo().search([("is_production_user", "=", True)])
         for user in prod_users:
-            if group not in user.groups_id:
-                user.groups_id = [(4, group.id)]
+            groups_field = "group_ids" if hasattr(user, "group_ids") else "groups_id"
+            if group not in getattr(user, groups_field):
+                setattr(user, groups_field, [(4, group.id)])

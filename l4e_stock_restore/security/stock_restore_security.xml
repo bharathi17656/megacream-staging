@@ -2,6 +2,5 @@
 <odoo>
     <record id="group_production_user" model="res.groups">
         <field name="name">Production User (Stock Restore)</field>
-        <field name="category_id" ref="base.module_category_hidden"/>
     </record>
 </odoo>
