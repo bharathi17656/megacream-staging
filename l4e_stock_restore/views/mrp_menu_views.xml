@@ -11,6 +11,8 @@
             'contact_display': 'partner_address',
             'restricted_picking_type_code': 'internal',
             'default_picking_type_code': 'internal',
+            'is_stock_restore': 1,
+            'default_is_stock_restore': 1,
             'search_default_internal': 1,
             'search_default_draft': 1,
         }</field>
@@ -26,11 +28,12 @@
         </field>
     </record>
 
-    <!-- Top-level menu in Manufacturing: Stock restore -->
+    <!-- Top-level menu in Manufacturing: Visible only to Production Users (and admin) -->
     <menuitem id="menu_mrp_stock_restore"
         name="Stock restore"
         parent="mrp.menu_mrp_root"
         action="action_stock_restore"
+        groups="l4e_stock_restore.group_production_user,base.group_system"
         sequence="110"/>
 
 </odoo>

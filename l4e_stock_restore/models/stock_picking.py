@@ -10,25 +10,127 @@ _logger = logging.getLogger(__name__)
 class StockPicking(models.Model):
     _inherit = "stock.picking"
 
+    is_stock_restore = fields.Boolean(
+        string="Is Stock Restore",
+        default=False,
+        help="Technical flag: True if this transfer was created via Stock Restore in Manufacturing.",
+    )
+
     is_production_only_user = fields.Boolean(
         string="Is Production Only User",
         compute="_compute_is_production_only_user",
-        help="Technical flag: True if current user has Production User role but not Store User or Stock Manager.",
+        help="Technical flag: True if current user is a Production User and not a Store User.",
     )
 
     @api.depends_context("uid")
     def _compute_is_production_only_user(self):
         user = self.env.user
-        is_prod_only = bool(
-            user.is_production_user
-            and not user.is_store_user
-            and not user.has_group("stock.group_stock_manager")
-        )
+        is_prod_only = bool(user.is_production_user and not user.is_store_user)
         for picking in self:
             picking.is_production_only_user = is_prod_only
 
+    def _get_stock_restore_source_location(self):
+        """Find WH/Stock or main internal stock location."""
+        warehouse = self.env["stock.warehouse"].search(
+            [("company_id", "in", [self.env.company.id, False])],
+            limit=1,
+        )
+        if warehouse and warehouse.lot_stock_id:
+            return warehouse.lot_stock_id
+
+        return self.env["stock.location"].search(
+            [
+                ("company_id", "in", [self.env.company.id, False]),
+                ("usage", "=", "internal"),
+                ("complete_name", "ilike", "WH/Stock"),
+            ],
+            limit=1,
+        ) or self.env["stock.location"].search(
+            [
+                ("company_id", "in", [self.env.company.id, False]),
+                ("usage", "=", "internal"),
+                ("name", "ilike", "Stock"),
+            ],
+            limit=1,
+        )
+
+    def _get_stock_restore_dest_location(self):
+        """Find WH/Production or production location."""
+        return self.env["stock.location"].search(
+            [
+                ("company_id", "in", [self.env.company.id, False]),
+                ("usage", "=", "production"),
+                ("complete_name", "ilike", "WH/Production"),
+            ],
+            limit=1,
+        ) or self.env["stock.location"].search(
+            [
+                ("company_id", "in", [self.env.company.id, False]),
+                ("usage", "=", "production"),
+            ],
+            limit=1,
+        ) or self.env["stock.location"].search(
+            [
+                ("company_id", "in", [self.env.company.id, False]),
+                ("name", "ilike", "Production"),
+            ],
+            limit=1,
+        )
+
+    @api.model
+    def default_get(self, fields_list):
+        res = super().default_get(fields_list)
+        is_restore = (
+            self.env.context.get("is_stock_restore")
+            or self.env.context.get("default_is_stock_restore")
+            or (self.env.user.is_production_user and res.get("picking_type_code") == "internal")
+        )
+        if is_restore:
+            res["is_stock_restore"] = True
+            src_loc = self._get_stock_restore_source_location()
+            if src_loc:
+                res["location_id"] = src_loc.id
+            dest_loc = self._get_stock_restore_dest_location()
+            if dest_loc:
+                res["location_dest_id"] = dest_loc.id
+        return res
+
+    @api.depends("picking_type_id", "partner_id")
+    def _compute_location_id(self):
+        super()._compute_location_id()
+        for picking in self:
+            is_restore = (
+                picking.is_stock_restore
+                or self.env.context.get("is_stock_restore")
+                or self.env.context.get("default_is_stock_restore")
+                or (self.env.user.is_production_user and picking.picking_type_code == "internal")
+            )
+            if is_restore and picking.state == "draft":
+                src_loc = self._get_stock_restore_source_location()
+                if src_loc:
+                    picking.location_id = src_loc.id
+                dest_loc = self._get_stock_restore_dest_location()
+                if dest_loc:
+                    picking.location_dest_id = dest_loc.id
+
     @api.model_create_multi
     def create(self, vals_list):
+        for vals in vals_list:
+            if (
+                self.env.context.get("is_stock_restore")
+                or self.env.context.get("default_is_stock_restore")
+                or self.env.user.is_production_user
+            ):
+                vals["is_stock_restore"] = True
+                if "location_id" not in vals:
+                    src_loc = self._get_stock_restore_source_location()
+                    if src_loc:
+                        vals["location_id"] = src_loc.id
+                if "location_dest_id" not in vals:
+                    dest_loc = self._get_stock_restore_dest_location()
+                    if dest_loc:
+                        vals["location_dest_id"] = dest_loc.id
+
         pickings = super().create(vals_list)
         for picking in pickings:
             if picking.picking_type_code == "internal":
@@ -40,7 +142,9 @@ class StockPicking(models.Model):
 
     def action_confirm(self):
         for picking in self:
-            if picking.picking_type_code == "internal" and picking.is_production_only_user:
+            if picking.picking_type_code == "internal" and (
+                picking.is_production_only_user or (self.env.user.is_production_user and not self.env.user.is_store_user)
+            ):
                 raise UserError(
                     _("Production users can only create Internal Transfers in Draft stage. "
                       "Store users will process and validate this transfer.")
@@ -49,12 +153,36 @@ class StockPicking(models.Model):
 
     def button_validate(self):
         for picking in self:
-            if picking.picking_type_code == "internal" and picking.is_production_only_user:
+            if picking.picking_type_code == "internal" and (
+                picking.is_production_only_user or (self.env.user.is_production_user and not self.env.user.is_store_user)
+            ):
                 raise UserError(
                     _("Production users cannot validate Internal Transfers. "
                       "Store users will process and validate this transfer.")
                 )
         return super().button_validate()
+
+    def action_assign(self):
+        for picking in self:
+            if picking.picking_type_code == "internal" and (
+                picking.is_production_only_user or (self.env.user.is_production_user and not self.env.user.is_store_user)
+            ):
+                raise UserError(
+                    _("Production users cannot check availability on Internal Transfers. "
+                      "Store users will process and validate this transfer.")
+                )
+        return super().action_assign()
+
+    def write(self, vals):
+        if "state" in vals and vals["state"] != "draft":
+            for picking in self:
+                if picking.picking_type_code == "internal" and (
+                    picking.is_production_only_user or (self.env.user.is_production_user and not self.env.user.is_store_user)
+                ):
+                    raise UserError(
+                        _("Production users can only maintain Internal Transfers in Draft stage.")
+                    )
+        return super().write(vals)
 
     def _notify_store_users_stock_restore(self):
         self.ensure_one()
