@@ -9,6 +9,7 @@ class ResUsers(models.Model):
     def init(self):
         super().init()
         # Automatically sync res_groups_users_rel for all users with is_production_user = True
+        # and remove any users who do not have is_production_user = True
         self.env.cr.execute("""
             INSERT INTO res_groups_users_rel (gid, uid)
             SELECT g.id, u.id
@@ -21,7 +22,16 @@ class ResUsers(models.Model):
             WHERE u.is_production_user = TRUE
               AND NOT EXISTS (
                   SELECT 1 FROM res_groups_users_rel rel WHERE rel.gid = g.id AND rel.uid = u.id
-              )
+              );
+            DELETE FROM res_groups_users_rel
+            WHERE gid IN (
+                SELECT res_id
+                FROM ir_model_data
+                WHERE module = 'l4e_stock_restore' AND name = 'group_production_user'
+            )
+            AND uid IN (
+                SELECT id FROM res_users WHERE is_production_user IS NOT TRUE
+            );
         """)
 
     @api.model_create_multi
@@ -31,9 +41,7 @@ class ResUsers(models.Model):
         if group:
             for user in users:
                 if user.is_production_user:
-                    groups_field = "group_ids" if hasattr(user, "group_ids") else "groups_id"
-                    if group not in getattr(user, groups_field):
-                        setattr(user, groups_field, [(4, group.id)])
+                    group.sudo().write({"users": [(4, user.id)]})
         return users
 
     def write(self, vals):
@@ -42,10 +50,13 @@ class ResUsers(models.Model):
             group = self.env.ref("l4e_stock_restore.group_production_user", raise_if_not_found=False)
             if group:
                 for user in self:
-                    groups_field = "group_ids" if hasattr(user, "group_ids") else "groups_id"
-                    current_groups = getattr(user, groups_field)
-                    if user.is_production_user and group not in current_groups:
-                        setattr(user, groups_field, [(4, group.id)])
-                    elif not user.is_production_user and group in current_groups:
-                        setattr(user, groups_field, [(3, group.id)])
+                    if user.is_production_user:
+                        if user not in group.users:
+                            group.sudo().write({"users": [(4, user.id)]})
+                    else:
+                        if user in group.users:
+                            group.sudo().write({"users": [(3, user.id)]})
+            # Invalidate menu cache so the Stock restore menu immediately shows/hides
+            self.env["ir.ui.menu"].clear_caches()
+            self.env.registry.clear_cache()
         return res

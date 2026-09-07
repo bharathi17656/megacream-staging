@@ -33,7 +33,7 @@
         name="Stock restore"
         parent="mrp.menu_mrp_root"
         action="action_stock_restore"
-        groups="l4e_stock_restore.group_production_user,base.group_system"
+        groups="l4e_stock_restore.group_production_user"
         sequence="110"/>
 
 </odoo>

@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 import logging
 
 from markupsafe import Markup
@@ -22,12 +24,36 @@ class StockPicking(models.Model):
         help="Technical flag: True if current user is a Production User and not a Store User.",
     )
 
+    stock_restore_notified = fields.Boolean(
+        string="Stock Restore Notified",
+        default=False,
+        copy=False,
+        help="Technical flag: True if store users have already been notified for this transfer.",
+    )
+
     @api.depends_context("uid")
     def _compute_is_production_only_user(self):
         user = self.env.user
         is_prod_only = bool(user.is_production_user and not user.is_store_user)
         for picking in self:
             picking.is_production_only_user = is_prod_only
+
+    def _get_stock_restore_picking_type(self):
+        """Find the Internal Transfer operation type for the current company/warehouse."""
+        warehouse = self.env["stock.warehouse"].search(
+            [("company_id", "in", [self.env.company.id, False])],
+            limit=1,
+        )
+        if warehouse and warehouse.int_type_id:
+            return warehouse.int_type_id
+
+        return self.env["stock.picking.type"].search(
+            [
+                ("code", "=", "internal"),
+                ("company_id", "in", [self.env.company.id, False]),
+            ],
+            limit=1,
+        )
 
     def _get_stock_restore_source_location(self):
         """Find WH/Stock or main internal stock location."""
@@ -87,6 +113,10 @@ class StockPicking(models.Model):
         )
         if is_restore:
             res["is_stock_restore"] = True
+            if "picking_type_id" not in res or not res.get("picking_type_id"):
+                picking_type = self._get_stock_restore_picking_type()
+                if picking_type:
+                    res["picking_type_id"] = picking_type.id
             src_loc = self._get_stock_restore_source_location()
             if src_loc:
                 res["location_id"] = src_loc.id
@@ -122,18 +152,23 @@ class StockPicking(models.Model):
                 or self.env.user.is_production_user
             ):
                 vals["is_stock_restore"] = True
-                if "location_id" not in vals:
+                if not vals.get("location_id"):
                     src_loc = self._get_stock_restore_source_location()
                     if src_loc:
                         vals["location_id"] = src_loc.id
-                if "location_dest_id" not in vals:
+                if not vals.get("location_dest_id"):
                     dest_loc = self._get_stock_restore_dest_location()
                     if dest_loc:
                         vals["location_dest_id"] = dest_loc.id
 
         pickings = super().create(vals_list)
         for picking in pickings:
-            if picking.picking_type_code == "internal":
+            if (
+                picking.is_stock_restore
+                or self.env.context.get("is_stock_restore")
+                or self.env.context.get("default_is_stock_restore")
+                or (self.env.user.is_production_user and picking.picking_type_code == "internal")
+            ):
                 try:
                     picking._notify_store_users_stock_restore()
                 except Exception as e:
@@ -182,12 +217,32 @@ class StockPicking(models.Model):
                     raise UserError(
                         _("Production users can only maintain Internal Transfers in Draft stage.")
                     )
-        return super().write(vals)
+        res = super().write(vals)
+        for picking in self:
+            if (
+                picking.is_stock_restore
+                and not picking.stock_restore_notified
+                and ("move_ids" in vals or "move_ids_without_package" in vals)
+            ):
+                try:
+                    picking._notify_store_users_stock_restore()
+                except Exception as e:
+                    _logger.exception("Error sending stock restore notification on picking write: %s", e)
+        return res
 
     def _notify_store_users_stock_restore(self):
         self.ensure_one()
-        # Only notify if created by a user with the Production User role
-        if not self.env.user.is_production_user:
+        # Check if this transfer is a Stock Restore transfer or created by a Production User
+        is_restore = (
+            self.is_stock_restore
+            or self.env.context.get("is_stock_restore")
+            or self.env.context.get("default_is_stock_restore")
+            or self.env.user.is_production_user
+        )
+        if not is_restore:
+            return
+
+        if self.stock_restore_notified:
             return
 
         # Find all active Store users
@@ -196,11 +251,18 @@ class StockPicking(models.Model):
                 ("active", "=", True),
                 ("is_store_user", "=", True),
             ]
-        )
-        # Exclude the creator if they happen to be flagged with both roles
-        notify_users = notify_users.filtered(lambda u: u.id != self.env.user.id and u.partner_id)
+        ).filtered(lambda u: u.partner_id)
+
         if not notify_users:
+            _logger.warning("Stock Restore: No active users with is_store_user=True found to notify for picking %s.", self.name)
             return
+
+        _logger.info(
+            "Stock Restore: Notifying %s store users (%s) for picking %s",
+            len(notify_users),
+            notify_users.mapped("name"),
+            self.name,
+        )
 
         partner_ids = notify_users.mapped("partner_id").ids
 
@@ -230,7 +292,7 @@ class StockPicking(models.Model):
             f"<p><b>New Stock Restore Request Created (Draft)</b></p>"
             f"<ul>"
             f"<li><b>Transfer:</b> {picking_name}</li>"
-            f"<li><b>Created By (Production):</b> {created_by}</li>"
+            f"<li><b>Created By:</b> {created_by}</li>"
             f"<li><b>Source Location:</b> {source_loc}</li>"
             f"<li><b>Destination Location:</b> {dest_loc}</li>"
             f"<li><b>Scheduled Date:</b> {sched_date}</li>"
@@ -284,19 +346,23 @@ class StockPicking(models.Model):
                         "store_data": store.get_result(),
                     },
                 )
-            except Exception:
-                pass
+            except Exception as e:
+                _logger.debug("Bus send error: %s", e)
 
-            # 3. Direct Message in Discuss chat with each store user
-            try:
-                chat = self.env["discuss.channel"].sudo()._get_or_create_chat(
-                    partners_to=[user.partner_id.id], pin=True
-                )
-                if chat:
-                    chat.message_post(
-                        body=body,
-                        message_type="comment",
-                        subtype_xmlid="mail.mt_comment",
+            # 3. Direct Message in Discuss chat with each store user (if different partner)
+            if user.partner_id.id != self.env.user.partner_id.id:
+                try:
+                    chat = self.env["discuss.channel"].sudo()._get_or_create_chat(
+                        partners_to=[user.partner_id.id], pin=True
                     )
-            except Exception:
-                pass
+                    if chat:
+                        chat.message_post(
+                            body=body,
+                            message_type="comment",
+                            subtype_xmlid="mail.mt_comment",
+                        )
+                except Exception as e:
+                    _logger.warning("Could not send chat message to store user %s: %s", user.name, e)
+
+        # Mark as notified to avoid duplicate alerts
+        self.sudo().write({"stock_restore_notified": True})
