@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Inherit stock.picking form view to restrict advance/validate buttons for production users -->
+    <record id="view_picking_form_l4e_stock_restore" model="ir.ui.view">
+        <field name="name">stock.picking.form.l4e.stock.restore</field>
+        <field name="model">stock.picking</field>
+        <field name="inherit_id" ref="stock.view_picking_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='state'][1]" position="before">
+                <field name="is_production_only_user" invisible="1"/>
+            </xpath>
+            <xpath expr="//header/button[@name='action_confirm']" position="attributes">
+                <attribute name="invisible">state != 'draft' or is_production_only_user</attribute>
+            </xpath>
+            <xpath expr="//header/button[@name='action_assign']" position="attributes">
+                <attribute name="invisible">not show_check_availability or is_production_only_user</attribute>
+            </xpath>
+            <xpath expr="//header/button[@name='button_validate'][1]" position="attributes">
+                <attribute name="invisible">state in ('draft', 'confirmed', 'done', 'cancel') or is_production_only_user</attribute>
+            </xpath>
+            <xpath expr="//header/button[@name='button_validate'][2]" position="attributes">
+                <attribute name="invisible">state in ('waiting', 'assigned', 'done', 'cancel') or is_production_only_user</attribute>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Action: Stock restore (Internal Transfers for Manufacturing) -->
+    <record id="action_stock_restore" model="ir.actions.act_window">
+        <field name="name">Stock restore</field>
+        <field name="res_model">stock.picking</field>
+        <field name="view_mode">list,kanban,form,calendar</field>
+        <field name="domain">[('picking_type_code', '=', 'internal')]</field>
+        <field name="context">{
+            'contact_display': 'partner_address',
+            'restricted_picking_type_code': 'internal',
+            'default_picking_type_code': 'internal',
+            'search_default_internal': 1,
+            'search_default_draft': 1,
+        }</field>
+        <field name="search_view_id" ref="stock.view_picking_internal_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Create a new Stock Restore request
+            </p>
+            <p>
+                Production users can create Internal Transfers in Draft stage here.
+                Once created, Store users will be notified in Odoo Discuss to process and validate the transfer in Inventory.
+            </p>
+        </field>
+    </record>
+
+    <!-- Top-level menu in Manufacturing: Stock restore -->
+    <menuitem id="menu_mrp_stock_restore"
+        name="Stock restore"
+        parent="mrp.menu_mrp_root"
+        action="action_stock_restore"
+        sequence="110"/>
+
+</odoo>
