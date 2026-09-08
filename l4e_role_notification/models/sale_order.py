@@ -121,15 +121,18 @@ class SaleOrder(models.Model):
                 pass
 
             # 3. Direct Message in Discuss chat with each user
-            try:
-                chat = self.env["discuss.channel"].sudo()._get_or_create_chat(
-                    partners_to=[user.partner_id.id], pin=True
-                )
-                if chat:
-                    chat.message_post(
-                        body=body,
-                        message_type="comment",
-                        subtype_xmlid="mail.mt_comment",
+            author_id = self.env.user.partner_id.id if self.env.user.partner_id else False
+            if user.partner_id and user.partner_id.id != author_id:
+                try:
+                    chat = self.env["discuss.channel"].sudo()._get_or_create_chat(
+                        partners_to=[user.partner_id.id], pin=True
                     )
-            except Exception:
-                pass
+                    if chat:
+                        chat.sudo().message_post(
+                            body=body,
+                            message_type="comment",
+                            subtype_xmlid="mail.mt_comment",
+                            author_id=author_id,
+                        )
+                except Exception as e:
+                    _logger.warning("Could not send chat message to user %s: %s", user.name, e)
