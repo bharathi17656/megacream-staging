@@ -218,7 +218,7 @@ class SaleOrder(models.Model):
                 # 2. Check allocation completeness if multi-batch allocations exist
                 if line.batch_allocation_ids:
                     total_alloc = sum(line.batch_allocation_ids.mapped("quantity"))
-                    rounding = line.product_uom.rounding if line.product_uom else 0.01
+                    rounding = line.product_uom_id.rounding if line.product_uom_id else (line.product_id.uom_id.rounding or 0.01)
                     if float_compare(total_alloc, line.product_uom_qty, precision_rounding=rounding) < 0:
                         rem = line.product_uom_qty - total_alloc
                         raise ValidationError(
