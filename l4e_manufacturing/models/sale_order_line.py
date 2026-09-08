@@ -31,6 +31,47 @@ class SaleOrderLine(models.Model):
         string="Batch Allocations",
     )
 
+    batch_allocation_summary = fields.Char(
+        string="Allocated Batches",
+        compute="_compute_batch_allocation_summary",
+    )
+
+    @api.depends("batch_allocation_ids.quantity", "batch_allocation_ids.batch_id", "batch_id", "batch_ids", "product_uom_qty")
+    def _compute_batch_allocation_summary(self):
+        for line in self:
+            if line.batch_allocation_ids:
+                parts = [f"{alloc.batch_id.batch_number} ({alloc.quantity:g})" for alloc in line.batch_allocation_ids if alloc.batch_id]
+                line.batch_allocation_summary = ", ".join(parts)
+            elif line.batch_id:
+                line.batch_allocation_summary = f"{line.batch_id.batch_number} ({line.product_uom_qty:g})"
+            elif line.batch_ids:
+                parts = [f"{b.batch_number}" for b in line.batch_ids]
+                line.batch_allocation_summary = ", ".join(parts)
+            else:
+                line.batch_allocation_summary = ""
+
+    def action_view_batch_allocations(self):
+        self.ensure_one()
+        if not self.batch_allocation_ids and self.batch_id:
+            self.env["l4e.sale.order.batch.allocation"].create({
+                "order_line_id": self.id,
+                "batch_id": self.batch_id.id,
+                "quantity": self.product_uom_qty,
+            })
+        return {
+            "name": _("Allocated Batches: %s") % self.product_id.display_name,
+            "type": "ir.actions.act_window",
+            "res_model": "l4e.sale.order.batch.allocation",
+            "view_mode": "list",
+            "domain": [("order_line_id", "=", self.id)],
+            "target": "new",
+            "context": {
+                "create": False,
+                "delete": False,
+                "edit": False,
+            },
+        }
+
     lot_id = fields.Many2one(
         "stock.lot",
         string="Stock Lot",
@@ -89,6 +130,8 @@ class SaleOrderLine(models.Model):
 
     def action_open_batch_split_wizard(self):
         self.ensure_one()
+        if self.state in ("sale", "done", "cancel"):
+            raise UserError(_("Batches can only be allocated while the quotation is in Draft or Sent state."))
         if not self.product_id:
             raise UserError(_("Please select a product first before allocating batches."))
         return {
@@ -141,6 +184,13 @@ class SaleOrderLine(models.Model):
 
 class SaleOrder(models.Model):
     _inherit = "sale.order"
+
+    batch_allocation_ids = fields.One2many(
+        "l4e.sale.order.batch.allocation",
+        "order_id",
+        string="Allocated Batches",
+        readonly=True,
+    )
 
     def action_confirm(self):
         for order in self:
@@ -199,5 +249,11 @@ class SaleOrder(models.Model):
                                     "qty": line.product_uom_qty,
                                 }
                             )
+                        # Ensure single batch line has an allocation record created
+                        self.env["l4e.sale.order.batch.allocation"].create({
+                            "order_line_id": line.id,
+                            "batch_id": line.batch_id.id,
+                            "quantity": line.product_uom_qty,
+                        })
 
         return super().action_confirm()

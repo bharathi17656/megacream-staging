@@ -1,11 +1,27 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
+    <!-- List view for batch allocation modal popup -->
+    <record id="view_l4e_sale_order_batch_allocation_list" model="ir.ui.view">
+        <field name="name">l4e.sale.order.batch.allocation.list</field>
+        <field name="model">l4e.sale.order.batch.allocation</field>
+        <field name="arch" type="xml">
+            <list create="false" edit="false" delete="false">
+                <field name="product_id" string="Product"/>
+                <field name="batch_id" string="Batch Number"/>
+                <field name="batch_date" string="Batch Date" widget="date"/>
+                <field name="quantity" string="Allocated Quantity" sum="Total Allocated"/>
+            </list>
+        </field>
+    </record>
+
     <record id="view_order_form_inherit_l4e_batch" model="ir.ui.view">
         <field name="name">sale.order.form.inherit.l4e.batch</field>
         <field name="model">sale.order</field>
         <field name="inherit_id" ref="sale.view_order_form"/>
         <field name="arch" type="xml">
             <xpath expr="//field[@name='order_line']/list/field[@name='product_template_id']" position="after">
+                <field name="state" column_invisible="True"/>
+                <!-- Draft/Sent state: Tag widget to pick batches -->
                 <field name="batch_ids"
                        string="Batch Numbers"
                        widget="many2many_tags"
@@ -17,6 +33,14 @@
                            'filter_product_id': product_id
                        }"
                        options="{'no_create': True}"
+                       readonly="state in ('sale', 'done', 'cancel')"
+                       column_invisible="parent.state in ('sale', 'done')"
+                       optional="show"/>
+                <!-- Confirmed state: Show batches with allocated quantities -->
+                <field name="batch_allocation_summary"
+                       string="Allocated Batches"
+                       readonly="1"
+                       column_invisible="parent.state not in ('sale', 'done')"
                        optional="show"/>
                 <field name="batch_id" column_invisible="True"/>
                 <field name="batch_available_qty"
@@ -27,12 +51,34 @@
                        decoration-success="batch_status == 'in_stock'"
                        decoration-danger="batch_status == 'finished'"
                        optional="hide"/>
+                <!-- Split Batch button in draft/sent -->
                 <button name="action_open_batch_split_wizard"
                         type="object"
                         string="Split Batch"
                         title="Allocate across multiple batches"
                         icon="fa-cubes"
-                        invisible="not product_id"/>
+                        invisible="not product_id or state in ('sale', 'done', 'cancel')"/>
+                <!-- View Allocations button in confirmed state -->
+                <button name="action_view_batch_allocations"
+                        type="object"
+                        string="Allocations"
+                        title="View Allocated Batches and Quantities"
+                        icon="fa-list-alt"
+                        invisible="not product_id or state not in ('sale', 'done') or not batch_ids and not batch_id"/>
+            </xpath>
+
+            <!-- Dedicated Allocated Batches page in notebook for confirmed orders -->
+            <xpath expr="//page[@name='order_lines']" position="after">
+                <page name="batch_allocations" string="Allocated Batches" invisible="state not in ('sale', 'done')">
+                    <field name="batch_allocation_ids" readonly="1">
+                        <list create="false" edit="false" delete="false">
+                            <field name="product_id" string="Product"/>
+                            <field name="batch_id" string="Batch Number"/>
+                            <field name="batch_date" string="Batch Date" widget="date"/>
+                            <field name="quantity" string="Allocated Quantity" sum="Total Allocated"/>
+                        </list>
+                    </field>
+                </page>
             </xpath>
         </field>
     </record>
