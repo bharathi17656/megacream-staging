@@ -55,7 +55,19 @@
                     <button name="action_apply"
                             type="object"
                             string="Apply Allocation"
-                            class="btn-primary"/>
+                            class="btn-primary"
+                            invisible="remaining_qty &gt; 0"/>
+                    <button name="action_apply_and_adjust_qty"
+                            type="object"
+                            string="Apply &amp; Set Order Qty to Allocated"
+                            class="btn-primary"
+                            invisible="remaining_qty &lt;= 0 or allocated_qty &lt;= 0"
+                            confirm="The allocated quantity is less than required. Do you want to adjust the order line quantity to match the allocated batches?"/>
+                    <button name="action_apply"
+                            type="object"
+                            string="Apply Allocation"
+                            class="btn-outline-primary"
+                            invisible="remaining_qty &lt;= 0"/>
                     <button string="Cancel"
                             class="btn-secondary"
                             special="cancel"/>

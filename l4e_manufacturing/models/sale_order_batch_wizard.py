@@ -2,6 +2,7 @@
 
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError, ValidationError
+from odoo.tools.float_utils import float_compare
 
 
 class L4eSaleOrderBatchWizard(models.TransientModel):
@@ -132,10 +133,19 @@ class L4eSaleOrderBatchWizard(models.TransientModel):
         if not alloc_lines:
             raise UserError(_('Please allocate at least one batch with quantity greater than 0.'))
 
-        if self.allocated_qty > self.required_qty:
+        rounding = self.uom_id.rounding if self.uom_id else 0.01
+        diff = float_compare(self.allocated_qty, self.required_qty, precision_rounding=rounding)
+        if diff > 0:
             raise ValidationError(
                 _('Total allocated quantity (%(alloc).2f) cannot exceed the required quantity (%(req).2f).')
                 % {'alloc': self.allocated_qty, 'req': self.required_qty}
+            )
+        if diff < 0:
+            raise ValidationError(
+                _("Cannot apply allocation: %(rem).2f unit(s) remain unallocated.\n\n"
+                  "Total allocated quantity is %(alloc).2f, but required quantity is %(req).2f.\n\n"
+                  "Please allocate the remaining quantity across available batches, or click 'Apply & Set Order Qty to %(alloc).2f'.")
+                % {'rem': self.remaining_qty, 'alloc': self.allocated_qty, 'req': self.required_qty}
             )
 
         sorted_alloc = alloc_lines.sorted(key=lambda l: (l.date or fields.Date.today(), l.id))
@@ -148,6 +158,30 @@ class L4eSaleOrderBatchWizard(models.TransientModel):
             }))
 
         self.order_line_id.write({
+            'batch_ids': [(6, 0, batch_ids_list)],
+            'batch_id': batch_ids_list[0] if batch_ids_list else False,
+            'batch_allocation_ids': alloc_commands,
+        })
+
+        return {'type': 'ir.actions.act_window_close'}
+
+    def action_apply_and_adjust_qty(self):
+        self.ensure_one()
+        alloc_lines = self.allocation_line_ids.filtered(lambda l: l.allocated_qty > 0)
+        if not alloc_lines:
+            raise UserError(_('Please allocate at least one batch with quantity greater than 0.'))
+
+        sorted_alloc = alloc_lines.sorted(key=lambda l: (l.date or fields.Date.today(), l.id))
+        batch_ids_list = [alloc.batch_id.id for alloc in sorted_alloc]
+        alloc_commands = [(5, 0, 0)]
+        for alloc in sorted_alloc:
+            alloc_commands.append((0, 0, {
+                'batch_id': alloc.batch_id.id,
+                'quantity': alloc.allocated_qty,
+            }))
+
+        self.order_line_id.write({
+            'product_uom_qty': self.allocated_qty,
             'batch_ids': [(6, 0, batch_ids_list)],
             'batch_id': batch_ids_list[0] if batch_ids_list else False,
             'batch_allocation_ids': alloc_commands,

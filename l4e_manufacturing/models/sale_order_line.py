@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 
 from odoo import api, fields, models, _
-from odoo.exceptions import UserError
+from odoo.exceptions import UserError, ValidationError
+from odoo.tools.float_utils import float_compare
 
 
 class SaleOrderLine(models.Model):
@@ -136,3 +137,67 @@ class SaleOrderLine(models.Model):
                         },
                     }
                 }
+
+
+class SaleOrder(models.Model):
+    _inherit = "sale.order"
+
+    def action_confirm(self):
+        for order in self:
+            for line in order.order_line.filtered(lambda l: not l.display_type and l.product_id):
+                # Check if product is managed with batches
+                has_batches = self.env["l4e.icecream.processing.batch"].search_count([
+                    "|",
+                    ("product_id", "=", line.product_id.id),
+                    ("output_line_ids.product_id", "=", line.product_id.id),
+                ])
+                if not has_batches:
+                    continue
+
+                # 1. Batch must be selected
+                if not line.batch_ids and not line.batch_id:
+                    raise ValidationError(
+                        _("Cannot confirm %(order)s:\n\n"
+                          "Please select or allocate a batch for product '%(product)s'.")
+                        % {
+                            "order": order.name,
+                            "product": line.product_id.display_name,
+                        }
+                    )
+
+                # 2. Check allocation completeness if multi-batch allocations exist
+                if line.batch_allocation_ids:
+                    total_alloc = sum(line.batch_allocation_ids.mapped("quantity"))
+                    rounding = line.product_uom.rounding if line.product_uom else 0.01
+                    if float_compare(total_alloc, line.product_uom_qty, precision_rounding=rounding) < 0:
+                        rem = line.product_uom_qty - total_alloc
+                        raise ValidationError(
+                            _("Cannot confirm %(order)s:\n\n"
+                              "Product '%(product)s' ordered quantity is %(qty).2f, but only %(alloc).2f units are allocated across batches (%(rem).2f remaining unallocated).\n\n"
+                              "Please click 'Split Batch' on the line to allocate the remaining quantity, or adjust the ordered quantity to %(alloc).2f.")
+                            % {
+                                "order": order.name,
+                                "product": line.product_id.display_name,
+                                "qty": line.product_uom_qty,
+                                "alloc": total_alloc,
+                                "rem": rem,
+                            }
+                        )
+                else:
+                    # Single batch direct selection without multi-batch allocation records
+                    if line.batch_id:
+                        if line.product_uom_qty > line.batch_available_qty:
+                            raise ValidationError(
+                                _("Cannot confirm %(order)s:\n\n"
+                                  "Batch '%(batch)s' for product '%(product)s' only has %(avail).2f units available, but %(qty).2f was requested.\n\n"
+                                  "Please click 'Split Batch' on the line to allocate across multiple batches, or reduce the ordered quantity.")
+                                % {
+                                    "order": order.name,
+                                    "batch": line.batch_id.batch_number,
+                                    "product": line.product_id.display_name,
+                                    "avail": line.batch_available_qty,
+                                    "qty": line.product_uom_qty,
+                                }
+                            )
+
+        return super().action_confirm()
