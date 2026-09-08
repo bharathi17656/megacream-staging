@@ -74,13 +74,24 @@ class L4eBatchDispatchReport(models.Model):
                 ) ol ON ol.batch_id = pb.id
                 LEFT JOIN (
                     SELECT 
-                        sol.batch_id,
-                        sol.product_id,
-                        SUM(sol.product_uom_qty) AS total_sold
-                    FROM sale_order_line sol
-                    JOIN sale_order so ON so.id = sol.order_id
-                    WHERE so.state IN ('sale', 'done') AND sol.batch_id IS NOT NULL
-                    GROUP BY sol.batch_id, sol.product_id
+                        b_id AS batch_id,
+                        p_id AS product_id,
+                        SUM(s_qty) AS total_sold
+                    FROM (
+                        SELECT ba.batch_id AS b_id, ba.product_id AS p_id, ba.quantity AS s_qty
+                        FROM l4e_sale_order_batch_allocation ba
+                        JOIN sale_order so ON so.id = ba.order_id
+                        WHERE so.state IN ('sale', 'done')
+                        UNION ALL
+                        SELECT sol.batch_id AS b_id, sol.product_id AS p_id, sol.product_uom_qty AS s_qty
+                        FROM sale_order_line sol
+                        JOIN sale_order so ON so.id = sol.order_id
+                        WHERE so.state IN ('sale', 'done') AND sol.batch_id IS NOT NULL
+                          AND NOT EXISTS (
+                              SELECT 1 FROM l4e_sale_order_batch_allocation ba WHERE ba.order_line_id = sol.id
+                          )
+                    ) sub_sales
+                    GROUP BY b_id, p_id
                 ) sales ON sales.batch_id = pb.id AND sales.product_id = COALESCE(ol.product_id, pb.product_id)
                 WHERE pb.state != 'cancel'
             )

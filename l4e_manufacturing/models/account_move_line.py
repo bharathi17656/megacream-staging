@@ -13,6 +13,16 @@ class AccountMoveLine(models.Model):
         help="Select the manufacturing processing batch associated with this invoice line.",
     )
 
+    batch_ids = fields.Many2many(
+        "l4e.icecream.processing.batch",
+        "account_move_line_batch_rel",
+        "move_line_id",
+        "batch_id",
+        string="Batch Numbers",
+        domain="['|', ('product_id', '=', product_id), ('output_line_ids.product_id', '=', product_id)]",
+        help="Manufacturing processing batches associated with this invoice line.",
+    )
+
     lot_id = fields.Many2one(
         "stock.lot",
         string="Stock Lot",

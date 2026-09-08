@@ -6,6 +6,8 @@ from . import l4e_processing_output_line
 from . import l4e_processing_wastage_line
 from . import stock_picking
 from . import stock_lot
+from . import sale_order_batch_allocation
 from . import sale_order_line
 from . import account_move_line
 from . import batch_dispatch_report
+from . import sale_order_batch_wizard

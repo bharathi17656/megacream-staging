@@ -119,23 +119,38 @@ class L4eIceCreamProcessingBatch(models.Model):
                 else:
                     prod_qty = 0.0
 
-                sold_lines = self.env["sale.order.line"].sudo().search([
+                sold_allocs = self.env["l4e.sale.order.batch.allocation"].sudo().search([
                     ("batch_id", "=", rec.id),
                     ("product_id", "=", prod_id),
                     ("order_id.state", "in", ("sale", "done")),
                 ])
-                total_sold = sum(sold_lines.mapped("product_uom_qty"))
+                sold_from_allocs = sum(sold_allocs.mapped("quantity"))
+
+                sold_lines = self.env["sale.order.line"].sudo().search([
+                    ("batch_id", "=", rec.id),
+                    ("product_id", "=", prod_id),
+                    ("order_id.state", "in", ("sale", "done")),
+                    ("batch_allocation_ids", "=", False),
+                ])
+                total_sold = sold_from_allocs + sum(sold_lines.mapped("product_uom_qty"))
                 rec.qty_sold = total_sold
                 avail = prod_qty - total_sold
                 rec.qty_available = max(avail, 0.0)
                 rec.batch_available_qty = max(avail, 0.0)
                 rec.batch_stock_status = "in_stock" if avail > 0 else "finished"
             else:
-                sold_lines = self.env["sale.order.line"].sudo().search([
+                sold_allocs = self.env["l4e.sale.order.batch.allocation"].sudo().search([
                     ("batch_id", "=", rec.id),
                     ("order_id.state", "in", ("sale", "done")),
                 ])
-                total_sold = sum(sold_lines.mapped("product_uom_qty"))
+                sold_from_allocs = sum(sold_allocs.mapped("quantity"))
+
+                sold_lines = self.env["sale.order.line"].sudo().search([
+                    ("batch_id", "=", rec.id),
+                    ("order_id.state", "in", ("sale", "done")),
+                    ("batch_allocation_ids", "=", False),
+                ])
+                total_sold = sold_from_allocs + sum(sold_lines.mapped("product_uom_qty"))
                 rec.qty_sold = total_sold
                 avail = rec.total_net_output_qty - total_sold
                 rec.qty_available = max(avail, 0.0)
@@ -148,11 +163,22 @@ class L4eIceCreamProcessingBatch(models.Model):
                 SELECT pb.id
                 FROM l4e_icecream_processing_batch pb
                 LEFT JOIN (
-                    SELECT sol.batch_id, SUM(sol.product_uom_qty) AS total_sold
-                    FROM sale_order_line sol
-                    JOIN sale_order so ON so.id = sol.order_id
-                    WHERE so.state IN ('sale', 'done') AND sol.batch_id IS NOT NULL
-                    GROUP BY sol.batch_id
+                    SELECT b_id AS batch_id, SUM(s_qty) AS total_sold
+                    FROM (
+                        SELECT ba.batch_id AS b_id, ba.quantity AS s_qty
+                        FROM l4e_sale_order_batch_allocation ba
+                        JOIN sale_order so ON so.id = ba.order_id
+                        WHERE so.state IN ('sale', 'done')
+                        UNION ALL
+                        SELECT sol.batch_id AS b_id, sol.product_uom_qty AS s_qty
+                        FROM sale_order_line sol
+                        JOIN sale_order so ON so.id = sol.order_id
+                        WHERE so.state IN ('sale', 'done') AND sol.batch_id IS NOT NULL
+                          AND NOT EXISTS (
+                              SELECT 1 FROM l4e_sale_order_batch_allocation ba WHERE ba.order_line_id = sol.id
+                          )
+                    ) sub_sales
+                    GROUP BY b_id
                 ) sales ON sales.batch_id = pb.id
                 WHERE (pb.total_net_output_qty - COALESCE(sales.total_sold, 0.0)) > 0
             """)
@@ -168,11 +194,22 @@ class L4eIceCreamProcessingBatch(models.Model):
             SELECT pb.id
             FROM l4e_icecream_processing_batch pb
             LEFT JOIN (
-                SELECT sol.batch_id, SUM(sol.product_uom_qty) AS total_sold
-                FROM sale_order_line sol
-                JOIN sale_order so ON so.id = sol.order_id
-                WHERE so.state IN ('sale', 'done') AND sol.batch_id IS NOT NULL
-                GROUP BY sol.batch_id
+                SELECT b_id AS batch_id, SUM(s_qty) AS total_sold
+                FROM (
+                    SELECT ba.batch_id AS b_id, ba.quantity AS s_qty
+                    FROM l4e_sale_order_batch_allocation ba
+                    JOIN sale_order so ON so.id = ba.order_id
+                    WHERE so.state IN ('sale', 'done')
+                    UNION ALL
+                    SELECT sol.batch_id AS b_id, sol.product_uom_qty AS s_qty
+                    FROM sale_order_line sol
+                    JOIN sale_order so ON so.id = sol.order_id
+                    WHERE so.state IN ('sale', 'done') AND sol.batch_id IS NOT NULL
+                      AND NOT EXISTS (
+                          SELECT 1 FROM l4e_sale_order_batch_allocation ba WHERE ba.order_line_id = sol.id
+                      )
+                ) sub_sales
+                GROUP BY b_id
             ) sales ON sales.batch_id = pb.id
             WHERE (pb.total_net_output_qty - COALESCE(sales.total_sold, 0.0)) > 0
         """)
@@ -214,11 +251,22 @@ class L4eIceCreamProcessingBatch(models.Model):
                     GROUP BY batch_id
                 ) prod ON prod.batch_id = pb.id
                 LEFT JOIN (
-                    SELECT sol.batch_id, SUM(sol.product_uom_qty) AS sold_qty
-                    FROM sale_order_line sol
-                    JOIN sale_order so ON so.id = sol.order_id
-                    WHERE so.state IN ('sale', 'done') AND sol.batch_id IS NOT NULL AND sol.product_id = %s
-                    GROUP BY sol.batch_id
+                    SELECT b_id AS batch_id, SUM(s_qty) AS sold_qty
+                    FROM (
+                        SELECT ba.batch_id AS b_id, ba.quantity AS s_qty
+                        FROM l4e_sale_order_batch_allocation ba
+                        JOIN sale_order so ON so.id = ba.order_id
+                        WHERE so.state IN ('sale', 'done') AND ba.product_id = %s
+                        UNION ALL
+                        SELECT sol.batch_id AS b_id, sol.product_uom_qty AS s_qty
+                        FROM sale_order_line sol
+                        JOIN sale_order so ON so.id = sol.order_id
+                        WHERE so.state IN ('sale', 'done') AND sol.batch_id IS NOT NULL AND sol.product_id = %s
+                          AND NOT EXISTS (
+                              SELECT 1 FROM l4e_sale_order_batch_allocation ba WHERE ba.order_line_id = sol.id
+                          )
+                    ) sub_sales
+                    GROUP BY b_id
                 ) sales ON sales.batch_id = pb.id
                 WHERE pb.state != 'cancel'
                   AND (
@@ -226,17 +274,28 @@ class L4eIceCreamProcessingBatch(models.Model):
                       OR
                       (prod.prod_qty IS NULL AND pb.product_id = %s AND (pb.total_net_output_qty - COALESCE(sales.sold_qty, 0.0)) > 0)
                   )
-            """, (product_id, product_id, product_id))
+            """, (product_id, product_id, product_id, product_id))
         else:
             self.env.cr.execute("""
                 SELECT pb.id
                 FROM l4e_icecream_processing_batch pb
                 LEFT JOIN (
-                    SELECT sol.batch_id, SUM(sol.product_uom_qty) AS total_sold
-                    FROM sale_order_line sol
-                    JOIN sale_order so ON so.id = sol.order_id
-                    WHERE so.state IN ('sale', 'done') AND sol.batch_id IS NOT NULL
-                    GROUP BY sol.batch_id
+                    SELECT b_id AS batch_id, SUM(s_qty) AS total_sold
+                    FROM (
+                        SELECT ba.batch_id AS b_id, ba.quantity AS s_qty
+                        FROM l4e_sale_order_batch_allocation ba
+                        JOIN sale_order so ON so.id = ba.order_id
+                        WHERE so.state IN ('sale', 'done')
+                        UNION ALL
+                        SELECT sol.batch_id AS b_id, sol.product_uom_qty AS s_qty
+                        FROM sale_order_line sol
+                        JOIN sale_order so ON so.id = sol.order_id
+                        WHERE so.state IN ('sale', 'done') AND sol.batch_id IS NOT NULL
+                          AND NOT EXISTS (
+                              SELECT 1 FROM l4e_sale_order_batch_allocation ba WHERE ba.order_line_id = sol.id
+                          )
+                    ) sub_sales
+                    GROUP BY b_id
                 ) sales ON sales.batch_id = pb.id
                 WHERE pb.state != 'cancel'
                   AND (pb.total_net_output_qty - COALESCE(sales.total_sold, 0.0)) > 0

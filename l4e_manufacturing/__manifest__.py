@@ -23,6 +23,7 @@ Features:
         'data/l4e_data.xml',
         'views/l4e_processing_batch_views.xml',
         'views/sale_order_views.xml',
+        'views/sale_order_batch_wizard_views.xml',
         'views/account_move_views.xml',
         'views/batch_dispatch_report_views.xml',
         'views/l4e_processing_wastage_views.xml',

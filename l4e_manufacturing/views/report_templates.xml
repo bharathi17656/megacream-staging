@@ -10,7 +10,8 @@
         </xpath>
         <xpath expr="//td[@name='td_product_name']" position="after">
             <td name="td_batch_number">
-                <span t-if="line.batch_id" t-field="line.batch_id.batch_number"/>
+                <span t-if="line.batch_ids" t-out="', '.join(line.batch_ids.mapped('batch_number'))"/>
+                <span t-elif="line.batch_id" t-field="line.batch_id.batch_number"/>
             </td>
         </xpath>
     </template>
@@ -24,7 +25,8 @@
         </xpath>
         <xpath expr="//td[@name='account_invoice_line_name']" position="after">
             <td name="td_batch_number">
-                <span t-if="line.batch_id" t-field="line.batch_id.batch_number"/>
+                <span t-if="line.batch_ids" t-out="', '.join(line.batch_ids.mapped('batch_number'))"/>
+                <span t-elif="line.batch_id" t-field="line.batch_id.batch_number"/>
             </td>
         </xpath>
     </template>

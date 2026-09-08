@@ -6,8 +6,9 @@
         <field name="inherit_id" ref="sale.view_order_form"/>
         <field name="arch" type="xml">
             <xpath expr="//field[@name='order_line']/list/field[@name='product_template_id']" position="after">
-                <field name="batch_id"
-                       string="Batch Number"
+                <field name="batch_ids"
+                       string="Batch Numbers"
+                       widget="many2many_tags"
                        domain="['|', ('product_id', '=', product_id), ('output_line_ids.product_id', '=', product_id)]"
                        context="{
                            'list_view_ref': 'l4e_manufacturing.view_ice_cream_batch_sale_selection_list',
@@ -17,6 +18,7 @@
                        }"
                        options="{'no_create': True}"
                        optional="show"/>
+                <field name="batch_id" column_invisible="True"/>
                 <field name="batch_available_qty"
                        string="Batch Avail."
                        optional="hide"/>
@@ -25,6 +27,12 @@
                        decoration-success="batch_status == 'in_stock'"
                        decoration-danger="batch_status == 'finished'"
                        optional="hide"/>
+                <button name="action_open_batch_split_wizard"
+                        type="object"
+                        string="Split Batch"
+                        title="Allocate across multiple batches"
+                        icon="fa-cubes"
+                        invisible="not product_id"/>
             </xpath>
         </field>
     </record>
