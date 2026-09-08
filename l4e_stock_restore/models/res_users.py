@@ -61,6 +61,10 @@ class ResUsers(models.Model):
                 if commands:
                     group.sudo().write({user_field: commands})
             # Invalidate menu cache so the Stock restore menu immediately shows/hides
-            self.env["ir.ui.menu"].clear_caches()
-            self.env.registry.clear_cache()
+            if hasattr(self.env["ir.ui.menu"], "clear_caches"):
+                self.env["ir.ui.menu"].clear_caches()
+            elif hasattr(self.env["ir.ui.menu"], "invalidate_model"):
+                self.env["ir.ui.menu"].invalidate_model()
+            if hasattr(self.env.registry, "clear_cache"):
+                self.env.registry.clear_cache()
         return res
