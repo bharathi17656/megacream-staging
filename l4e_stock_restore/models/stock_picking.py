@@ -34,7 +34,8 @@ class StockPicking(models.Model):
     @api.depends_context("uid")
     def _compute_is_production_only_user(self):
         user = self.env.user
-        is_prod_only = bool(user.is_production_user and not user.is_store_user)
+        is_admin = user._is_admin() or user.has_group("base.group_system")
+        is_prod_only = bool(user.is_production_user and not user.is_store_user and not is_admin)
         for picking in self:
             picking.is_production_only_user = is_prod_only
 
@@ -45,7 +46,8 @@ class StockPicking(models.Model):
             return True
         if self.env.context.get("is_stock_restore") or self.env.context.get("default_is_stock_restore"):
             return True
-        if self.env.user.is_production_user and self.picking_type_code == "internal":
+        is_admin = self.env.is_admin() or self.env.user.has_group("base.group_system")
+        if (self.env.user.is_production_user and not self.env.user.is_store_user and not is_admin) and self.picking_type_code == "internal":
             return True
         # Check if this is an internal transfer to Production location
         if (
@@ -124,10 +126,11 @@ class StockPicking(models.Model):
     @api.model
     def default_get(self, fields_list):
         res = super().default_get(fields_list)
+        is_admin = self.env.is_admin() or self.env.user.has_group("base.group_system")
         is_restore = (
             self.env.context.get("is_stock_restore")
             or self.env.context.get("default_is_stock_restore")
-            or (self.env.user.is_production_user and res.get("picking_type_code") == "internal")
+            or (self.env.user.is_production_user and not self.env.user.is_store_user and not is_admin and res.get("picking_type_code") == "internal")
         )
         if is_restore:
             res["is_stock_restore"] = True
@@ -146,12 +149,13 @@ class StockPicking(models.Model):
     @api.depends("picking_type_id", "partner_id")
     def _compute_location_id(self):
         super()._compute_location_id()
+        is_admin = self.env.is_admin() or self.env.user.has_group("base.group_system")
         for picking in self:
             is_restore = (
                 picking.is_stock_restore
                 or self.env.context.get("is_stock_restore")
                 or self.env.context.get("default_is_stock_restore")
-                or (self.env.user.is_production_user and picking.picking_type_code == "internal")
+                or (self.env.user.is_production_user and not self.env.user.is_store_user and not is_admin and picking.picking_type_code == "internal")
             )
             if is_restore and picking.state == "draft":
                 src_loc = self._get_stock_restore_source_location()
@@ -163,18 +167,21 @@ class StockPicking(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
+        is_admin = self.env.is_admin() or self.env.user.has_group("base.group_system")
         for vals in vals_list:
             is_restore = (
                 vals.get("is_stock_restore")
                 or self.env.context.get("is_stock_restore")
                 or self.env.context.get("default_is_stock_restore")
-                or self.env.user.is_production_user
             )
             # Check if destination location is production
             if not is_restore and vals.get("location_dest_id"):
                 loc_dest = self.env["stock.location"].browse(vals["location_dest_id"])
                 if loc_dest.usage == "production" or "Production" in (loc_dest.name or ""):
                     is_restore = True
+
+            if not is_restore and (self.env.user.is_production_user and not self.env.user.is_store_user and not is_admin):
+                is_restore = True
 
             if is_restore:
                 vals["is_stock_restore"] = True
@@ -203,8 +210,9 @@ class StockPicking(models.Model):
         return pickings
 
     def action_confirm(self):
+        is_admin = self.env.is_admin() or self.env.user.has_group("base.group_system")
         for picking in self:
-            if picking.picking_type_code == "internal" and (
+            if not is_admin and picking.picking_type_code == "internal" and (
                 picking.is_production_only_user or (self.env.user.is_production_user and not self.env.user.is_store_user)
             ):
                 raise UserError(
@@ -214,8 +222,9 @@ class StockPicking(models.Model):
         return super().action_confirm()
 
     def button_validate(self):
+        is_admin = self.env.is_admin() or self.env.user.has_group("base.group_system")
         for picking in self:
-            if picking.picking_type_code == "internal" and (
+            if not is_admin and picking.picking_type_code == "internal" and (
                 picking.is_production_only_user or (self.env.user.is_production_user and not self.env.user.is_store_user)
             ):
                 raise UserError(
@@ -225,8 +234,9 @@ class StockPicking(models.Model):
         return super().button_validate()
 
     def action_assign(self):
+        is_admin = self.env.is_admin() or self.env.user.has_group("base.group_system")
         for picking in self:
-            if picking.picking_type_code == "internal" and (
+            if not is_admin and picking.picking_type_code == "internal" and (
                 picking.is_production_only_user or (self.env.user.is_production_user and not self.env.user.is_store_user)
             ):
                 raise UserError(
@@ -236,7 +246,8 @@ class StockPicking(models.Model):
         return super().action_assign()
 
     def write(self, vals):
-        if "state" in vals and vals["state"] != "draft":
+        is_admin = self.env.is_admin() or self.env.user.has_group("base.group_system")
+        if not is_admin and "state" in vals and vals["state"] != "draft":
             for picking in self:
                 if picking.picking_type_code == "internal" and (
                     picking.is_production_only_user or (self.env.user.is_production_user and not self.env.user.is_store_user)
@@ -276,8 +287,9 @@ class StockPicking(models.Model):
         # Fallback: If no users have is_store_user=True, notify users in Inventory group
         if not notify_users:
             stock_group = self.env.ref("stock.group_stock_user", raise_if_not_found=False)
-            if stock_group and stock_group.users:
-                notify_users = stock_group.users.filtered(lambda u: u.active and u.partner_id)
+            if stock_group:
+                group_users = stock_group.user_ids if "user_ids" in stock_group._fields else getattr(stock_group, "users", self.env["res.users"])
+                notify_users = group_users.filtered(lambda u: u.active and u.partner_id)
 
         if not notify_users:
             _logger.warning("Stock Restore: No store or inventory users found to notify for picking %s.", self.name)

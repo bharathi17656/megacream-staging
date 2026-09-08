@@ -90,20 +90,26 @@ class HrLeave(models.Model):
 
 
     def _get_group_members(self, xml_id):
-        group = self.env.ref(xml_id)                           # Load group
-        users = group.users                                    # All users in group
+        group = self.env.ref(xml_id, raise_if_not_found=False)
+        if not group:
+            return self.env['res.users'], self.env['hr.employee']
+        users = group.user_ids if "user_ids" in group._fields else getattr(group, "users", self.env["res.users"])
         employees = users.mapped('employee_id').filtered(lambda e: e)  # Convert to employee records (skip empty)
         return users, employees
-
-
 
     def _get_leave_approvers(self):
         """Return employees & users needed for approval based on number of leave days."""
         days = int(self.number_of_days)
-    
-        manager_users = self.env.ref('adevx_hr_leave_rule.group_leave_manager').users
-        hr_users = self.env.ref('adevx_hr_leave_rule.group_leave_hr').users
-        md_users = self.env.ref('adevx_hr_leave_rule.group_leave_md').users
+
+        def _get_group_users(xml_id):
+            g = self.env.ref(xml_id, raise_if_not_found=False)
+            if not g:
+                return self.env['res.users']
+            return g.user_ids if "user_ids" in g._fields else getattr(g, "users", self.env['res.users'])
+
+        manager_users = _get_group_users('adevx_hr_leave_rule.group_leave_manager')
+        hr_users = _get_group_users('adevx_hr_leave_rule.group_leave_hr')
+        md_users = _get_group_users('adevx_hr_leave_rule.group_leave_md')
     
         manager_emps = manager_users.mapped('employee_id').filtered(lambda e: e)
         hr_emps = hr_users.mapped('employee_id').filtered(lambda e: e)

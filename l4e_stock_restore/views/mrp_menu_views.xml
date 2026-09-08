@@ -28,12 +28,12 @@
         </field>
     </record>
 
-    <!-- Top-level menu in Manufacturing: Visible only to Production Users (and admin) -->
+    <!-- Top-level menu in Manufacturing: Visible to Production Users and System Administrators -->
     <menuitem id="menu_mrp_stock_restore"
         name="Stock restore"
         parent="mrp.menu_mrp_root"
         action="action_stock_restore"
-        groups="l4e_stock_restore.group_production_user"
+        groups="l4e_stock_restore.group_production_user,base.group_system"
         sequence="110"/>
 
 </odoo>

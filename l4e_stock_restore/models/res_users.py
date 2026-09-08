@@ -39,9 +39,10 @@ class ResUsers(models.Model):
         users = super().create(vals_list)
         group = self.env.ref("l4e_stock_restore.group_production_user", raise_if_not_found=False)
         if group:
-            for user in users:
-                if user.is_production_user:
-                    group.sudo().write({"users": [(4, user.id)]})
+            user_field = "user_ids" if "user_ids" in group._fields else "users"
+            to_add = users.filtered(lambda u: u.is_production_user)
+            if to_add:
+                group.sudo().write({user_field: [(4, u.id) for u in to_add]})
         return users
 
     def write(self, vals):
@@ -49,13 +50,16 @@ class ResUsers(models.Model):
         if "is_production_user" in vals:
             group = self.env.ref("l4e_stock_restore.group_production_user", raise_if_not_found=False)
             if group:
+                user_field = "user_ids" if "user_ids" in group._fields else "users"
+                current_members = group[user_field]
+                commands = []
                 for user in self:
-                    if user.is_production_user:
-                        if user not in group.users:
-                            group.sudo().write({"users": [(4, user.id)]})
-                    else:
-                        if user in group.users:
-                            group.sudo().write({"users": [(3, user.id)]})
+                    if user.is_production_user and user not in current_members:
+                        commands.append((4, user.id))
+                    elif not user.is_production_user and user in current_members:
+                        commands.append((3, user.id))
+                if commands:
+                    group.sudo().write({user_field: commands})
             # Invalidate menu cache so the Stock restore menu immediately shows/hides
             self.env["ir.ui.menu"].clear_caches()
             self.env.registry.clear_cache()
