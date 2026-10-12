@@ -135,6 +135,16 @@
             </div>
         </xpath>
 
+        <!-- (10) Outstanding credits row under Total -->
+        <xpath expr="//div[@id='total']//table" position="inside">
+            <tr t-if="o.l4e_outstanding_credits_amount">
+                <td><strong>Outstanding credits</strong></td>
+                <td class="text-end">
+                    <span t-field="o.l4e_outstanding_credits_amount"/>
+                </td>
+            </tr>
+        </xpath>
+
         <!-- Declaration + computer-generated note, static text -->
         <!--<xpath expr="//div[hasclass('oe_structure')][last()]" position="before">-->
         <!--    <div class="row mt16" name="l4e_declaration">-->

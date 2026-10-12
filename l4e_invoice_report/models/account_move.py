@@ -1,8 +1,15 @@
+import json
 from odoo import api, fields, models
 
 
 class AccountMove(models.Model):
     _inherit = "account.move"
+
+    l4e_outstanding_credits_amount = fields.Monetary(
+        string="Outstanding Credits",
+        compute="_compute_l4e_outstanding_credits_amount",
+        currency_field="currency_id",
+    )
 
     total_qty = fields.Float(
         string="Total Quantity",
@@ -41,6 +48,60 @@ class AccountMove(models.Model):
         return False
 
     invoice_date = fields.Date(default=_l4e_default_invoice_date)
+
+    @api.depends("state", "payment_state", "partner_id", "currency_id")
+    def _compute_l4e_outstanding_credits_amount(self):
+        for move in self:
+            total_credits = 0.0
+            widget_data = False
+            if hasattr(move, "invoice_outstanding_credits_debits_widget"):
+                widget_data = move.invoice_outstanding_credits_debits_widget
+
+            if widget_data:
+                if isinstance(widget_data, str):
+                    try:
+                        widget_data = json.loads(widget_data)
+                    except Exception:
+                        widget_data = {}
+                elif isinstance(widget_data, bytes):
+                    try:
+                        widget_data = json.loads(widget_data.decode("utf-8"))
+                    except Exception:
+                        widget_data = {}
+
+                if isinstance(widget_data, dict):
+                    content = widget_data.get("content") or []
+                    total_credits = sum(item.get("amount", 0.0) for item in content)
+
+            # Fallback if widget data was not populated in cache
+            if not total_credits and move.state == "posted" and move.is_invoice(include_receipts=True):
+                pay_term_lines = move.line_ids.filtered(
+                    lambda l: l.account_id.account_type in ("asset_receivable", "liability_payable")
+                )
+                if pay_term_lines:
+                    domain = [
+                        ("account_id", "in", pay_term_lines.account_id.ids),
+                        ("parent_state", "=", "posted"),
+                        ("partner_id", "=", move.commercial_partner_id.id),
+                        ("reconciled", "=", False),
+                        "|", ("amount_residual", "!=", 0.0), ("amount_residual_currency", "!=", 0.0),
+                    ]
+                    if move.is_inbound():
+                        domain.append(("balance", "<", 0.0))
+                    else:
+                        domain.append(("balance", ">", 0.0))
+                    lines = self.env["account.move.line"].search(domain)
+                    for line in lines:
+                        if line.currency_id == move.currency_id:
+                            total_credits += abs(line.amount_residual_currency)
+                        else:
+                            total_credits += abs(line.company_currency_id._convert(
+                                line.amount_residual,
+                                move.currency_id,
+                                move.company_id,
+                                line.date or fields.Date.context_today(move),
+                            ))
+            move.l4e_outstanding_credits_amount = total_credits
 
     @api.depends("invoice_line_ids.quantity", "invoice_line_ids.display_type", "invoice_line_ids.product_uom_id")
     def _compute_total_qty(self):
