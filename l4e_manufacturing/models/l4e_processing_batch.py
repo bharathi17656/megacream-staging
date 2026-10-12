@@ -3,6 +3,7 @@
 from odoo import api, fields, models, _
 from odoo.exceptions import ValidationError, UserError
 import logging
+from markupsafe import Markup
 
 _logger = logging.getLogger(__name__)
 
@@ -42,6 +43,7 @@ class L4eIceCreamProcessingBatch(models.Model):
     state = fields.Selection(
         [
             ("draft", "Draft"),
+            ("at_store", "At Store"),
             ("processing", "Processing"),
             ("completed", "Completed"),
             ("cancel", "Cancelled"),
@@ -408,6 +410,90 @@ class L4eIceCreamProcessingBatch(models.Model):
         string="Finished Product",
     )
 
+    @api.onchange("output_line_ids")
+    def _onchange_output_line_ids(self):
+        """When finished products or quantities change, if a product has a BOM,
+        automatically update raw materials in the Raw Materials tab."""
+        if self.state not in ("draft", "at_store"):
+            return
+
+        raw_components = {}
+        has_any_bom = False
+
+        for out_line in self.output_line_ids:
+            if not out_line.product_id:
+                continue
+            fg_qty = out_line.net_quantity or out_line.quantity or 0.0
+            if fg_qty <= 0:
+                continue
+
+            bom = self.env["mrp.bom"].search(
+                [
+                    "|",
+                    ("product_id", "=", out_line.product_id.id),
+                    "&",
+                    ("product_id", "=", False),
+                    ("product_tmpl_id", "=", out_line.product_id.product_tmpl_id.id),
+                    ("company_id", "in", (self.company_id.id, False)),
+                ],
+                order="sequence, product_id, id",
+                limit=1,
+            )
+            if bom and bom.bom_line_ids:
+                has_any_bom = True
+                factor = fg_qty / (bom.product_qty or 1.0)
+                for bom_line in bom.bom_line_ids:
+                    comp_id = bom_line.product_id.id
+                    raw_components[comp_id] = raw_components.get(comp_id, 0.0) + (bom_line.product_qty * factor)
+
+        if has_any_bom and raw_components:
+            lines_cmds = []
+            for comp_id, qty in raw_components.items():
+                lines_cmds.append((0, 0, {
+                    "product_id": comp_id,
+                    "quantity": qty,
+                }))
+            self.raw_line_ids = [(5, 0, 0)] + lines_cmds
+
+    def _populate_raw_materials_from_bom(self):
+        for rec in self:
+            if rec.state not in ("draft", "at_store"):
+                continue
+            raw_components = {}
+            has_any_bom = False
+            for out_line in rec.output_line_ids:
+                if not out_line.product_id:
+                    continue
+                fg_qty = out_line.net_quantity or out_line.quantity or 0.0
+                if fg_qty <= 0:
+                    continue
+                bom = self.env["mrp.bom"].search(
+                    [
+                        "|",
+                        ("product_id", "=", out_line.product_id.id),
+                        "&",
+                        ("product_id", "=", False),
+                        ("product_tmpl_id", "=", out_line.product_id.product_tmpl_id.id),
+                        ("company_id", "in", (rec.company_id.id, False)),
+                    ],
+                    order="sequence, product_id, id",
+                    limit=1,
+                )
+                if bom and bom.bom_line_ids:
+                    has_any_bom = True
+                    factor = fg_qty / (bom.product_qty or 1.0)
+                    for bom_line in bom.bom_line_ids:
+                        comp_id = bom_line.product_id.id
+                        raw_components[comp_id] = raw_components.get(comp_id, 0.0) + (bom_line.product_qty * factor)
+
+            if has_any_bom and raw_components:
+                rec.raw_line_ids.unlink()
+                raw_vals = [
+                    {"batch_id": rec.id, "product_id": comp_id, "quantity": qty}
+                    for comp_id, qty in raw_components.items()
+                ]
+                self.env["l4e.icecream.raw.line"].create(raw_vals)
+
     total_output_qty = fields.Float(
         string="Total Output",
         compute="_compute_totals_and_yield",
@@ -690,11 +776,90 @@ class L4eIceCreamProcessingBatch(models.Model):
 
     # ─── Button Actions ────────────────────────────────────────────────────────
 
+    def action_submit_request(self):
+        """Submit the FG request to At Store stage and notify Store users."""
+        self.ensure_one()
+        if self.state != "draft":
+            raise ValidationError(_("Only Draft batches can be submitted."))
+        if not self.output_line_ids:
+            raise ValidationError(_("Please add at least one Finished Product before submitting the request."))
+
+        # Populate raw materials from BOM if not already populated
+        if not self.raw_line_ids:
+            self._populate_raw_materials_from_bom()
+
+        self.write({"state": "at_store"})
+        self._notify_store_users_fg_request()
+        return True
+
+    def _notify_store_users_fg_request(self):
+        self.ensure_one()
+        try:
+            store_users = self.env["res.users"].sudo().search([
+                ("active", "=", True),
+                ("is_store_user", "=", True),
+            ])
+            if not store_users:
+                stock_group = self.env.ref("stock.group_stock_user", raise_if_not_found=False)
+                if stock_group:
+                    store_users = stock_group.users.filtered(lambda u: u.active and u.id != self.env.user.id)
+
+            item_rows = []
+            for line in self.output_line_ids:
+                qty = line.net_quantity or line.quantity or 0.0
+                uom_name = line.uom_id.name if line.uom_id else ""
+                item_rows.append(f"<li><b>{line.product_id.display_name}</b>: {qty} {uom_name}</li>")
+            items_html = f"<ul>{''.join(item_rows)}</ul>" if item_rows else ""
+
+            body = Markup(
+                f"<p><b>FG Request Submitted (At Store)</b></p>"
+                f"<ul>"
+                f"<li><b>Batch Number:</b> {self.batch_number or self.name}</li>"
+                f"<li><b>Requested Date:</b> {self.date or ''}</li>"
+                f"<li><b>Requested By:</b> {self.env.user.name}</li>"
+                f"</ul>"
+                f"<p><b>Requested Finished Products:</b></p>"
+                f"{items_html}"
+            )
+            subject = f"FG Request Submitted: {self.batch_number or self.name}"
+
+            partner_ids = store_users.mapped("partner_id").filtered(lambda p: p.id != self.env.user.partner_id.id).ids
+            message = self.message_post(
+                body=body,
+                subject=subject,
+                message_type="comment",
+                subtype_xmlid="mail.mt_comment",
+                partner_ids=partner_ids,
+            )
+
+            for user in store_users.filtered(lambda u: u.id != self.env.user.id and u.partner_id):
+                notif = self.env["mail.notification"].sudo().search(
+                    [
+                        ("mail_message_id", "=", message.id),
+                        ("res_partner_id", "=", user.partner_id.id),
+                    ],
+                    limit=1,
+                )
+                if notif:
+                    notif.sudo().write({"notification_type": "inbox", "is_read": False})
+                else:
+                    self.env["mail.notification"].sudo().create(
+                        {
+                            "mail_message_id": message.id,
+                            "res_partner_id": user.partner_id.id,
+                            "notification_type": "inbox",
+                            "notification_status": "sent",
+                            "is_read": False,
+                        }
+                    )
+        except Exception as e:
+            _logger.exception("Error sending FG request notification to store users: %s", e)
+
     def action_start_processing(self):
         """Move all raw material ingredients from Store -> Production location."""
         self.ensure_one()
-        if self.state != "draft":
-            raise ValidationError(_("Only Draft batches can be started."))
+        if self.state not in ("draft", "at_store"):
+            raise ValidationError(_("Only Draft or At Store batches can be started."))
         if not self.raw_line_ids:
             raise ValidationError(_("Please add at least one raw material ingredient in the Raw Materials tab."))
 

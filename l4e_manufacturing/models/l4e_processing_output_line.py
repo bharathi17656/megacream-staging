@@ -50,9 +50,15 @@ class L4eIceCreamOutputLine(models.Model):
     net_quantity = fields.Float(
         string="Net FG Qty",
         compute="_compute_wastage_and_net_qty",
+        inverse="_inverse_net_quantity",
         store=True,
+        readonly=False,
         digits="Product Unit of Measure",
     )
+
+    def _inverse_net_quantity(self):
+        for line in self:
+            line.quantity = (line.net_quantity or 0.0) + (line.wastage_quantity or 0.0)
 
     uom_id = fields.Many2one(
         "uom.uom",

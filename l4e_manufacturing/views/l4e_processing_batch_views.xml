@@ -9,7 +9,7 @@
         <field name="model">l4e.icecream.processing.batch</field>
         <field name="arch" type="xml">
             <list string="Processing Batches"
-                  decoration-info="state == 'draft'"
+                  decoration-info="state in ('draft', 'at_store')"
                   decoration-warning="state == 'processing'"
                   decoration-success="state == 'completed'"
                   decoration-muted="state == 'cancel'">
@@ -23,7 +23,7 @@
                 <field name="total_net_output_qty" string="Net Output" sum="Total Net Output" optional="show"/>
                 <field name="yield_percentage" string="Yield %"/>
                 <field name="state" widget="badge" string="Status"
-                       decoration-info="state == 'draft'"
+                       decoration-info="state in ('draft', 'at_store')"
                        decoration-warning="state == 'processing'"
                        decoration-success="state == 'completed'"
                        decoration-danger="state == 'cancel'"/>
@@ -33,13 +33,13 @@
 
     <!-- ═══════════════════════════════════════════════════════
          PROCESSING COST REPORT — List View
-    ═══════════════════════════════════════════════════════ -->
+     ═══════════════════════════════════════════════════════ -->
     <record id="view_ice_cream_processing_cost_report_list" model="ir.ui.view">
         <field name="name">l4e.icecream.processing.cost.report.list</field>
         <field name="model">l4e.icecream.processing.batch</field>
         <field name="arch" type="xml">
             <list string="Processing Cost Report" create="false" edit="false" delete="false"
-                  decoration-info="state == 'draft'"
+                  decoration-info="state in ('draft', 'at_store')"
                   decoration-warning="state == 'processing'"
                   decoration-success="state == 'completed'"
                   decoration-muted="state == 'cancel'">
@@ -56,7 +56,7 @@
                        decoration-danger="value_difference &lt; 0"/>
                 <field name="yield_percentage" string="Yield %"/>
                 <field name="state" widget="badge" string="Status"
-                       decoration-info="state == 'draft'"
+                       decoration-info="state in ('draft', 'at_store')"
                        decoration-warning="state == 'processing'"
                        decoration-success="state == 'completed'"
                        decoration-danger="state == 'cancel'"/>
@@ -66,7 +66,7 @@
 
     <!-- ═══════════════════════════════════════════════════════
          BATCH SELECTION LIST VIEW (FOR SALES & INVOICES)
-    ═══════════════════════════════════════════════════════ -->
+     ═══════════════════════════════════════════════════════ -->
     <record id="view_ice_cream_batch_sale_selection_list" model="ir.ui.view">
         <field name="name">l4e.icecream.processing.batch.sale.selection.list</field>
         <field name="model">l4e.icecream.processing.batch</field>
@@ -83,18 +83,23 @@
 
     <!-- ═══════════════════════════════════════════════════════
          PROCESSING BATCH — Form View
-    ═══════════════════════════════════════════════════════ -->
+     ═══════════════════════════════════════════════════════ -->
     <record id="view_ice_cream_processing_batch_form" model="ir.ui.view">
         <field name="name">l4e.icecream.processing.batch.form</field>
         <field name="model">l4e.icecream.processing.batch</field>
         <field name="arch" type="xml">
             <form string="Processing Batch">
                 <header>
+                    <button name="action_submit_request"
+                            string="Submit Request"
+                            type="object"
+                            class="oe_highlight"
+                            invisible="state != 'draft'"/>
                     <button name="action_start_processing"
                             string="Start Processing"
                             type="object"
                             class="oe_highlight"
-                            invisible="state != 'draft'"/>
+                            invisible="state not in ('draft', 'at_store') or is_sales_user"/>
                     <button name="action_complete_processing"
                             string="Complete Processing"
                             type="object"
@@ -103,13 +108,13 @@
                     <button name="action_reset_draft"
                             string="Reset to Draft"
                             type="object"
-                            invisible="state == 'draft'"/>
+                            invisible="state in ('draft', 'at_store') or is_sales_user"/>
                     <button name="action_cancel"
                             string="Cancel"
                             type="object"
                             invisible="state in ('completed', 'cancel')"
                             confirm="Are you sure you want to cancel this processing batch?"/>
-                    <field name="state" widget="statusbar" statusbar_visible="draft,processing,completed"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,at_store,processing,completed"/>
                 </header>
                 <sheet>
                     <div class="oe_button_box" name="button_box">
@@ -167,22 +172,22 @@
                         </page>
 
                         <page string="Finished Product" name="finished_output">
-                            <field name="output_line_ids" readonly="state not in ('draft', 'processing')">
+                            <field name="output_line_ids" readonly="state not in ('draft', 'at_store', 'processing') or (state != 'draft' and is_sales_user)">
                                 <list editable="bottom">
                                     <field name="product_id" string="Finished Product"/>
-                                    <field name="packaging_no" string="Tub / Packaging No" optional="show"/>
-                                    <field name="quantity" string="Gross Produced"/>
-                                    <field name="wastage_quantity" string="Wastage Qty" readonly="1" sum="Total Wastage"/>
-                                    <field name="net_quantity" string="Net FG Qty" readonly="1" sum="Total Net FG"/>
+                                    <field name="packaging_no" string="Tub / Packaging No" optional="show" column_invisible="parent.is_sales_user"/>
+                                    <field name="quantity" string="Gross Produced" column_invisible="parent.is_sales_user"/>
+                                    <field name="wastage_quantity" string="Wastage Qty" readonly="1" sum="Total Wastage" column_invisible="parent.is_sales_user"/>
+                                    <field name="net_quantity" string="Net FG Qty" sum="Total Net FG"/>
                                     <field name="uom_id" readonly="1" string="UoM"/>
-                                    <field name="unit_price" string="Unit Price" widget="monetary" optional="show"/>
-                                    <field name="total_value" readonly="1" string="Total Value" widget="monetary" sum="Total FG Value"/>
-                                    <field name="remarks" string="Remarks" optional="hide"/>
+                                    <field name="unit_price" string="Unit Price" widget="monetary" optional="show" column_invisible="parent.is_sales_user"/>
+                                    <field name="total_value" readonly="1" string="Total Value" widget="monetary" sum="Total FG Value" column_invisible="parent.is_sales_user"/>
+                                    <field name="remarks" string="Remarks" optional="hide" column_invisible="parent.is_sales_user"/>
                                 </list>
                             </field>
                         </page>
 
-                        <page string="Wastage" name="wastage" invisible="state in ('draft', 'cancel')">
+                        <page string="Wastage" name="wastage" invisible="state in ('draft', 'at_store', 'cancel')">
                             <field name="wastage_line_ids" readonly="state != 'processing'">
                                 <list editable="bottom">
                                     <field name="allowed_product_ids" column_invisible="1"/>
@@ -237,6 +242,7 @@
                 <field name="source_location_id"/>
                 <field name="finished_location_id"/>
                 <filter string="Draft" name="filter_draft" domain="[('state', '=', 'draft')]"/>
+                <filter string="At Store" name="filter_at_store" domain="[('state', '=', 'at_store')]"/>
                 <filter string="Processing" name="filter_processing" domain="[('state', '=', 'processing')]"/>
                 <filter string="Completed" name="filter_completed" domain="[('state', '=', 'completed')]"/>
                 <group>
