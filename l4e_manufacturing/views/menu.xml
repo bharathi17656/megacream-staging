@@ -50,4 +50,15 @@
         active="False"
         sequence="99"/>
 
+    <!-- ═══════════════════════════════════════════════════════
+         FG Requests — Sales menu (points to Processing Batches)
+         Visible to Sales Users via the Sales top menu.
+    ═══════════════════════════════════════════════════════ -->
+    <menuitem
+        id="menu_sale_fg_requests"
+        name="FG Requests"
+        parent="sale.sale_menu_root"
+        action="action_ice_cream_processing_batch"
+        sequence="25"/>
+
 </odoo>
