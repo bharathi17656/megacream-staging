@@ -67,13 +67,25 @@ class L4eIceCreamProcessingBatch(models.Model):
     )
 
     def _compute_is_sales_user(self):
-        is_sales = (
-            self.env.user.has_group("sales_team.group_sale_salesman")
-            and not self.env.user.has_group("mrp.group_mrp_user")
-            and not self.env.user.has_group("base.group_system")
+        user = self.env.user
+        is_sales = bool(
+            getattr(user, "is_sales_user", False)
+            or (
+                user.has_group("sales_team.group_sale_salesman")
+                and not user.has_group("mrp.group_mrp_user")
+                and not user.has_group("stock.group_stock_user")
+                and not user.has_group("base.group_system")
+            )
         )
         for record in self:
             record.is_sales_user = is_sales
+
+    is_store_confirmed = fields.Boolean(
+        string="Store Confirmed",
+        default=False,
+        copy=False,
+        tracking=True,
+    )
 
     product_id = fields.Many2one(
         "product.product",
@@ -855,6 +867,26 @@ class L4eIceCreamProcessingBatch(models.Model):
         except Exception as e:
             _logger.exception("Error sending FG request notification to store users: %s", e)
 
+    def action_store_confirm(self):
+        """Confirm raw materials in At Store stage without moving the stage."""
+        self.ensure_one()
+        if self.state != "at_store":
+            raise ValidationError(_("Only batches in 'At Store' stage can be confirmed."))
+        if not self.raw_line_ids:
+            raise ValidationError(_("Please add at least one raw material ingredient before confirming."))
+        self.write({"is_store_confirmed": True})
+        self.message_post(body=_("Raw materials confirmed by Store User. Ready for Transfer."))
+        return True
+
+    def action_transfer(self):
+        """Execute stock transfer of raw materials to Production and advance to Processing."""
+        self.ensure_one()
+        if self.state != "at_store":
+            raise ValidationError(_("Only batches in 'At Store' stage can be transferred."))
+        if not self.is_store_confirmed:
+            raise ValidationError(_("Please click 'Confirm' before transferring."))
+        return self.action_start_processing()
+
     def action_start_processing(self):
         """Move all raw material ingredients from Store -> Production location."""
         self.ensure_one()
@@ -1046,7 +1078,7 @@ class L4eIceCreamProcessingBatch(models.Model):
         })
 
     def action_reset_draft(self):
-        self.write({"state": "draft"})
+        self.write({"state": "draft", "is_store_confirmed": False})
 
     def action_cancel(self):
         self.write({"state": "cancel"})
