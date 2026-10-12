@@ -637,6 +637,45 @@ class L4eIceCreamProcessingBatch(models.Model):
         string="Finished Transfer State",
     )
 
+    production_ids = fields.Many2many(
+        "mrp.production",
+        "l4e_processing_batch_mrp_production_rel",
+        "batch_id",
+        "production_id",
+        string="Manufacturing Orders",
+        copy=False,
+    )
+
+    production_count = fields.Integer(
+        string="MO Count",
+        compute="_compute_production_count",
+    )
+
+    @api.depends("production_ids")
+    def _compute_production_count(self):
+        for rec in self:
+            rec.production_count = len(rec.production_ids)
+
+    def action_view_manufacturing_orders(self):
+        self.ensure_one()
+        action = {
+            "name": _("Manufacturing Orders"),
+            "type": "ir.actions.act_window",
+            "res_model": "mrp.production",
+            "context": self.env.context,
+        }
+        if len(self.production_ids) == 1:
+            action.update({
+                "view_mode": "form",
+                "res_id": self.production_ids[0].id,
+            })
+        else:
+            action.update({
+                "view_mode": "list,form",
+                "domain": [("id", "in", self.production_ids.ids)],
+            })
+        return action
+
     remarks = fields.Text(string="Remarks")
 
     # ─── Audit / User Timestamps ──────────────────────────────────────────────
@@ -968,114 +1007,120 @@ class L4eIceCreamProcessingBatch(models.Model):
                 )
 
         prod_location = self._get_production_or_adjustment_location()
-        if not prod_location:
-            raise ValidationError(_("No Virtual Production or Inventory Adjustment location found."))
+        created_mos = self.env["mrp.production"]
 
-        picking_type = self._get_internal_picking_type()
-        finished_picking = self.env["stock.picking"].create({
-            "picking_type_id": picking_type.id,
-            "location_id": self.wip_location_id.id,
-            "location_dest_id": self.finished_location_id.id,
-            "origin": self.name,
-            "company_id": self.company_id.id,
-        })
-
-        consume_moves = self.env["stock.move"]
-        for r_line in self.raw_line_ids:
-            cm = self.env["stock.move"].create({
-                "description_picking": _("Consume: %s") % r_line.product_id.display_name,
-                "product_id": r_line.product_id.id,
-                "product_uom_qty": r_line.quantity,
-                "product_uom": r_line.uom_id.id,
-                "location_id": self.wip_location_id.id,
-                "location_dest_id": prod_location.id,
-                "picking_id": finished_picking.id,
-                "company_id": self.company_id.id,
-            })
-            consume_moves |= cm
-
-        produce_moves = self.env["stock.move"]
         for out_line in self.output_line_ids:
             net_qty = out_line.net_quantity if out_line.net_quantity is not False else out_line.quantity
-            if net_qty > 0:
-                pm = self.env["stock.move"].create({
-                    "description_picking": _("Produce: %s") % out_line.product_id.display_name,
-                    "product_id": out_line.product_id.id,
-                    "product_uom_qty": net_qty,
-                    "product_uom": out_line.uom_id.id,
-                    "location_id": prod_location.id,
-                    "location_dest_id": self.finished_location_id.id,
-                    "picking_id": finished_picking.id,
-                    "company_id": self.company_id.id,
-                })
-                produce_moves |= pm
+            if net_qty <= 0:
+                continue
 
-        scrap_moves = self.env["stock.move"]
-        if self.wastage_line_ids:
-            scrap_loc = self._get_scrap_location()
-            for w_line in self.wastage_line_ids:
-                if w_line.quantity > 0:
-                    reason_label = w_line.reason_id.name if w_line.reason_id else "Wastage"
-                    sm = self.env["stock.move"].create({
-                        "description_picking": _("Wastage: %s (%s)") % (
-                            w_line.product_id.display_name,
-                            reason_label,
-                        ),
-                        "product_id": w_line.product_id.id,
-                        "product_uom_qty": w_line.quantity,
-                        "product_uom": w_line.uom_id.id,
-                        "location_id": prod_location.id,
-                        "location_dest_id": scrap_loc.id if scrap_loc else self.finished_location_id.id,
-                        "picking_id": finished_picking.id,
-                        "company_id": self.company_id.id,
-                    })
-                    scrap_moves |= sm
+            bom = self.env["mrp.bom"].search(
+                [
+                    "|",
+                    ("product_id", "=", out_line.product_id.id),
+                    "&",
+                    ("product_id", "=", False),
+                    ("product_tmpl_id", "=", out_line.product_id.product_tmpl_id.id),
+                    ("company_id", "in", (self.company_id.id, False)),
+                ],
+                order="sequence, product_id, id",
+                limit=1,
+            )
 
-        all_moves = consume_moves | produce_moves | scrap_moves
-        all_moves._action_confirm()
+            origin_ref = f"{self.name} ({self.batch_number})" if self.batch_number else self.name
+            mo_vals = {
+                "product_id": out_line.product_id.id,
+                "product_qty": net_qty,
+                "product_uom_id": out_line.uom_id.id,
+                "company_id": self.company_id.id,
+                "location_src_id": self.wip_location_id.id,
+                "location_dest_id": self.finished_location_id.id,
+                "origin": origin_ref,
+            }
+            if bom:
+                mo_vals["bom_id"] = bom.id
 
-        # Set quantity, picked, and lot
-        for move in all_moves:
-            move.quantity = move.product_uom_qty
-            move.picked = True
-            if move in (produce_moves | scrap_moves) and move.product_id.tracking != "none" and self.batch_number:
+            mo = self.env["mrp.production"].create(mo_vals)
+
+            # Synchronize MO components with batch's raw materials (including any extra added by Store User)
+            if self.raw_line_ids:
+                existing_raw = {m.product_id.id: m for m in mo.move_raw_ids}
+                batch_raw_product_ids = set(self.raw_line_ids.mapped("product_id.id"))
+                for r_line in self.raw_line_ids:
+                    if r_line.product_id.id in existing_raw:
+                        existing_raw[r_line.product_id.id].write({
+                            "product_uom_qty": r_line.quantity,
+                            "product_uom": r_line.uom_id.id,
+                            "location_id": self.wip_location_id.id,
+                        })
+                    else:
+                        self.env["stock.move"].create({
+                            "name": mo.name,
+                            "raw_material_production_id": mo.id,
+                            "product_id": r_line.product_id.id,
+                            "product_uom": r_line.uom_id.id,
+                            "product_uom_qty": r_line.quantity,
+                            "location_id": self.wip_location_id.id,
+                            "location_dest_id": prod_location.id if prod_location else self.wip_location_id.id,
+                            "company_id": self.company_id.id,
+                        })
+                for prod_id, move in existing_raw.items():
+                    if prod_id not in batch_raw_product_ids:
+                        move.unlink()
+
+            # Set producing lot / batch number
+            if out_line.product_id.tracking != "none" and self.batch_number:
                 lot = self.env["stock.lot"].search([
                     ("name", "=", self.batch_number),
-                    ("product_id", "=", move.product_id.id),
+                    ("product_id", "=", out_line.product_id.id),
                     ("company_id", "=", self.company_id.id),
                 ], limit=1)
                 if not lot:
                     lot = self.env["stock.lot"].create({
                         "name": self.batch_number,
-                        "product_id": move.product_id.id,
+                        "product_id": out_line.product_id.id,
                         "company_id": self.company_id.id,
                         "batch_id": self.id,
                     })
                 elif not lot.batch_id:
                     lot.batch_id = self.id
-                if move.move_line_ids:
-                    for ml in move.move_line_ids:
-                        ml.lot_id = lot.id
-                else:
-                    self.env["stock.move.line"].create({
-                        "move_id": move.id,
-                        "picking_id": finished_picking.id,
-                        "product_id": move.product_id.id,
-                        "product_uom_id": move.product_uom.id,
-                        "quantity": move.product_uom_qty,
-                        "location_id": move.location_id.id,
-                        "location_dest_id": move.location_dest_id.id,
-                        "lot_id": lot.id,
-                    })
+                if hasattr(mo, "lot_producing_id"):
+                    mo.lot_producing_id = lot.id
 
-        all_moves._action_done()
+            mo.action_confirm()
+
+            # Register wastage as scrap if present
+            if self.wastage_line_ids:
+                scrap_loc = self._get_scrap_location()
+                for w_line in self.wastage_line_ids:
+                    if w_line.quantity > 0 and w_line.product_id == out_line.product_id:
+                        try:
+                            self.env["stock.scrap"].create({
+                                "product_id": w_line.product_id.id,
+                                "scrap_qty": w_line.quantity,
+                                "product_uom_id": w_line.uom_id.id,
+                                "production_id": mo.id,
+                                "location_id": self.wip_location_id.id,
+                                "scrap_location_id": scrap_loc.id if scrap_loc else False,
+                                "company_id": self.company_id.id,
+                                "origin": origin_ref,
+                            })
+                        except Exception as e:
+                            _logger.warning("Could not create stock.scrap for MO %s: %s", mo.name, e)
+
+            created_mos |= mo
 
         self.write({
             "state": "completed",
-            "finished_transfer_id": finished_picking.id,
+            "production_ids": [(6, 0, created_mos.ids)],
             "processing_completed_by": self.env.user.id,
             "processing_completed_on": fields.Datetime.now(),
         })
+
+        mo_names = ", ".join(created_mos.mapped("name"))
+        self.message_post(
+            body=_("Manufacturing Order(s) created: <b>%s</b>. Stock will move when MO is marked Done.") % mo_names
+        )
 
     def action_reset_draft(self):
         self.write({"state": "draft", "is_store_confirmed": False})

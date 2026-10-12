@@ -130,6 +130,13 @@
                 </header>
                 <sheet>
                     <div class="oe_button_box" name="button_box">
+                        <button name="action_view_manufacturing_orders"
+                                type="object"
+                                class="oe_stat_button"
+                                icon="fa-wrench"
+                                invisible="production_count == 0">
+                            <field name="production_count" widget="statinfo" string="Manufacturing"/>
+                        </button>
                         <button name="action_view_raw_transfer"
                                 type="object"
                                 class="oe_stat_button"
