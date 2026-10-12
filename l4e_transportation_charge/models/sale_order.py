@@ -9,6 +9,13 @@ def _is_exempt_tax_group(group):
            'exempt' in (group.get('group_label') or '').lower()
 
 
+def _is_packing_charge_group(group):
+    """Detect if this group is the Packing charge row so it is never merged
+    with transport tax."""
+    return 'packing' in (group.get('group_name') or '').lower() or \
+           'packing' in (group.get('group_label') or '').lower()
+
+
 class SaleOrder(models.Model):
     _inherit = 'sale.order'
 
@@ -64,13 +71,13 @@ class SaleOrder(models.Model):
             tax_groups = list(first.get('tax_groups') or [])
 
             if transport_tax:
-                eligible_count = sum(1 for g in tax_groups if not _is_exempt_tax_group(g))
+                eligible_count = sum(1 for g in tax_groups if not _is_exempt_tax_group(g) and not _is_packing_charge_group(g))
                 if eligible_count:
                     allocated = 0.0
                     seen = 0
                     merged_groups = []
                     for group in tax_groups:
-                        if _is_exempt_tax_group(group):
+                        if _is_exempt_tax_group(group) or _is_packing_charge_group(group):
                             merged_groups.append(group)
                             continue
                         group = dict(group)
