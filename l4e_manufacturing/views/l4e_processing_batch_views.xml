@@ -138,6 +138,7 @@
                         </h1>
                     </div>
 
+                    <field name="is_sales_user" invisible="1"/>
                     <group>
                         <group string="Batch Information">
                             <field name="date" string="Requested Date" readonly="state != 'draft'"/>
@@ -145,15 +146,15 @@
                             <field name="company_id" groups="base.group_multi_company" readonly="state != 'draft'"/>
                         </group>
                         <group string="Locations">
-                            <field name="source_location_id" readonly="state != 'draft' or not user_has_groups('base.group_system') and user_has_groups('sales_team.group_sale_salesman')"/>
-                            <field name="wip_location_id" readonly="state != 'draft' or not user_has_groups('base.group_system') and user_has_groups('sales_team.group_sale_salesman')"/>
-                            <field name="finished_location_id" readonly="state != 'draft' or not user_has_groups('base.group_system') and user_has_groups('sales_team.group_sale_salesman')"/>
+                            <field name="source_location_id" readonly="state != 'draft' or is_sales_user"/>
+                            <field name="wip_location_id" readonly="state != 'draft' or is_sales_user"/>
+                            <field name="finished_location_id" readonly="state != 'draft' or is_sales_user"/>
                         </group>
                     </group>
 
                     <notebook>
                         <page string="Raw Materials" name="raw_ingredients">
-                            <field name="raw_line_ids" readonly="state != 'draft' or not user_has_groups('base.group_system') and user_has_groups('sales_team.group_sale_salesman')">
+                            <field name="raw_line_ids" readonly="state != 'draft' or is_sales_user">
                                 <list editable="bottom">
                                     <field name="product_id" string="Ingredient"/>
                                     <field name="raw_lot_ids" widget="many2many_tags" options="{'no_create': True}" optional="show"/>

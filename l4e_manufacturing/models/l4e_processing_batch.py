@@ -24,7 +24,7 @@ class L4eIceCreamProcessingBatch(models.Model):
     )
 
     date = fields.Date(
-        string="Processing Date",
+        string="Requested Date",
         default=fields.Date.context_today,
         required=True,
         tracking=True,
@@ -58,6 +58,20 @@ class L4eIceCreamProcessingBatch(models.Model):
         default=lambda self: self.env.company,
         required=True,
     )
+
+    is_sales_user = fields.Boolean(
+        string="Is Sales User",
+        compute="_compute_is_sales_user",
+    )
+
+    def _compute_is_sales_user(self):
+        is_sales = (
+            self.env.user.has_group("sales_team.group_sale_salesman")
+            and not self.env.user.has_group("mrp.group_mrp_user")
+            and not self.env.user.has_group("base.group_system")
+        )
+        for record in self:
+            record.is_sales_user = is_sales
 
     product_id = fields.Many2one(
         "product.product",
