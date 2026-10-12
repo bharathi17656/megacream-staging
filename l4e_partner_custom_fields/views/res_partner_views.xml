@@ -1,5 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
+    <record id="view_res_partner_certificate_form" model="ir.ui.view">
+        <field name="name">res.partner.certificate.form</field>
+        <field name="model">res.partner.certificate</field>
+        <field name="arch" type="xml">
+            <form string="Certificate">
+                <sheet>
+                    <group>
+                        <field name="partner_id" readonly="1"/>
+                        <field name="name" string="Certificate Name"/>
+                        <field name="file_name" invisible="1"/>
+                        <field name="certificate_file" filename="file_name" widget="binary" string="Certificate File"/>
+                        <field name="expiry_date" string="Expiration Date"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
     <record id="view_partner_form_inherit_l4e_custom_fields" model="ir.ui.view">
         <field name="name">res.partner.form.inherit.l4e.custom.fields</field>
         <field name="model">res.partner</field>
@@ -15,7 +33,22 @@
             </xpath>
 
             <xpath expr="//field[@name='category_id']" position="after">
-                <field name="certificate_ids" widget="many2many_binary_confirm" string="Certificates"/>
+                <label for="certificate_ids" string="Certificates"/>
+                <div>
+                    <button name="action_open_certificate_wizard"
+                            type="object"
+                            string="Certificates"
+                            icon="fa-paperclip"
+                            class="btn-secondary mb-2"/>
+                    <field name="certificate_ids" mode="tree" nolabel="1">
+                        <tree create="0" delete="1">
+                            <field name="name" string="Certificate Name"/>
+                            <field name="file_name" invisible="1"/>
+                            <field name="certificate_file" filename="file_name" widget="binary" string="File"/>
+                            <field name="expiry_date" string="Expiration Date"/>
+                        </tree>
+                    </field>
+                </div>
             </xpath>
         </field>
     </record>

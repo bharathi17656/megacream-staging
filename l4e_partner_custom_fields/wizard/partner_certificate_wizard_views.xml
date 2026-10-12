@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_partner_certificate_wizard_form" model="ir.ui.view">
+        <field name="name">partner.certificate.wizard.form</field>
+        <field name="model">partner.certificate.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Upload Certificate">
+                <sheet>
+                    <group>
+                        <field name="partner_id" invisible="1"/>
+                        <field name="name" string="Certificate Name" placeholder="e.g. ISO 9001 / Halal / FSSAI" required="1"/>
+                        <field name="file_name" invisible="1"/>
+                        <field name="certificate_file" filename="file_name" widget="binary" string="Certificate File" required="1"/>
+                        <field name="expiry_date" string="Expiration Date"/>
+                    </group>
+                </sheet>
+                <footer>
+                    <button name="action_save" string="Save" type="object" class="btn-primary"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

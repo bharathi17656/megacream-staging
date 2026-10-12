@@ -1,0 +1,3 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_res_partner_certificate,res.partner.certificate,model_res_partner_certificate,,1,1,1,1
+access_partner_certificate_wizard,partner.certificate.wizard,model_partner_certificate_wizard,,1,1,1,1
