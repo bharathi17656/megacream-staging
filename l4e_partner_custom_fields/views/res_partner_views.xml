@@ -1,5 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
+    <record id="view_res_partner_certificate_list" model="ir.ui.view">
+        <field name="name">res.partner.certificate.list</field>
+        <field name="model">res.partner.certificate</field>
+        <field name="arch" type="xml">
+            <list create="0" delete="1">
+                <field name="name" string="Certificate Name"/>
+                <field name="file_name" column_invisible="1"/>
+                <field name="certificate_file" filename="file_name" widget="binary" string="File"/>
+                <field name="expiry_date" string="Expiration Date"/>
+            </list>
+        </field>
+    </record>
+
     <record id="view_res_partner_certificate_form" model="ir.ui.view">
         <field name="name">res.partner.certificate.form</field>
         <field name="model">res.partner.certificate</field>
@@ -40,14 +53,7 @@
                             string="Certificates"
                             icon="fa-paperclip"
                             class="btn-secondary mb-2"/>
-                    <field name="certificate_ids" mode="tree" nolabel="1">
-                        <tree create="0" delete="1">
-                            <field name="name" string="Certificate Name"/>
-                            <field name="file_name" invisible="1"/>
-                            <field name="certificate_file" filename="file_name" widget="binary" string="File"/>
-                            <field name="expiry_date" string="Expiration Date"/>
-                        </tree>
-                    </field>
+                    <field name="certificate_ids" nolabel="1"/>
                 </div>
             </xpath>
         </field>
