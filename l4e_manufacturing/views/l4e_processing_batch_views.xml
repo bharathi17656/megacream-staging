@@ -15,7 +15,7 @@
                   decoration-muted="state == 'cancel'">
                 <field name="name" string="Order Reference"/>
                 <field name="batch_number" string="Batch Number"/>
-                <field name="date" string="Processing Date"/>
+                <field name="date" string="Requested Date"/>
                 <field name="product_id" string="Finished Product"/>
                 <field name="total_raw_qty" string="Total Raw Qty" sum="Total Raw Material"/>
                 <field name="total_output_qty" string="Gross Output" sum="Total Gross Output"/>
@@ -45,7 +45,7 @@
                   decoration-muted="state == 'cancel'">
                 <field name="name" string="Order Reference"/>
                 <field name="batch_number" string="Batch Number"/>
-                <field name="date" string="Processing Date"/>
+                <field name="date" string="Requested Date"/>
                 <field name="product_id" string="Finished Product"/>
                 <field name="total_raw_qty" string="Total Raw Qty" sum="Total Raw Qty"/>
                 <field name="raw_cost_issued" string="Raw Cost Issued" sum="Total Raw Cost Issued" widget="monetary"/>
@@ -140,20 +140,20 @@
 
                     <group>
                         <group string="Batch Information">
-                            <field name="date" readonly="state != 'draft'"/>
+                            <field name="date" string="Requested Date" readonly="state != 'draft'"/>
                             <field name="batch_number" readonly="state != 'draft'"/>
                             <field name="company_id" groups="base.group_multi_company" readonly="state != 'draft'"/>
                         </group>
                         <group string="Locations">
-                            <field name="source_location_id" readonly="state != 'draft'"/>
-                            <field name="wip_location_id" readonly="state != 'draft'"/>
-                            <field name="finished_location_id" readonly="state != 'draft'"/>
+                            <field name="source_location_id" readonly="state != 'draft' or not user_has_groups('base.group_system') and user_has_groups('sales_team.group_sale_salesman')"/>
+                            <field name="wip_location_id" readonly="state != 'draft' or not user_has_groups('base.group_system') and user_has_groups('sales_team.group_sale_salesman')"/>
+                            <field name="finished_location_id" readonly="state != 'draft' or not user_has_groups('base.group_system') and user_has_groups('sales_team.group_sale_salesman')"/>
                         </group>
                     </group>
 
                     <notebook>
                         <page string="Raw Materials" name="raw_ingredients">
-                            <field name="raw_line_ids" readonly="state != 'draft'">
+                            <field name="raw_line_ids" readonly="state != 'draft' or not user_has_groups('base.group_system') and user_has_groups('sales_team.group_sale_salesman')">
                                 <list editable="bottom">
                                     <field name="product_id" string="Ingredient"/>
                                     <field name="raw_lot_ids" widget="many2many_tags" options="{'no_create': True}" optional="show"/>
@@ -241,7 +241,7 @@
                 <group>
                     <filter string="Finished Product" name="groupby_product" context="{'group_by': 'product_id'}"/>
                     <filter string="Status" name="groupby_state" context="{'group_by': 'state'}"/>
-                    <filter string="Processing Date" name="groupby_date" context="{'group_by': 'date:month'}"/>
+                    <filter string="Requested Date" name="groupby_date" context="{'group_by': 'date:month'}"/>
                 </group>
             </search>
         </field>
