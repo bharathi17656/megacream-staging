@@ -3,7 +3,7 @@
     <template id="report_saleorder_document_delivery_address" inherit_id="sale.report_saleorder_document" priority="30">
         <xpath expr="//t[@t-set='address']" position="replace">
             <t t-set="address">
-                <t t-set="delivery_info" t-value="doc._get_delivery_address_data() if hasattr(doc, '_get_delivery_address_data') else False"/>
+                <t t-set="delivery_info" t-value="doc._get_delivery_address_data()"/>
                 <div class="row w-100" style="margin-left: 0; margin-right: 0;">
                     <!-- Left Box: Billing Address -->
                     <div class="col-6 ps-0 pe-2" name="billing_address_box">

@@ -3,7 +3,7 @@
     <template id="report_invoice_document_delivery_address" inherit_id="account.report_invoice_document" priority="30">
         <xpath expr="//div[hasclass('invoice_main')]" position="before">
             <t t-set="information_block" t-value="None"/>
-            <t t-set="delivery_info" t-value="o._get_delivery_address_data() if hasattr(o, '_get_delivery_address_data') else False"/>
+            <t t-set="delivery_info" t-value="o._get_delivery_address_data()"/>
             <t t-set="address">
                 <div class="row w-100" style="margin-left: 0; margin-right: 0;">
                     <!-- Left Box: Billing Address -->
@@ -32,7 +32,7 @@
                                 <strong>FSSAI No : </strong>
                                 <span t-field="o.partner_id.fssai_no"/>
                             </div>
-                            <div t-if="'l10n_in_is_gst_registered' in o.company_id._fields and o.company_id.l10n_in_is_gst_registered and 'l10n_in_state_id' in o._fields and o.l10n_in_state_id">
+                            <div t-if="'l10n_in_state_id' in o._fields and o.l10n_in_state_id">
                                 <strong>Place of supply: </strong>
                                 <span t-out="o.l10n_in_state_id.name" />
                             </div>
