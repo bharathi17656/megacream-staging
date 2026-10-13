@@ -1,4 +1,4 @@
-﻿{
+{
     'name': 'L4E Delivery Address',
     'version': '19.0.1.0.0',
     'category': 'Sales',
@@ -25,6 +25,6 @@
         'reports/invoice_report_templates.xml',
     ],
     'installable': True,
-    'application': False,
+    'application': True,
     'license': 'LGPL-3',
 }
