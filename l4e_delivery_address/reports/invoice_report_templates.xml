@@ -1,0 +1,73 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="report_invoice_document_delivery_address" inherit_id="account.report_invoice_document" priority="30">
+        <xpath expr="//div[hasclass('invoice_main')]" position="before">
+            <t t-set="information_block" t-value="None"/>
+            <t t-set="delivery_info" t-value="o._get_delivery_address_data() if hasattr(o, '_get_delivery_address_data') else False"/>
+            <t t-set="address">
+                <div class="row w-100" style="margin-left: 0; margin-right: 0;">
+                    <!-- Left Box: Billing Address -->
+                    <div class="col-6 ps-0 pe-2" name="billing_address_box">
+                        <strong style="font-size: 14px; text-decoration: underline;">Billing Address</strong>
+                        <div t-field="o.partner_id" class="mb-0 mt-1"
+                            t-options='{"widget": "contact", "fields": ["address", "name"], "no_marker": True}' />
+                        <div class="mt-1" style="font-size: 13px; line-height: 1.4;">
+                            <div t-if="o.partner_id.phone or o.partner_id.mobile">
+                                <strong>Contact No : </strong>
+                                <span t-out="o.partner_id.phone or o.partner_id.mobile"/>
+                            </div>
+                            <div t-if="o.partner_id.email">
+                                <strong>Email : </strong>
+                                <span t-field="o.partner_id.email"/>
+                            </div>
+                            <div t-if="'l10n_in_gst_treatment' in o.partner_id._fields and o.partner_id.l10n_in_gst_treatment">
+                                <strong>GST Treatment : </strong>
+                                <span t-field="o.partner_id.l10n_in_gst_treatment"/>
+                            </div>
+                            <div t-if="o.partner_id.vat">
+                                <strong>GSTIN : </strong>
+                                <span t-field="o.partner_id.vat"/>
+                            </div>
+                            <div t-if="'fssai_no' in o.partner_id._fields and o.partner_id.fssai_no" name="l4e_customer_fssai">
+                                <strong>FSSAI No : </strong>
+                                <span t-field="o.partner_id.fssai_no"/>
+                            </div>
+                            <div t-if="'l10n_in_is_gst_registered' in o.company_id._fields and o.company_id.l10n_in_is_gst_registered and 'l10n_in_state_id' in o._fields and o.l10n_in_state_id">
+                                <strong>Place of supply: </strong>
+                                <span t-out="o.l10n_in_state_id.name" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right Box: Delivery Address (Only if delivery address data exists) -->
+                    <div class="col-6 ps-2 pe-0" name="delivery_address_box" t-if="delivery_info">
+                        <strong style="font-size: 14px; text-decoration: underline;">Delivery Address</strong>
+                        <div class="mt-1" style="font-size: 13px; line-height: 1.4;">
+                            <div t-if="delivery_info.get('name')" class="fw-bold">
+                                <span t-out="delivery_info.get('name')"/>
+                            </div>
+                            <div t-if="delivery_info.get('street')">
+                                <span t-out="delivery_info.get('street')"/>
+                            </div>
+                            <div t-if="delivery_info.get('street2')">
+                                <span t-out="delivery_info.get('street2')"/>
+                            </div>
+                            <div t-if="delivery_info.get('city') or delivery_info.get('state') or delivery_info.get('zip')">
+                                <span t-if="delivery_info.get('city')" t-out="delivery_info.get('city')"/>
+                                <span t-if="delivery_info.get('state')">, <span t-out="delivery_info.get('state')"/></span>
+                                <span t-if="delivery_info.get('zip')"> - <span t-out="delivery_info.get('zip')"/></span>
+                            </div>
+                            <div t-if="delivery_info.get('country')">
+                                <span t-out="delivery_info.get('country')"/>
+                            </div>
+                            <div t-if="delivery_info.get('phone')">
+                                <strong>Contact No : </strong>
+                                <span t-out="delivery_info.get('phone')"/>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </t>
+        </xpath>
+    </template>
+</odoo>
