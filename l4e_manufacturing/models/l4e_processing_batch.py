@@ -903,6 +903,25 @@ class L4eIceCreamProcessingBatch(models.Model):
                             "is_read": False,
                         }
                     )
+
+            # Schedule Activity for Store Users
+            todo_type = self.env.ref("mail.mail_activity_data_todo", raise_if_not_found=False)
+            todo_type_id = todo_type.id if todo_type else False
+            if todo_type_id:
+                for user in store_users.filtered(lambda u: u.active):
+                    existing_act = self.env["mail.activity"].sudo().search([
+                        ("res_model", "=", self._name),
+                        ("res_id", "=", self.id),
+                        ("user_id", "=", user.id),
+                        ("activity_type_id", "=", todo_type_id),
+                    ], limit=1)
+                    if not existing_act:
+                        self.sudo().activity_schedule(
+                            activity_type_id=todo_type_id,
+                            user_id=user.id,
+                            summary=_("FG Request: %s") % (self.batch_number or self.name),
+                            note=body,
+                        )
         except Exception as e:
             _logger.exception("Error sending FG request notification to store users: %s", e)
 
@@ -924,6 +943,21 @@ class L4eIceCreamProcessingBatch(models.Model):
             raise ValidationError(_("Only batches in 'At Store' stage can be transferred."))
         if not self.is_store_confirmed:
             raise ValidationError(_("Please click 'Confirm' before transferring."))
+
+        # Mark store activities as done
+        try:
+            todo_type = self.env.ref("mail.mail_activity_data_todo", raise_if_not_found=False)
+            if todo_type:
+                acts = self.env["mail.activity"].sudo().search([
+                    ("res_model", "=", self._name),
+                    ("res_id", "=", self.id),
+                    ("activity_type_id", "=", todo_type.id),
+                ])
+                if acts:
+                    acts.action_feedback(feedback=_("Raw materials transferred to production."))
+        except Exception as e:
+            _logger.warning("Error marking store activities done: %s", e)
+
         return self.action_start_processing()
 
     def action_start_processing(self):
@@ -1129,6 +1163,86 @@ class L4eIceCreamProcessingBatch(models.Model):
         self.message_post(
             body=_("Manufacturing Order(s) created: <b>%s</b>. Stock will move when MO is marked Done.") % mo_names
         )
+
+        # Notify and schedule activity for Production User(s)
+        self._notify_production_users_mo_created(created_mos)
+
+    def _notify_production_users_mo_created(self, created_mos):
+        self.ensure_one()
+        if not created_mos:
+            return
+        try:
+            prod_users = self.env["res.users"].sudo().search([
+                ("active", "=", True),
+                ("is_production_user", "=", True),
+            ])
+            if not prod_users:
+                mrp_group = self.env.ref("mrp.group_mrp_user", raise_if_not_found=False)
+                if mrp_group:
+                    prod_users = mrp_group.users.filtered(lambda u: u.active and u.id != self.env.user.id)
+
+            todo_type = self.env.ref("mail.mail_activity_data_todo", raise_if_not_found=False)
+            todo_type_id = todo_type.id if todo_type else False
+
+            partner_ids = prod_users.mapped("partner_id").ids
+
+            for mo in created_mos:
+                mo_body = Markup(
+                    f"<p><b>Manufacturing Order Created from Batch {self.batch_number or self.name}</b></p>"
+                    f"<ul>"
+                    f"<li><b>MO Reference:</b> {mo.name}</li>"
+                    f"<li><b>Finished Product:</b> {mo.product_id.display_name}</li>"
+                    f"<li><b>Quantity to Produce:</b> {mo.product_qty} {mo.product_uom_id.name if mo.product_uom_id else ''}</li>"
+                    f"<li><b>Batch Number:</b> {self.batch_number or self.name}</li>"
+                    f"<li><b>Processing Order:</b> {self.name}</li>"
+                    f"</ul>"
+                    f"<p>Please proceed with production and mark as Done.</p>"
+                )
+                mo_subject = f"Manufacturing Order Ready: {mo.name} ({self.batch_number or self.name})"
+
+                # Post message on MO chatter
+                msg = mo.message_post(
+                    body=mo_body,
+                    subject=mo_subject,
+                    message_type="comment",
+                    subtype_xmlid="mail.mt_comment",
+                    partner_ids=partner_ids,
+                )
+
+                for user in prod_users.filtered(lambda u: u.active and u.partner_id):
+                    # Discuss inbox notification
+                    notif = self.env["mail.notification"].sudo().search([
+                        ("mail_message_id", "=", msg.id),
+                        ("res_partner_id", "=", user.partner_id.id),
+                    ], limit=1)
+                    if notif:
+                        notif.sudo().write({"notification_type": "inbox", "is_read": False})
+                    else:
+                        self.env["mail.notification"].sudo().create({
+                            "mail_message_id": msg.id,
+                            "res_partner_id": user.partner_id.id,
+                            "notification_type": "inbox",
+                            "notification_status": "sent",
+                            "is_read": False,
+                        })
+
+                    # Schedule Activity (Systray clock) on the MO
+                    if todo_type_id:
+                        existing_act = self.env["mail.activity"].sudo().search([
+                            ("res_model", "=", "mrp.production"),
+                            ("res_id", "=", mo.id),
+                            ("user_id", "=", user.id),
+                            ("activity_type_id", "=", todo_type_id),
+                        ], limit=1)
+                        if not existing_act:
+                            mo.sudo().activity_schedule(
+                                activity_type_id=todo_type_id,
+                                user_id=user.id,
+                                summary=_("Produce MO: %s (%s)") % (mo.name, self.batch_number or self.name),
+                                note=mo_body,
+                            )
+        except Exception as e:
+            _logger.exception("Error sending MO notification/activity to production users: %s", e)
 
     def action_reset_draft(self):
         self.write({"state": "draft", "is_store_confirmed": False})
