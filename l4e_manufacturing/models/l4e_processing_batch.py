@@ -1054,14 +1054,22 @@ class L4eIceCreamProcessingBatch(models.Model):
                             "location_id": self.wip_location_id.id,
                         })
                     else:
+                        dest_loc = (
+                            prod_location.id
+                            if prod_location
+                            else (
+                                out_line.product_id.property_stock_production.id
+                                or self.wip_location_id.id
+                            )
+                        )
                         self.env["stock.move"].create({
-                            "name": mo.name,
+                            "description_picking": _("Consume: %s") % r_line.product_id.display_name,
                             "raw_material_production_id": mo.id,
                             "product_id": r_line.product_id.id,
                             "product_uom": r_line.uom_id.id,
                             "product_uom_qty": r_line.quantity,
                             "location_id": self.wip_location_id.id,
-                            "location_dest_id": prod_location.id if prod_location else self.wip_location_id.id,
+                            "location_dest_id": dest_loc,
                             "company_id": self.company_id.id,
                         })
                 for prod_id, move in existing_raw.items():
