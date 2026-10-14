@@ -11,3 +11,4 @@ from . import sale_order_line
 from . import account_move_line
 from . import batch_dispatch_report
 from . import sale_order_batch_wizard
+from . import mrp_production
