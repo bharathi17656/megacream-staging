@@ -12,9 +12,9 @@
                         <div t-field="o.partner_id" class="mb-0 mt-1"
                             t-options='{"widget": "contact", "fields": ["address", "name"], "no_marker": True}' />
                         <div class="mt-1" style="font-size: 13px; line-height: 1.4;">
-                            <div t-if="o.partner_id.phone or o.partner_id.mobile">
+                            <div t-if="o.partner_id.phone or getattr(o.partner_id, 'mobile', False)">
                                 <strong>Contact No : </strong>
-                                <span t-out="o.partner_id.phone or o.partner_id.mobile"/>
+                                <span t-out="o.partner_id.phone or getattr(o.partner_id, 'mobile', '')"/>
                             </div>
                             <div t-if="o.partner_id.email">
                                 <strong>Email : </strong>

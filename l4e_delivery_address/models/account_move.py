@@ -44,7 +44,7 @@ class AccountMove(models.Model):
             'delivery_state_id': partner.state_id.id if partner.state_id else False,
             'delivery_zip': partner.zip or False,
             'delivery_country_id': partner.country_id.id if partner.country_id else False,
-            'delivery_phone': partner.phone or partner.mobile or False,
+            'delivery_phone': partner.phone or getattr(partner, 'mobile', False) or False,
         })
 
     def action_clear_delivery_address(self):
