@@ -1,7 +1,7 @@
 <odoo>
     <template id="external_layout_standard_l4e_inherit" inherit_id="web.external_layout_wave">
-        <xpath expr="//div[@name='company_address']" position="attributes">
-            <attribute name="t-if">not (o and o._name == 'account.move')</attribute>
+        <xpath expr="//div[@name='company_address']" position="replace">
+            <div class="col-5 text-end d-none" name="company_address" style="display: none !important;"/>
         </xpath>
         <xpath expr="//div[@name='company_address']" position="after">
             <div class="row mt8" name="l4e_seller_details" t-if="o and o._name == 'account.move'">
