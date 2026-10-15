@@ -7,7 +7,7 @@ _logger = logging.getLogger(__name__)
 class PurchaseOrder(models.Model):
     _inherit = 'purchase.order'
 
-    def _get_l4e_custom_sequence_name(self, order_date):
+    def _get_l4e_custom_sequence_name(self, order_date, company_id=None):
         """
         Generates custom sequence name in format: MMM/PO/SEQ/FY
         Example: AUG/PO/001/26-27
@@ -21,39 +21,46 @@ class PurchaseOrder(models.Model):
         next_year_short = (year_short + 1) % 100
         fy_str = f"{year_short:02d}-{next_year_short:02d}"
 
-        last_day_num = calendar.monthrange(order_date.year, order_date.month)[1]
-        start_date = order_date.replace(day=1)
-        end_date = order_date.replace(day=last_day_num)
+        if not company_id:
+            company_id = self.company_id.id if self and self.company_id else self.env.company.id
+
+        prefix = f"{month_str}/{type_tag}/"
 
         domain = [
-            ('date_order', '>=', start_date),
-            ('date_order', '<=', end_date),
-            ('name', '!=', False),
-            ('name', '!=', '/'),
-            ('name', '!=', 'New'),
+            ('name', '=like', f"{prefix}%"),
         ]
+        if company_id:
+            domain.append(('company_id', '=', company_id))
         if self.id:
             domain.append(('id', '!=', self.id))
 
         orders_in_month = self.sudo().search(domain)
 
         max_seq = 0
-        tag_pattern = f"/{type_tag}/"
         for p in orders_in_month:
-            if p.name and tag_pattern in p.name:
+            if p.name and prefix in p.name:
                 parts = p.name.split('/')
-                for part in parts:
-                    if part.isdigit() and len(part) == 3:
-                        try:
-                            num = int(part)
-                            if num > max_seq:
-                                max_seq = num
-                        except ValueError:
-                            pass
+                if len(parts) >= 3 and parts[2].isdigit():
+                    try:
+                        num = int(parts[2])
+                        if num > max_seq:
+                            max_seq = num
+                    except ValueError:
+                        pass
 
         next_seq = max_seq + 1
-        seq_str = f"{next_seq:03d}"
-        return f"{month_str}/{type_tag}/{seq_str}/{fy_str}"
+        candidate_name = f"{month_str}/{type_tag}/{next_seq:03d}/{fy_str}"
+
+        # Safety loop: ensure no collision with existing records for this company
+        check_domain = [('name', '=', candidate_name)]
+        if company_id:
+            check_domain.append(('company_id', '=', company_id))
+        while self.sudo().search_count(check_domain) > 0:
+            next_seq += 1
+            candidate_name = f"{month_str}/{type_tag}/{next_seq:03d}/{fy_str}"
+            check_domain[0] = ('name', '=', candidate_name)
+
+        return candidate_name
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -62,7 +69,8 @@ class PurchaseOrder(models.Model):
                 order_date = fields.Date.today()
                 if vals.get('date_order'):
                     order_date = fields.Date.to_date(vals['date_order'])
-                vals['name'] = self._get_l4e_custom_sequence_name(order_date)
+                cid = vals.get('company_id') or self.env.company.id
+                vals['name'] = self._get_l4e_custom_sequence_name(order_date, company_id=cid)
         return super().create(vals_list)
 
     def button_confirm(self):
@@ -70,7 +78,7 @@ class PurchaseOrder(models.Model):
         for order in self:
             if not order.name or order.name in ('/', 'New') or not ('/PO/' in order.name):
                 order_date = fields.Date.to_date(order.date_order) if order.date_order else fields.Date.today()
-                order.name = order._get_l4e_custom_sequence_name(order_date)
+                order.name = order._get_l4e_custom_sequence_name(order_date, company_id=order.company_id.id)
         return res
 
     @api.model

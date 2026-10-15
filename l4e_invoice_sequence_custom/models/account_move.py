@@ -7,7 +7,7 @@ _logger = logging.getLogger(__name__)
 class AccountMove(models.Model):
     _inherit = 'account.move'
 
-    def _get_l4e_custom_sequence_name(self, move_type, move_date):
+    def _get_l4e_custom_sequence_name(self, move_type, move_date, company_id=None):
         """
         Generates custom sequence name in format: MMM/TYPE/SEQ/FY
         Example: AUG/INV/001/26-27 for Customer Invoice
@@ -29,18 +29,17 @@ class AccountMove(models.Model):
         next_year_short = (year_short + 1) % 100
         fy_str = f"{year_short:02d}-{next_year_short:02d}"
 
-        # 4. Find max existing sequence number for this move_type in the same month & year
-        last_day_num = calendar.monthrange(move_date.year, move_date.month)[1]
-        start_date = move_date.replace(day=1)
-        end_date = move_date.replace(day=last_day_num)
+        if not company_id:
+            company_id = self.company_id.id if self and self.company_id else self.env.company.id
+
+        # 4. Find max existing sequence number for this prefix in the same month & year
+        prefix = f"{month_str}/{type_tag}/"
 
         domain = [
-            ('move_type', '=', move_type),
-            ('date', '>=', start_date),
-            ('date', '<=', end_date),
-            ('name', '!=', False),
-            ('name', '!=', '/'),
+            ('name', '=like', f"{prefix}%"),
         ]
+        if company_id:
+            domain.append(('company_id', '=', company_id))
         if self.id:
             domain.append(('id', '!=', self.id))
 
@@ -48,30 +47,37 @@ class AccountMove(models.Model):
 
         # Extract sequence numbers matching format .../TYPE/XXX/...
         max_seq = 0
-        tag_pattern = f"/{type_tag}/"
         for m in moves_in_month:
-            if m.name and tag_pattern in m.name:
+            if m.name and prefix in m.name:
                 parts = m.name.split('/')
-                for part in parts:
-                    if part.isdigit() and len(part) == 3:
-                        try:
-                            num = int(part)
-                            if num > max_seq:
-                                max_seq = num
-                        except ValueError:
-                            pass
+                if len(parts) >= 3 and parts[2].isdigit():
+                    try:
+                        num = int(parts[2])
+                        if num > max_seq:
+                            max_seq = num
+                    except ValueError:
+                        pass
 
         next_seq = max_seq + 1
-        seq_str = f"{next_seq:03d}"
+        candidate_name = f"{month_str}/{type_tag}/{next_seq:03d}/{fy_str}"
 
-        return f"{month_str}/{type_tag}/{seq_str}/{fy_str}"
+        # Safety loop: ensure no collision with existing records for this company
+        check_domain = [('name', '=', candidate_name)]
+        if company_id:
+            check_domain.append(('company_id', '=', company_id))
+        while self.sudo().search_count(check_domain) > 0:
+            next_seq += 1
+            candidate_name = f"{month_str}/{type_tag}/{next_seq:03d}/{fy_str}"
+            check_domain[0] = ('name', '=', candidate_name)
+
+        return candidate_name
 
     def action_post(self):
         for move in self:
             if move.move_type in ('out_invoice', 'in_invoice'):
                 if not move.name or move.name == '/' or move.state == 'draft':
                     move_date = move.invoice_date or move.date or fields.Date.context_today(move)
-                    new_name = move._get_l4e_custom_sequence_name(move.move_type, move_date)
+                    new_name = move._get_l4e_custom_sequence_name(move.move_type, move_date, company_id=move.company_id.id)
                     move.name = new_name
         return super().action_post()
 

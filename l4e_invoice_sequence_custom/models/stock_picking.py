@@ -7,7 +7,7 @@ _logger = logging.getLogger(__name__)
 class StockPicking(models.Model):
     _inherit = 'stock.picking'
 
-    def _get_l4e_custom_sequence_name(self, picking_type_code, picking_date):
+    def _get_l4e_custom_sequence_name(self, picking_type_code, picking_date, company_id=None):
         """
         Generates custom sequence name in format: MMM/TYPE/SEQ/FY
         Example: AUG/GRN/001/26-27 for Receipts (incoming)
@@ -22,40 +22,47 @@ class StockPicking(models.Model):
         next_year_short = (year_short + 1) % 100
         fy_str = f"{year_short:02d}-{next_year_short:02d}"
 
-        last_day_num = calendar.monthrange(picking_date.year, picking_date.month)[1]
-        start_date = picking_date.replace(day=1)
-        end_date = picking_date.replace(day=last_day_num)
+        if not company_id:
+            company_id = self.company_id.id if self and self.company_id else self.env.company.id
+
+        prefix = f"{month_str}/{type_tag}/"
 
         domain = [
-            ('picking_type_code', '=', picking_type_code),
-            ('scheduled_date', '>=', start_date),
-            ('scheduled_date', '<=', end_date),
-            ('name', '!=', False),
-            ('name', '!=', '/'),
-            ('name', '!=', 'New'),
+            ('name', '=like', f"{prefix}%"),
         ]
+        if company_id:
+            domain.append(('company_id', '=', company_id))
         if self.id:
             domain.append(('id', '!=', self.id))
 
-        pickings_in_month = self.sudo().search(domain)
+        existing_pickings = self.sudo().search(domain)
 
         max_seq = 0
-        tag_pattern = f"/{type_tag}/"
-        for p in pickings_in_month:
-            if p.name and tag_pattern in p.name:
+        for p in existing_pickings:
+            if p.name and prefix in p.name:
                 parts = p.name.split('/')
-                for part in parts:
-                    if part.isdigit() and len(part) == 3:
-                        try:
-                            num = int(part)
-                            if num > max_seq:
-                                max_seq = num
-                        except ValueError:
-                            pass
+                # Expecting format: [MONTH, TYPE, SEQ, FY]
+                if len(parts) >= 3 and parts[2].isdigit():
+                    try:
+                        num = int(parts[2])
+                        if num > max_seq:
+                            max_seq = num
+                    except ValueError:
+                        pass
 
         next_seq = max_seq + 1
-        seq_str = f"{next_seq:03d}"
-        return f"{month_str}/{type_tag}/{seq_str}/{fy_str}"
+        candidate_name = f"{month_str}/{type_tag}/{next_seq:03d}/{fy_str}"
+
+        # Safety loop: ensure no collision with existing records for this company
+        check_domain = [('name', '=', candidate_name)]
+        if company_id:
+            check_domain.append(('company_id', '=', company_id))
+        while self.sudo().search_count(check_domain) > 0:
+            next_seq += 1
+            candidate_name = f"{month_str}/{type_tag}/{next_seq:03d}/{fy_str}"
+            check_domain[0] = ('name', '=', candidate_name)
+
+        return candidate_name
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -66,7 +73,10 @@ class StockPicking(models.Model):
                 p_date = fields.Date.today()
                 if vals.get('scheduled_date'):
                     p_date = fields.Date.to_date(vals['scheduled_date'])
-                vals['name'] = self._get_l4e_custom_sequence_name(p_code, p_date)
+                elif vals.get('date'):
+                    p_date = fields.Date.to_date(vals['date'])
+                cid = vals.get('company_id') or self.env.company.id
+                vals['name'] = self._get_l4e_custom_sequence_name(p_code, p_date, company_id=cid)
         return super().create(vals_list)
 
     def action_confirm(self):
@@ -75,8 +85,8 @@ class StockPicking(models.Model):
             if picking.picking_type_code in ('incoming', 'outgoing'):
                 tag = '/GRN/' if picking.picking_type_code == 'incoming' else '/DO/'
                 if not picking.name or picking.name in ('/', 'New') or not (tag in picking.name):
-                    p_date = fields.Date.to_date(picking.scheduled_date) if picking.scheduled_date else fields.Date.today()
-                    picking.name = picking._get_l4e_custom_sequence_name(picking.picking_type_code, p_date)
+                    p_date = fields.Date.to_date(picking.scheduled_date) if picking.scheduled_date else (fields.Date.to_date(picking.date) if picking.date else fields.Date.today())
+                    picking.name = picking._get_l4e_custom_sequence_name(picking.picking_type_code, p_date, company_id=picking.company_id.id)
         return res
 
     @api.model
