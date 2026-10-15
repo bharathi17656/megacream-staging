@@ -31,6 +31,13 @@ class StockPicking(models.Model):
         help="Technical flag: True if store users have already been notified for this transfer.",
     )
 
+    stock_restore_validated_notified = fields.Boolean(
+        string="Stock Restore Validated Notified",
+        default=False,
+        copy=False,
+        help="Technical flag: True if production users have already been notified for this transfer validation.",
+    )
+
     @api.depends_context("uid")
     def _compute_is_production_only_user(self):
         user = self.env.user
@@ -231,7 +238,31 @@ class StockPicking(models.Model):
                     _("Production users cannot validate Internal Transfers. "
                       "Store users will process and validate this transfer.")
                 )
-        return super().button_validate()
+        res = super().button_validate()
+        for picking in self:
+            if (
+                picking.state == "done"
+                and picking._is_stock_restore_transfer()
+                and not picking.stock_restore_validated_notified
+            ):
+                try:
+                    picking._notify_production_users_stock_restore_validated()
+                except Exception as e:
+                    _logger.exception("Error sending stock restore validated notification: %s", e)
+        return res
+
+    def _action_done(self):
+        res = super()._action_done()
+        for picking in self:
+            if (
+                picking._is_stock_restore_transfer()
+                and not picking.stock_restore_validated_notified
+            ):
+                try:
+                    picking._notify_production_users_stock_restore_validated()
+                except Exception as e:
+                    _logger.exception("Error sending stock restore validated notification in _action_done: %s", e)
+        return res
 
     def action_assign(self):
         is_admin = self.env.is_admin() or self.env.user.has_group("base.group_system")
@@ -407,3 +438,164 @@ class StockPicking(models.Model):
 
         # Mark as notified to avoid duplicate alerts
         self.sudo().write({"stock_restore_notified": True, "is_stock_restore": True})
+
+    def _notify_production_users_stock_restore_validated(self):
+        """
+        Notify Production users when a Stock Restore Internal Transfer is validated by Store.
+        Sends via Chatter, Discuss Inbox, Live Bus notification, Direct Message, and Activity.
+        """
+        self.ensure_one()
+        if not self._is_stock_restore_transfer():
+            return
+        if self.stock_restore_validated_notified:
+            return
+
+        # Target production users: the creator + all active is_production_user
+        notify_users = self.env["res.users"].sudo().search(
+            [
+                ("active", "=", True),
+                ("is_production_user", "=", True),
+            ]
+        ).filtered(lambda u: u.partner_id)
+
+        if self.create_uid and self.create_uid.active and self.create_uid.partner_id:
+            notify_users |= self.create_uid
+
+        # Fallback if no users flagged
+        if not notify_users:
+            mrp_group = self.env.ref("mrp.group_mrp_user", raise_if_not_found=False)
+            if mrp_group:
+                group_users = mrp_group.user_ids if "user_ids" in mrp_group._fields else getattr(mrp_group, "users", self.env["res.users"])
+                notify_users = group_users.filtered(lambda u: u.active and u.partner_id)
+
+        notify_users = notify_users.filtered(lambda u: u.id != self.env.user.id and u.partner_id)
+        if not notify_users:
+            self.sudo().write({"stock_restore_validated_notified": True})
+            return
+
+        partner_ids = notify_users.mapped("partner_id").ids
+        author_id = self.env.user.partner_id.id if self.env.user.partner_id else False
+
+        # Build product lines list
+        lines_html = ""
+        moves = getattr(self, "move_ids", None)
+        if moves:
+            item_rows = []
+            for move in moves:
+                uom = getattr(move, "product_uom_id", None) or getattr(move, "product_uom", None)
+                uom_name = uom.name if uom else ""
+                prod_name = move.product_id.display_name or move.name or "Item"
+                qty = getattr(move, "quantity", 0) or getattr(move, "product_uom_qty", 0)
+                item_rows.append(
+                    f"<li><b>{prod_name}</b>: {qty} {uom_name}</li>"
+                )
+            if item_rows:
+                lines_html = f"<p><b>Items Delivered to Production:</b></p><ul>{''.join(item_rows)}</ul>"
+
+        source_loc = self.location_id.display_name or ""
+        dest_loc = self.location_dest_id.display_name or ""
+        validated_by = self.env.user.name or ""
+        picking_name = self.name or "Internal Transfer"
+
+        body = Markup(
+            f"<p><b>Stock Restore Request Validated</b></p>"
+            f"<ul>"
+            f"<li><b>Transfer:</b> {picking_name}</li>"
+            f"<li><b>Validated By (Store):</b> {validated_by}</li>"
+            f"<li><b>Source Location:</b> {source_loc}</li>"
+            f"<li><b>Destination Location:</b> {dest_loc}</li>"
+            f"<li><b>State:</b> Done</li>"
+            f"</ul>"
+            f"{lines_html}"
+            f"<p><i>The requested stock has been validated by Store and is now available in <b>Production</b>.</i></p>"
+        )
+        subject = f"Stock Restore Validated: {picking_name}"
+
+        # 1. Post to chatter
+        message = self.sudo().message_post(
+            body=body,
+            subject=subject,
+            message_type="comment",
+            subtype_xmlid="mail.mt_comment",
+            partner_ids=partner_ids,
+            author_id=author_id,
+        )
+
+        # 2. Discuss Inbox & Real-time bus & Direct chat
+        for user in notify_users:
+            try:
+                notif = self.env["mail.notification"].sudo().search(
+                    [
+                        ("mail_message_id", "=", message.id),
+                        ("res_partner_id", "=", user.partner_id.id),
+                    ],
+                    limit=1,
+                )
+                if notif:
+                    notif.sudo().write({"notification_type": "inbox", "is_read": False})
+                else:
+                    self.env["mail.notification"].sudo().create(
+                        {
+                            "mail_message_id": message.id,
+                            "res_partner_id": user.partner_id.id,
+                            "notification_type": "inbox",
+                            "notification_status": "sent",
+                            "is_read": False,
+                        }
+                    )
+            except Exception as e:
+                _logger.debug("Inbox notif error: %s", e)
+
+            # Bus notification for real-time Discuss Inbox update
+            try:
+                from odoo.addons.mail.tools.discuss import Store
+
+                store = Store(bus_channel=user).add(message.with_user(user))
+                user._bus_send(
+                    "mail.message/inbox",
+                    {
+                        "message_id": message.id,
+                        "store_data": store.get_result(),
+                    },
+                )
+            except Exception as e:
+                _logger.debug("Bus send error: %s", e)
+
+            # Direct Message in Discuss chat with each production user
+            if user.partner_id.id != author_id:
+                try:
+                    chat = self.env["discuss.channel"].sudo()._get_or_create_chat(
+                        partners_to=[user.partner_id.id], pin=True
+                    )
+                    if chat:
+                        chat.sudo().message_post(
+                            body=body,
+                            message_type="comment",
+                            subtype_xmlid="mail.mt_comment",
+                            author_id=author_id,
+                        )
+                except Exception as e:
+                    _logger.warning("Could not send chat message to production user %s: %s", user.name, e)
+
+            # Schedule Activity for Production User
+            todo_type = self.env.ref("mail.mail_activity_data_todo", raise_if_not_found=False)
+            todo_type_id = todo_type.id if todo_type else False
+            if todo_type_id:
+                try:
+                    existing_act = self.env["mail.activity"].sudo().search([
+                        ("res_model", "=", self._name),
+                        ("res_id", "=", self.id),
+                        ("user_id", "=", user.id),
+                        ("activity_type_id", "=", todo_type_id),
+                    ], limit=1)
+                    if not existing_act:
+                        self.sudo().activity_schedule(
+                            activity_type_id=todo_type_id,
+                            user_id=user.id,
+                            summary=_("Stock Restore Validated: %s") % picking_name,
+                            note=body,
+                        )
+                except Exception as e:
+                    _logger.debug("Activity schedule error: %s", e)
+
+        self.sudo().write({"stock_restore_validated_notified": True})
