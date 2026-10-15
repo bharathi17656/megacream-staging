@@ -34,31 +34,31 @@
             <!-- 4. Add our new buttons in the header -->
             <xpath expr="//header/button[@name='button_confirm']" position="before">
 
-                <!-- "Send to RFQ" button: shown in draft_indent, not yet pending -->
+                <!-- "Submit Approval" button: shown in draft_indent, not yet pending -->
                 <button name="button_request_rfq_approval"
-                        string="Send to RFQ"
+                        string="Submit Approval"
                         type="object"
                         class="btn-primary"
                         icon="fa-paper-plane"
                         invisible="state != 'draft_indent' or approval_state in ['pending', 'approved','refused']"
-                        confirm="Are you sure you want to request RFQ approval for this Purchase Order?"/>
+                        confirm="Are you sure you want to submit this Purchase Order for approval?"/>
 
-                <!-- "Approve RFQ" button: shown to Store Users when pending -->
+                <!-- "Approve RFQ" button: shown to Purchase Users when pending -->
                 <button name="button_approve_rfq"
                         string="Approve RFQ"
                         type="object"
                         class="btn-success"
                         icon="fa-check"
-                        invisible="state != 'draft_indent' or approval_state != 'pending' or not is_current_store_user"
+                        invisible="state != 'draft_indent' or approval_state != 'pending' or not is_current_purchase_user"
                         confirm="Approve this order and move it to RFQ state?"/>
 
-                <!-- "Refuse RFQ" button: shown to Store Users when pending -->
+                <!-- "Refuse RFQ" button: shown to Purchase Users when pending -->
                 <button name="button_refuse_rfq"
                         string="Refuse RFQ"
                         type="object"
                         class="btn-danger"
                         icon="fa-times"
-                        invisible="state != 'draft_indent' or approval_state != 'pending' or not is_current_store_user"
+                        invisible="state != 'draft_indent' or approval_state != 'pending' or not is_current_purchase_user"
                         confirm="Refuse this RFQ request? The order will remain in Draft state."/>
 
                 <!-- "Re-Request Approval" button after refusal -->
@@ -71,10 +71,15 @@
 
             </xpath>
 
-            <!-- 5. Confirm Order button: visible only to Purchase Users when not in draft -->
-            <xpath expr="//button[@name='button_confirm']" position="attributes">
+            <!-- 5. Hide standard "Confirm Order" buttons for Store Users (visible ONLY to Purchase Users) -->
+            <xpath expr="//button[@id='bid_confirm']" position="attributes">
                 <attribute name="invisible">
-                    state in ['draft_indent', 'purchase', 'done', 'cancel'] or not is_current_purchase_user
+                    state != 'sent' or not is_current_purchase_user
+                </attribute>
+            </xpath>
+            <xpath expr="//button[@id='draft_confirm']" position="attributes">
+                <attribute name="invisible">
+                    state != 'draft' or not is_current_purchase_user
                 </attribute>
             </xpath>
 

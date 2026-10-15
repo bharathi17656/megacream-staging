@@ -90,41 +90,41 @@ class PurchaseOrder(models.Model):
         return orders
 
     # -------------------------------------------------------
-    # Button: Request RFQ Approval (sends approval request to Store Users)
+    # Button: Request RFQ Approval (Store User submits to Purchase Users)
     # -------------------------------------------------------
     def button_request_rfq_approval(self):
         """
-        Called when the user clicks 'Send to RFQ' in Draft state.
+        Called when the user clicks 'Submit Approval' in Draft state.
         Validates product lines, then sends an approval request
-        to Store Users.
+        to Purchase Users.
         """
         self.ensure_one()
 
         if self.state != 'draft_indent':
-            raise UserError(_("Only orders in Draft state can be sent for RFQ approval."))
+            raise UserError(_("Only orders in Draft state can be submitted for approval."))
 
         # Check if there are any order lines
         if not self.order_line:
             raise ValidationError(
-                _("Please add at least one product line before requesting RFQ approval.")
+                _("Please add at least one product line before submitting for approval.")
             )
 
-        # Find Store Users
-        store_users = self.env['res.users'].search([
-            ('is_store_user', '=', True),
+        # Find Purchase Users
+        purchase_users = self.env['res.users'].search([
+            ('is_purchase_user', '=', True),
             ('active', '=', True),
         ])
-        if not store_users:
-            # Fallback to purchase managers if no store users are configured
+        if not purchase_users:
+            # Fallback to purchase managers if no purchase users configured yet
             purchase_admin_group = self.env.ref(
                 'purchase.group_purchase_manager', raise_if_not_found=False
             )
             if purchase_admin_group:
-                store_users = purchase_admin_group.user_ids.filtered(lambda u: u.active)
+                purchase_users = purchase_admin_group.user_ids.filtered(lambda u: u.active)
 
-        if not store_users:
+        if not purchase_users:
             raise UserError(
-                _("No Store User found. Please assign at least one user as 'Store User' in User Settings.")
+                _("No Purchase User found. Please assign at least one user as 'Purchase User' in User Settings.")
             )
 
         # Set approval state to pending
@@ -132,24 +132,24 @@ class PurchaseOrder(models.Model):
             'approval_state': 'pending',
         })
 
-        # Post a message and notify store users
-        partner_ids = store_users.mapped('partner_id').ids
+        # Post a message and notify purchase users
+        partner_ids = purchase_users.mapped('partner_id').ids
         body = Markup(
-            "%(user)s has requested approval to move Purchase Order "
-            "<b>%(name)s</b> from <b>Draft</b> to <b>RFQ</b> state. "
-            "Store Users: please review and approve or refuse."
+            "%(user)s has submitted Purchase Order "
+            "<b>%(name)s</b> for approval. "
+            "Purchase Users: please review and approve or refuse."
         ) % {
             'user': self.env.user.name,
             'name': self.name,
         }
         self.message_post(
             body=body,
-            subject=_("RFQ Approval Request: %s", self.name),
+            subject=_("PO Approval Request: %s", self.name),
             partner_ids=partner_ids,
             subtype_xmlid='mail.mt_comment',
         )
 
-        # Schedule activity for each store user
+        # Schedule activity for each purchase user
         activity_type = self.env.ref(
             'purchase_draft_approval.mail_activity_rfq_approval',
             raise_if_not_found=False,
@@ -158,13 +158,13 @@ class PurchaseOrder(models.Model):
             'mail.mail_activity_data_todo'
         ).id
 
-        for user in store_users:
+        for user in purchase_users:
             self.activity_schedule(
                 activity_type_id=activity_type_id,
-                summary=_("RFQ Approval Required: %s", self.name),
+                summary=_("PO Approval Required: %s", self.name),
                 note=_(
-                    "Purchase Order %(name)s is waiting for Store User approval "
-                    "to move to RFQ state. Created by: %(user)s",
+                    "Purchase Order %(name)s was submitted for approval by %(user)s. "
+                    "Please review and approve or refuse.",
                     name=self.name,
                     user=self.env.user.name,
                 ),
@@ -175,9 +175,9 @@ class PurchaseOrder(models.Model):
             'type': 'ir.actions.client',
             'tag': 'display_notification',
             'params': {
-                'title': _("Approval Requested"),
+                'title': _("Approval Submitted"),
                 'message': _(
-                    "Your request to move %s to RFQ has been sent to Store Users for approval.",
+                    "Purchase Order %s has been submitted to Purchase Users for approval.",
                     self.name
                 ),
                 'type': 'success',
@@ -186,35 +186,35 @@ class PurchaseOrder(models.Model):
         }
 
     # -------------------------------------------------------
-    # Button: Approve RFQ (Store Users)
+    # Button: Approve RFQ (Purchase Users)
     # -------------------------------------------------------
     def button_approve_rfq(self):
         """
-        Store User approves the RFQ request.
+        Purchase User approves the RFQ request.
         Moves the order from draft_indent -> draft (RFQ state).
-        Then notifies Purchase Users that the PO is ready for continuation and confirmation.
+        Sends notification and activity back to the Store User who created it.
         """
         self.ensure_one()
 
         u = self.env.user
         is_admin = u.has_group('base.group_system') or u.has_group('purchase.group_purchase_manager')
-        is_store = getattr(u, 'is_store_user', False)
-        if not (is_store or is_admin):
+        is_purchase = getattr(u, 'is_purchase_user', False)
+        if not (is_purchase or is_admin):
             raise UserError(
-                _("Only Store Users can approve RFQ requests.")
+                _("Only Purchase Users can approve RFQ requests.")
             )
 
         if self.state != 'draft_indent':
-            raise UserError(_("Only Draft orders can be approved for RFQ."))
+            raise UserError(_("Only Draft orders can be approved."))
 
         if self.approval_state != 'pending':
             raise UserError(_("This order does not have a pending approval request."))
 
-        # Mark store user activities as done
+        # Mark purchase user activities as done
         self.activity_ids.filtered(
             lambda a: a.user_id == self.env.user
         ).action_feedback(
-            feedback=_("RFQ Approved by Store User %s", self.env.user.name)
+            feedback=_("RFQ Approved by Purchase User %s", self.env.user.name)
         )
 
         self.write({
@@ -224,59 +224,53 @@ class PurchaseOrder(models.Model):
             'approval_date': fields.Datetime.now(),
         })
 
+        # Notify Store User (the creator)
+        creator = self.create_uid
+        partner_ids = [creator.partner_id.id] if creator and creator.partner_id else []
+
         body = Markup(
-            "<b>RFQ Approved</b> by Store User %(manager)s. "
-            "Purchase Order <b>%(name)s</b> has moved to <b>RFQ</b> state. "
-            "Purchase Users can now continue processing the order."
+            "<b>RFQ Approved</b> by Purchase User %(manager)s.<br/>"
+            "Purchase Order <b>%(name)s</b> has moved to <b>RFQ</b> state."
         ) % {
             'manager': self.env.user.name,
             'name': self.name,
         }
         self.message_post(
             body=body,
+            partner_ids=partner_ids,
             subtype_xmlid='mail.mt_comment',
         )
 
-        # Notify and schedule activity for Purchase Users
-        purchase_users = self.env['res.users'].search([
-            ('is_purchase_user', '=', True),
-            ('active', '=', True),
-        ])
-        if not purchase_users:
-            purchase_admin_group = self.env.ref('purchase.group_purchase_manager', raise_if_not_found=False)
-            if purchase_admin_group:
-                purchase_users = purchase_admin_group.user_ids.filtered(lambda u: u.active)
-
-        todo_type_id = self.env.ref('mail.mail_activity_data_todo').id
-        for p_user in purchase_users:
+        # Schedule notification activity for the Store User who created it
+        if creator and creator != self.env.user:
             self.activity_schedule(
-                activity_type_id=todo_type_id,
-                summary=_("RFQ Approved: %s ready for PO processing", self.name),
+                activity_type_id=self.env.ref('mail.mail_activity_data_todo').id,
+                summary=_("RFQ Approved: %s", self.name),
                 note=_(
-                    "Purchase Order %(name)s was approved by Store User %(store_user)s. "
-                    "Please review vendor, pricing, and continue with PO confirmation.",
+                    "Your Purchase Order %(name)s has been approved by Purchase User %(user)s and moved to RFQ.",
                     name=self.name,
-                    store_user=self.env.user.name,
+                    user=self.env.user.name,
                 ),
-                user_id=p_user.id,
+                user_id=creator.id,
             )
 
     # -------------------------------------------------------
-    # Button: Refuse RFQ (Store Users)
+    # Button: Refuse RFQ (Purchase Users)
     # -------------------------------------------------------
     def button_refuse_rfq(self):
         """
-        Store User refuses the RFQ request.
+        Purchase User refuses the RFQ request.
         Order stays in draft_indent state.
+        Sends notification and activity back to the Store User who created it.
         """
         self.ensure_one()
 
         u = self.env.user
         is_admin = u.has_group('base.group_system') or u.has_group('purchase.group_purchase_manager')
-        is_store = getattr(u, 'is_store_user', False)
-        if not (is_store or is_admin):
+        is_purchase = getattr(u, 'is_purchase_user', False)
+        if not (is_purchase or is_admin):
             raise UserError(
-                _("Only Store Users can refuse RFQ requests.")
+                _("Only Purchase Users can refuse RFQ requests.")
             )
 
         if self.approval_state != 'pending':
@@ -286,31 +280,48 @@ class PurchaseOrder(models.Model):
         self.activity_ids.filtered(
             lambda a: a.user_id == self.env.user
         ).action_feedback(
-            feedback=_("RFQ Refused by Store User %s", self.env.user.name)
+            feedback=_("RFQ Refused by Purchase User %s", self.env.user.name)
         )
 
         self.write({
             'approval_state': 'refused',
         })
 
+        creator = self.create_uid
+        partner_ids = [creator.partner_id.id] if creator and creator.partner_id else []
+
         body = Markup(
-            "<b>RFQ Refused</b> by Store User %(manager)s. "
-            "Purchase Order <b>%(name)s</b> remains in <b>Draft</b> state. "
-            "Please revise and re-request approval."
+            "<b>RFQ Refused</b> by Purchase User %(manager)s.<br/>"
+            "Purchase Order <b>%(name)s</b> remains in <b>Draft</b> state. Please revise and re-submit."
         ) % {
             'manager': self.env.user.name,
             'name': self.name,
         }
         self.message_post(
             body=body,
+            partner_ids=partner_ids,
             subtype_xmlid='mail.mt_comment',
         )
+
+        # Schedule notification activity for the Store User who created it
+        if creator and creator != self.env.user:
+            self.activity_schedule(
+                activity_type_id=self.env.ref('mail.mail_activity_data_todo').id,
+                summary=_("RFQ Refused: %s", self.name),
+                note=_(
+                    "Your Purchase Order %(name)s was refused by Purchase User %(user)s. "
+                    "Please review and re-submit approval.",
+                    name=self.name,
+                    user=self.env.user.name,
+                ),
+                user_id=creator.id,
+            )
 
     # -------------------------------------------------------
     # Button: Reset to Draft (from refused state)
     # -------------------------------------------------------
     def button_reset_to_draft(self):
-        """Allow re-requesting approval after refusal."""
+        """Allow re-submitting approval after refusal."""
         self.ensure_one()
         if self.state == 'draft_indent' and self.approval_state == 'refused':
             self.write({'approval_state': False})
@@ -326,7 +337,7 @@ class PurchaseOrder(models.Model):
         for order in self:
             if order.state == 'draft_indent':
                 raise UserError(
-                    _("Please request RFQ approval first before confirming "
+                    _("Please submit for approval first before confirming "
                       "Purchase Order %s.", order.name)
                 )
             if not order.partner_id:
