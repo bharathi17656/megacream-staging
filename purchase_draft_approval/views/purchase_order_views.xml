@@ -8,6 +8,7 @@
         <field name="name">purchase.order.form.draft.approval</field>
         <field name="model">purchase.order</field>
         <field name="inherit_id" ref="purchase.purchase_order_form"/>
+        <field name="priority">999</field>
         <field name="arch" type="xml">
 
             <!-- 1. Inject 'draft_indent' into the status bar widget -->
