@@ -93,16 +93,8 @@ class L4eIceCreamProcessingBatch(models.Model):
     def _compute_user_roles(self):
         user = self.env.user
         is_admin = user._is_admin() or user.has_group("base.group_system")
-        is_store = bool(
-            getattr(user, "is_store_user", False)
-            or user.has_group("stock.group_stock_user")
-            or is_admin
-        )
-        is_prod = bool(
-            getattr(user, "is_production_user", False)
-            or user.has_group("mrp.group_mrp_user")
-            or is_admin
-        )
+        is_store = bool(getattr(user, "is_store_user", False) or is_admin)
+        is_prod = bool(getattr(user, "is_production_user", False) and not is_admin)
         for record in self:
             record.is_store_user = is_store
             record.is_production_user = is_prod

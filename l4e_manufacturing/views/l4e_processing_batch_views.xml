@@ -108,12 +108,12 @@
                             string="Confirm"
                             type="object"
                             class="oe_highlight"
-                            invisible="state != 'at_store' or is_store_confirmed or not is_store_user"/>
+                            invisible="state != 'at_store' or is_store_confirmed or is_production_user or not is_store_user"/>
                     <button name="action_transfer"
                             string="Transfer"
                             type="object"
                             class="oe_highlight"
-                            invisible="state != 'at_store' or not is_store_confirmed or not is_store_user"/>
+                            invisible="state != 'at_store' or not is_store_confirmed or is_production_user or not is_store_user"/>
                     <button name="action_complete_processing"
                             string="Complete Processing"
                             type="object"
