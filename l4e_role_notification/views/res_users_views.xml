@@ -15,6 +15,7 @@
                     <field name="is_store_user" widget="boolean_toggle"/>
                     <field name="is_production_user" widget="boolean_toggle"/>
                     <field name="is_sales_user" widget="boolean_toggle"/>
+                    <field name="is_purchase_user" widget="boolean_toggle"/>
                 </group>
             </xpath>
         </field>
@@ -34,6 +35,7 @@
                     <field name="is_store_user" widget="boolean_toggle"/>
                     <field name="is_production_user" widget="boolean_toggle"/>
                     <field name="is_sales_user" widget="boolean_toggle"/>
+                    <field name="is_purchase_user" widget="boolean_toggle"/>
                 </group>
             </xpath>
         </field>

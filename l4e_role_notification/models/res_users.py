@@ -21,3 +21,8 @@ class ResUsers(models.Model):
         default=False,
         help="When this user creates or confirms a Sale Order, Store User(s) and Production User(s) are notified with the order details.",
     )
+    is_purchase_user = fields.Boolean(
+        string="Purchase User",
+        default=False,
+        help="User authorized to finalize and confirm Purchase Orders after Store User RFQ approval.",
+    )

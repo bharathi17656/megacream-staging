@@ -34,7 +34,7 @@
             <!-- 4. Add our new buttons in the header -->
             <xpath expr="//header/button[@name='button_confirm']" position="before">
 
-<!--                 "Send to RFQ" button: shown in draft_indent, not yet pending -->
+                <!-- "Send to RFQ" button: shown in draft_indent, not yet pending -->
                 <button name="button_request_rfq_approval"
                         string="Send to RFQ"
                         type="object"
@@ -43,24 +43,22 @@
                         invisible="state != 'draft_indent' or approval_state in ['pending', 'approved','refused']"
                         confirm="Are you sure you want to request RFQ approval for this Purchase Order?"/>
 
-                <!-- "Approve RFQ" button: shown only to Purchase Admins when pending -->
+                <!-- "Approve RFQ" button: shown to Store Users when pending -->
                 <button name="button_approve_rfq"
                         string="Approve RFQ"
                         type="object"
                         class="btn-success"
                         icon="fa-check"
-                        groups="purchase.group_purchase_manager"
-                        invisible="state != 'draft_indent' or approval_state != 'pending'"
+                        invisible="state != 'draft_indent' or approval_state != 'pending' or not is_current_store_user"
                         confirm="Approve this order and move it to RFQ state?"/>
 
-                <!-- "Refuse RFQ" button: shown only to Purchase Admins when pending -->
+                <!-- "Refuse RFQ" button: shown to Store Users when pending -->
                 <button name="button_refuse_rfq"
                         string="Refuse RFQ"
                         type="object"
                         class="btn-danger"
                         icon="fa-times"
-                        groups="purchase.group_purchase_manager"
-                        invisible="state != 'draft_indent' or approval_state != 'pending'"
+                        invisible="state != 'draft_indent' or approval_state != 'pending' or not is_current_store_user"
                         confirm="Refuse this RFQ request? The order will remain in Draft state."/>
 
                 <!-- "Re-Request Approval" button after refusal -->
@@ -69,15 +67,14 @@
                         type="object"
                         class="btn-warning"
                         icon="fa-refresh"
-                        invisible="state != 'draft_indent' or approval_state != 'refused'"
-                        />
+                        invisible="state != 'draft_indent' or approval_state != 'refused'"/>
 
             </xpath>
 
-            <!-- 5. Hide standard "Confirm Order" button when in draft_indent -->
+            <!-- 5. Confirm Order button: visible only to Purchase Users when not in draft -->
             <xpath expr="//button[@name='button_confirm']" position="attributes">
                 <attribute name="invisible">
-                    state in ['draft_indent', 'purchase', 'done', 'cancel']
+                    state in ['draft_indent', 'purchase', 'done', 'cancel'] or not is_current_purchase_user
                 </attribute>
             </xpath>
 
@@ -98,32 +95,24 @@
                 </group>
             </xpath>
 
-            <!-- 7. Make vendor optional in draft_indent for store_indent users -->
+            <!-- 7. Vendor optional in draft_indent, required afterwards -->
             <xpath expr="//field[@name='partner_id']" position="attributes">
                 <attribute name="required">
-                    not user_has_store_indent and state == 'draft_indent'
+                    state not in ['draft_indent', 'cancel']
                 </attribute>
                 <attribute name="readonly">
                     state in ['purchase', 'done', 'cancel']
                 </attribute>
             </xpath>
 
-            <!-- 8. Store Indent notice banner in draft state -->
-<!--            <xpath expr="//field[@name='partner_id']" position="before">-->
-<!--                <div class="alert alert-info mb-0"-->
-<!--                     role="alert"-->
-<!--                     invisible="state != 'draft_indent' or not user_has_store_indent">-->
-<!--                    <i class="fa fa-info-circle me-1"/>-->
-<!--                    <strong>Store Indent Mode:</strong>-->
-<!--                </div>-->
-<!--            </xpath>-->
-
-            <!-- 9. Add user_has_store_indent as invisible field for attrs -->
+            <!-- 8. Role visibility fields for attrs -->
             <xpath expr="//field[@name='partner_id']" position="before">
+                <field name="is_current_store_user" invisible="1"/>
+                <field name="is_current_purchase_user" invisible="1"/>
                 <field name="user_has_store_indent" invisible="1"/>
             </xpath>
 
-            <!-- 10. Make Confirmation Date (date_approve) always editable,
+            <!-- 9. Make Confirmation Date (date_approve) always editable,
                  even after the PO has moved to Purchase Order state -->
             <xpath expr="//field[@name='date_approve']" position="attributes">
                 <attribute name="readonly">0</attribute>
@@ -198,7 +187,7 @@
         name="Pending RFQ Approvals"
         parent="purchase.menu_purchase_root"
         action="action_purchase_draft_pending_approval"
-        groups="purchase.group_purchase_manager"
+        groups="purchase.group_purchase_user"
         sequence="15"/>
 
 </odoo>
