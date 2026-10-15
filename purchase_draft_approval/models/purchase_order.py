@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from markupsafe import Markup
 from odoo import models, fields, api, _
 from odoo.exceptions import UserError, ValidationError
 
@@ -133,14 +134,16 @@ class PurchaseOrder(models.Model):
 
         # Post a message and notify store users
         partner_ids = store_users.mapped('partner_id').ids
+        body = Markup(
+            "%(user)s has requested approval to move Purchase Order "
+            "<b>%(name)s</b> from <b>Draft</b> to <b>RFQ</b> state. "
+            "Store Users: please review and approve or refuse."
+        ) % {
+            'user': self.env.user.name,
+            'name': self.name,
+        }
         self.message_post(
-            body=_(
-                "%(user)s has requested approval to move Purchase Order "
-                "<b>%(name)s</b> from <b>Draft</b> to <b>RFQ</b> state. "
-                "Store Users: please review and approve or refuse.",
-                user=self.env.user.name,
-                name=self.name,
-            ),
+            body=body,
             subject=_("RFQ Approval Request: %s", self.name),
             partner_ids=partner_ids,
             subtype_xmlid='mail.mt_comment',
@@ -221,14 +224,16 @@ class PurchaseOrder(models.Model):
             'approval_date': fields.Datetime.now(),
         })
 
+        body = Markup(
+            "<b>RFQ Approved</b> by Store User %(manager)s. "
+            "Purchase Order <b>%(name)s</b> has moved to <b>RFQ</b> state. "
+            "Purchase Users can now continue processing the order."
+        ) % {
+            'manager': self.env.user.name,
+            'name': self.name,
+        }
         self.message_post(
-            body=_(
-                "<b>RFQ Approved</b> by Store User %(manager)s. "
-                "Purchase Order <b>%(name)s</b> has moved to <b>RFQ</b> state. "
-                "Purchase Users can now continue processing the order.",
-                manager=self.env.user.name,
-                name=self.name,
-            ),
+            body=body,
             subtype_xmlid='mail.mt_comment',
         )
 
@@ -288,14 +293,16 @@ class PurchaseOrder(models.Model):
             'approval_state': 'refused',
         })
 
+        body = Markup(
+            "<b>RFQ Refused</b> by Store User %(manager)s. "
+            "Purchase Order <b>%(name)s</b> remains in <b>Draft</b> state. "
+            "Please revise and re-request approval."
+        ) % {
+            'manager': self.env.user.name,
+            'name': self.name,
+        }
         self.message_post(
-            body=_(
-                "<b>RFQ Refused</b> by Store User %(manager)s. "
-                "Purchase Order <b>%(name)s</b> remains in <b>Draft</b> state. "
-                "Please revise and re-request approval.",
-                manager=self.env.user.name,
-                name=self.name,
-            ),
+            body=body,
             subtype_xmlid='mail.mt_comment',
         )
 
@@ -355,7 +362,7 @@ class PurchaseOrder(models.Model):
                 # Cancel pending activities
                 order.activity_ids.unlink()
                 order.message_post(
-                    body=_("Purchase Order <b>%s</b> cancelled from Draft state.", order.name),
+                    body=Markup("Purchase Order <b>%s</b> cancelled from Draft state.") % order.name,
                     subtype_xmlid='mail.mt_comment',
                 )
                 return True
