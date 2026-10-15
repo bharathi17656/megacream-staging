@@ -45,16 +45,17 @@
                 <field name="fssai_no" placeholder="e.g. 12345678901234"/>
             </xpath>
 
-            <xpath expr="//field[@name='category_id']" position="after">
-                <label for="certificate_ids" string="Certificates"/>
-                <div>
-                    <button name="action_open_certificate_wizard"
-                            type="object"
-                            string="Certificates"
-                            icon="fa-paperclip"
-                            class="btn-secondary mb-2"/>
+            <xpath expr="//notebook" position="inside">
+                <page string="Certificates" name="certificates">
+                    <div class="mb-2">
+                        <button name="action_open_certificate_wizard"
+                                type="object"
+                                string="Upload Certificate"
+                                icon="fa-paperclip"
+                                class="btn-secondary"/>
+                    </div>
                     <field name="certificate_ids" nolabel="1"/>
-                </div>
+                </page>
             </xpath>
         </field>
     </record>
