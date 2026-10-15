@@ -846,14 +846,27 @@ class L4eIceCreamProcessingBatch(models.Model):
     def _notify_store_users_fg_request(self):
         self.ensure_one()
         try:
-            store_users = self.env["res.users"].sudo().search([
+            # Find all active Store and Production users
+            notify_users = self.env["res.users"].sudo().search([
                 ("active", "=", True),
+                "|",
                 ("is_store_user", "=", True),
+                ("is_production_user", "=", True),
             ])
-            if not store_users:
+            # Fallback for store users if none flagged
+            if not notify_users.filtered(lambda u: getattr(u, "is_store_user", False)):
                 stock_group = self.env.ref("stock.group_stock_user", raise_if_not_found=False)
                 if stock_group:
-                    store_users = stock_group.users.filtered(lambda u: u.active and u.id != self.env.user.id)
+                    notify_users |= stock_group.users.filtered(lambda u: u.active)
+            # Fallback for production users if none flagged
+            if not notify_users.filtered(lambda u: getattr(u, "is_production_user", False)):
+                mrp_group = self.env.ref("mrp.group_mrp_user", raise_if_not_found=False)
+                if mrp_group:
+                    notify_users |= mrp_group.users.filtered(lambda u: u.active)
+
+            recipients = notify_users.filtered(lambda u: u.id != self.env.user.id and u.partner_id)
+            if not recipients:
+                return
 
             item_rows = []
             for line in self.output_line_ids:
@@ -874,7 +887,7 @@ class L4eIceCreamProcessingBatch(models.Model):
             )
             subject = f"FG Request Submitted: {self.batch_number or self.name}"
 
-            partner_ids = store_users.mapped("partner_id").filtered(lambda p: p.id != self.env.user.partner_id.id).ids
+            partner_ids = recipients.mapped("partner_id").ids
             message = self.message_post(
                 body=body,
                 subject=subject,
@@ -883,7 +896,7 @@ class L4eIceCreamProcessingBatch(models.Model):
                 partner_ids=partner_ids,
             )
 
-            for user in store_users.filtered(lambda u: u.id != self.env.user.id and u.partner_id):
+            for user in recipients:
                 notif = self.env["mail.notification"].sudo().search(
                     [
                         ("mail_message_id", "=", message.id),
@@ -904,11 +917,11 @@ class L4eIceCreamProcessingBatch(models.Model):
                         }
                     )
 
-            # Schedule Activity for Store Users
+            # Schedule Activity for Store and Production Users
             todo_type = self.env.ref("mail.mail_activity_data_todo", raise_if_not_found=False)
             todo_type_id = todo_type.id if todo_type else False
             if todo_type_id:
-                for user in store_users.filtered(lambda u: u.active):
+                for user in recipients:
                     existing_act = self.env["mail.activity"].sudo().search([
                         ("res_model", "=", self._name),
                         ("res_id", "=", self.id),
@@ -922,8 +935,26 @@ class L4eIceCreamProcessingBatch(models.Model):
                             summary=_("FG Request: %s") % (self.batch_number or self.name),
                             note=body,
                         )
+
+            # Direct Message in Discuss chat with each user
+            author_id = self.env.user.partner_id.id if self.env.user.partner_id else False
+            for user in recipients:
+                if user.partner_id and user.partner_id.id != author_id:
+                    try:
+                        chat = self.env["discuss.channel"].sudo()._get_or_create_chat(
+                            partners_to=[user.partner_id.id], pin=True
+                        )
+                        if chat:
+                            chat.sudo().message_post(
+                                body=body,
+                                message_type="comment",
+                                subtype_xmlid="mail.mt_comment",
+                                author_id=author_id,
+                            )
+                    except Exception as e:
+                        _logger.warning("Could not send FG request chat message to user %s: %s", user.name, e)
         except Exception as e:
-            _logger.exception("Error sending FG request notification to store users: %s", e)
+            _logger.exception("Error sending FG request notification to store/production users: %s", e)
 
     def action_store_confirm(self):
         """Confirm raw materials in At Store stage without moving the stage."""
