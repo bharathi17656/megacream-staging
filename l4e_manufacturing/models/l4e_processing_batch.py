@@ -65,7 +65,16 @@ class L4eIceCreamProcessingBatch(models.Model):
         string="Is Sales User",
         compute="_compute_is_sales_user",
     )
+    is_store_user = fields.Boolean(
+        string="Is Store User",
+        compute="_compute_user_roles",
+    )
+    is_production_user = fields.Boolean(
+        string="Is Production User",
+        compute="_compute_user_roles",
+    )
 
+    @api.depends_context("uid")
     def _compute_is_sales_user(self):
         user = self.env.user
         is_sales = bool(
@@ -79,6 +88,24 @@ class L4eIceCreamProcessingBatch(models.Model):
         )
         for record in self:
             record.is_sales_user = is_sales
+
+    @api.depends_context("uid")
+    def _compute_user_roles(self):
+        user = self.env.user
+        is_admin = user._is_admin() or user.has_group("base.group_system")
+        is_store = bool(
+            getattr(user, "is_store_user", False)
+            or user.has_group("stock.group_stock_user")
+            or is_admin
+        )
+        is_prod = bool(
+            getattr(user, "is_production_user", False)
+            or user.has_group("mrp.group_mrp_user")
+            or is_admin
+        )
+        for record in self:
+            record.is_store_user = is_store
+            record.is_production_user = is_prod
 
     is_store_confirmed = fields.Boolean(
         string="Store Confirmed",
@@ -959,6 +986,12 @@ class L4eIceCreamProcessingBatch(models.Model):
     def action_store_confirm(self):
         """Confirm raw materials in At Store stage without moving the stage."""
         self.ensure_one()
+        user = self.env.user
+        is_admin = user._is_admin() or user.has_group("base.group_system")
+        is_store = bool(getattr(user, "is_store_user", False) or user.has_group("stock.group_stock_user") or is_admin)
+        if not is_store:
+            raise UserError(_("Only Store users are authorized to confirm raw materials."))
+
         if self.state != "at_store":
             raise ValidationError(_("Only batches in 'At Store' stage can be confirmed."))
         if not self.raw_line_ids:
@@ -970,6 +1003,12 @@ class L4eIceCreamProcessingBatch(models.Model):
     def action_transfer(self):
         """Execute stock transfer of raw materials to Production and advance to Processing."""
         self.ensure_one()
+        user = self.env.user
+        is_admin = user._is_admin() or user.has_group("base.group_system")
+        is_store = bool(getattr(user, "is_store_user", False) or user.has_group("stock.group_stock_user") or is_admin)
+        if not is_store:
+            raise UserError(_("Only Store users are authorized to transfer raw materials to production."))
+
         if self.state != "at_store":
             raise ValidationError(_("Only batches in 'At Store' stage can be transferred."))
         if not self.is_store_confirmed:
