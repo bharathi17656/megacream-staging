@@ -134,8 +134,36 @@ class AccountMove(models.Model):
             if move.is_sale_document(include_receipts=True) and move.partner_id.l4e_invoice_payment_term_id:
                 move.invoice_payment_term_id = move.partner_id.l4e_invoice_payment_term_id
 
+    @api.onchange("partner_id")
+    def _onchange_partner_id_fetch_contact_fields(self):
+        for move in self:
+            if move.partner_id:
+                partner = move.partner_id
+                comm_partner = partner.commercial_partner_id
+                move.accounts_contact_number = partner.accounts_contact_number or comm_partner.accounts_contact_number or False
+                move.accounts_name = partner.accounts_name or comm_partner.accounts_name or False
+                move.salesperson_name = partner.salesperson_name or comm_partner.salesperson_name or False
+                move.sales_contact_number = partner.sales_contact_number or comm_partner.sales_contact_number or False
+                move.store_person_name = partner.store_person_name or comm_partner.store_person_name or False
+                move.store_person_number = partner.store_person_number or comm_partner.store_person_number or False
+
     @api.model_create_multi
     def create(self, vals_list):
+        for vals in vals_list:
+            partner_id = vals.get("partner_id")
+            if partner_id:
+                partner = self.env["res.partner"].browse(partner_id)
+                comm_partner = partner.commercial_partner_id
+                for f in (
+                    "accounts_contact_number",
+                    "accounts_name",
+                    "salesperson_name",
+                    "sales_contact_number",
+                    "store_person_name",
+                    "store_person_number",
+                ):
+                    if not vals.get(f):
+                        vals[f] = getattr(partner, f, False) or getattr(comm_partner, f, False) or False
         moves = super().create(vals_list)
         for move in moves:
             if (
@@ -145,6 +173,22 @@ class AccountMove(models.Model):
             ):
                 move.invoice_payment_term_id = move.partner_id.l4e_invoice_payment_term_id
         return moves
+
+    def write(self, vals):
+        if "partner_id" in vals and vals.get("partner_id"):
+            partner = self.env["res.partner"].browse(vals["partner_id"])
+            comm_partner = partner.commercial_partner_id
+            for f in (
+                "accounts_contact_number",
+                "accounts_name",
+                "salesperson_name",
+                "sales_contact_number",
+                "store_person_name",
+                "store_person_number",
+            ):
+                if f not in vals:
+                    vals[f] = getattr(partner, f, False) or getattr(comm_partner, f, False) or False
+        return super().write(vals)
 
     @api.depends("partner_id", "partner_id.l4e_invoice_payment_term_id", "state", "is_posted_editable")
     def _compute_l4e_is_payment_term_readonly(self):

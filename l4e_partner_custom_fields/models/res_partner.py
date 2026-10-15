@@ -26,6 +26,24 @@ class ResPartner(models.Model):
         size=14,
         help="14-digit FSSAI License/Registration Number."
     )
+    accounts_contact_number = fields.Char(
+        string="Accounts Contact Number",
+    )
+    accounts_name = fields.Char(
+        string="Accounts Name",
+    )
+    salesperson_name = fields.Char(
+        string="Salesperson Name",
+    )
+    sales_contact_number = fields.Char(
+        string="Sales Contact Number",
+    )
+    store_person_name = fields.Char(
+        string="Store Person Name",
+    )
+    store_person_number = fields.Char(
+        string="Store Person Number",
+    )
 
     @api.constrains('fssai_no')
     def _check_fssai_no(self):
