@@ -1,7 +1,10 @@
 # -*- coding: utf-8 -*-
+import logging
 from markupsafe import Markup
 from odoo import models, fields, api, _
 from odoo.exceptions import UserError, ValidationError
+
+_logger = logging.getLogger(__name__)
 
 
 class PurchaseOrder(models.Model):
@@ -89,6 +92,103 @@ class PurchaseOrder(models.Model):
         orders = super().create(vals_list)
         return orders
 
+    def _send_role_notification(self, recipient_users, body, subject, summary, note):
+        """
+        Sends notifications to recipient_users through all Odoo channels:
+        1. Chatter post on the purchase order record
+        2. Force Discuss Inbox notification (mail.notification type='inbox')
+        3. Real-time bus send for instant notification badge update
+        4. Direct Message chat in discuss.channel (sounds chime & increments navbar chat icon)
+        5. To-Do Activity scheduled in systray clock
+        """
+        recipients = recipient_users.filtered(lambda u: u.active and u.partner_id)
+        if not recipients:
+            return
+
+        partner_ids = recipients.mapped('partner_id').ids
+        author_id = self.env.user.partner_id.id if self.env.user.partner_id else False
+
+        # 1. Post to Chatter
+        msg = self.message_post(
+            body=body,
+            subject=subject,
+            message_type='comment',
+            subtype_xmlid='mail.mt_comment',
+            partner_ids=partner_ids,
+        )
+
+        todo_type = self.env.ref('mail.mail_activity_data_todo', raise_if_not_found=False)
+        todo_type_id = todo_type.id if todo_type else False
+
+        for user in recipients:
+            # 2. Force Discuss Inbox Notification
+            try:
+                notif = self.env['mail.notification'].sudo().search([
+                    ('mail_message_id', '=', msg.id),
+                    ('res_partner_id', '=', user.partner_id.id),
+                ], limit=1)
+                if notif:
+                    notif.sudo().write({'notification_type': 'inbox', 'is_read': False})
+                else:
+                    self.env['mail.notification'].sudo().create({
+                        'mail_message_id': msg.id,
+                        'res_partner_id': user.partner_id.id,
+                        'notification_type': 'inbox',
+                        'notification_status': 'sent',
+                        'is_read': False,
+                    })
+            except Exception as e:
+                _logger.warning("Could not create inbox notification for user %s: %s", user.name, e)
+
+            # 3. Bus Notification for live Discuss Inbox update
+            try:
+                from odoo.addons.mail.tools.discuss import Store
+                store = Store(bus_channel=user).add(msg.with_user(user))
+                user._bus_send(
+                    'mail.message/inbox',
+                    {
+                        'message_id': msg.id,
+                        'store_data': store.get_result(),
+                    },
+                )
+            except Exception:
+                pass
+
+            # 4. Direct Message in Discuss chat (triggers top navbar icon & notification popup)
+            if user.partner_id.id != author_id:
+                try:
+                    chat = self.env['discuss.channel'].sudo()._get_or_create_chat(
+                        partners_to=[user.partner_id.id], pin=True
+                    )
+                    if chat:
+                        chat.sudo().message_post(
+                            body=body,
+                            message_type='comment',
+                            subtype_xmlid='mail.mt_comment',
+                            author_id=author_id,
+                        )
+                except Exception as e:
+                    _logger.warning("Could not send chat message to user %s: %s", user.name, e)
+
+            # 5. Schedule Activity in Systray Clock
+            if todo_type_id:
+                try:
+                    existing_act = self.env['mail.activity'].sudo().search([
+                        ('res_model', '=', self._name),
+                        ('res_id', '=', self.id),
+                        ('user_id', '=', user.id),
+                        ('activity_type_id', '=', todo_type_id),
+                    ], limit=1)
+                    if not existing_act:
+                        self.sudo().activity_schedule(
+                            activity_type_id=todo_type_id,
+                            user_id=user.id,
+                            summary=summary,
+                            note=note,
+                        )
+                except Exception as e:
+                    _logger.warning("Could not schedule activity for user %s: %s", user.name, e)
+
     # -------------------------------------------------------
     # Button: Request RFQ Approval (Store User submits to Purchase Users)
     # -------------------------------------------------------
@@ -132,44 +232,24 @@ class PurchaseOrder(models.Model):
             'approval_state': 'pending',
         })
 
-        # Post a message and notify purchase users
-        partner_ids = purchase_users.mapped('partner_id').ids
+        recipients = purchase_users.filtered(lambda u: u.id != self.env.user.id and u.partner_id)
         body = Markup(
             "%(user)s has submitted Purchase Order "
-            "<b>%(name)s</b> for approval. "
+            "<b>%(name)s</b> for approval.<br/>"
             "Purchase Users: please review and approve or refuse."
         ) % {
             'user': self.env.user.name,
             'name': self.name,
         }
-        self.message_post(
-            body=body,
-            subject=_("PO Approval Request: %s", self.name),
-            partner_ids=partner_ids,
-            subtype_xmlid='mail.mt_comment',
+        subject = _("PO Approval Request: %s") % self.name
+        summary = _("PO Approval Required: %s") % self.name
+        note = _(
+            "Purchase Order %(name)s was submitted for approval by %(user)s. "
+            "Please review and approve or refuse.",
+            name=self.name,
+            user=self.env.user.name,
         )
-
-        # Schedule activity for each purchase user
-        activity_type = self.env.ref(
-            'purchase_draft_approval.mail_activity_rfq_approval',
-            raise_if_not_found=False,
-        )
-        activity_type_id = activity_type.id if activity_type else self.env.ref(
-            'mail.mail_activity_data_todo'
-        ).id
-
-        for user in purchase_users:
-            self.activity_schedule(
-                activity_type_id=activity_type_id,
-                summary=_("PO Approval Required: %s", self.name),
-                note=_(
-                    "Purchase Order %(name)s was submitted for approval by %(user)s. "
-                    "Please review and approve or refuse.",
-                    name=self.name,
-                    user=self.env.user.name,
-                ),
-                user_id=user.id,
-            )
+        self._send_role_notification(recipients, body, subject, summary, note)
 
         return {
             'type': 'ir.actions.client',
@@ -224,9 +304,14 @@ class PurchaseOrder(models.Model):
             'approval_date': fields.Datetime.now(),
         })
 
-        # Notify Store User (the creator)
-        creator = self.create_uid
-        partner_ids = [creator.partner_id.id] if creator and creator.partner_id else []
+        # Notify Store Users (creator + all active is_store_user)
+        store_users = self.env['res.users'].sudo().search([
+            ('active', '=', True),
+            ('is_store_user', '=', True),
+        ])
+        if self.create_uid and self.create_uid.active:
+            store_users |= self.create_uid
+        recipients = store_users.filtered(lambda u: u.id != self.env.user.id and u.partner_id)
 
         body = Markup(
             "<b>RFQ Approved</b> by Purchase User %(manager)s.<br/>"
@@ -235,24 +320,14 @@ class PurchaseOrder(models.Model):
             'manager': self.env.user.name,
             'name': self.name,
         }
-        self.message_post(
-            body=body,
-            partner_ids=partner_ids,
-            subtype_xmlid='mail.mt_comment',
+        subject = _("RFQ Approved: %s") % self.name
+        summary = _("RFQ Approved: %s") % self.name
+        note = _(
+            "Your Purchase Order %(name)s has been approved by Purchase User %(user)s and moved to RFQ.",
+            name=self.name,
+            user=self.env.user.name,
         )
-
-        # Schedule notification activity for the Store User who created it
-        if creator and creator != self.env.user:
-            self.activity_schedule(
-                activity_type_id=self.env.ref('mail.mail_activity_data_todo').id,
-                summary=_("RFQ Approved: %s", self.name),
-                note=_(
-                    "Your Purchase Order %(name)s has been approved by Purchase User %(user)s and moved to RFQ.",
-                    name=self.name,
-                    user=self.env.user.name,
-                ),
-                user_id=creator.id,
-            )
+        self._send_role_notification(recipients, body, subject, summary, note)
 
     # -------------------------------------------------------
     # Button: Refuse RFQ (Purchase Users)
@@ -287,8 +362,14 @@ class PurchaseOrder(models.Model):
             'approval_state': 'refused',
         })
 
-        creator = self.create_uid
-        partner_ids = [creator.partner_id.id] if creator and creator.partner_id else []
+        # Notify Store Users (creator + all active is_store_user)
+        store_users = self.env['res.users'].sudo().search([
+            ('active', '=', True),
+            ('is_store_user', '=', True),
+        ])
+        if self.create_uid and self.create_uid.active:
+            store_users |= self.create_uid
+        recipients = store_users.filtered(lambda u: u.id != self.env.user.id and u.partner_id)
 
         body = Markup(
             "<b>RFQ Refused</b> by Purchase User %(manager)s.<br/>"
@@ -297,25 +378,15 @@ class PurchaseOrder(models.Model):
             'manager': self.env.user.name,
             'name': self.name,
         }
-        self.message_post(
-            body=body,
-            partner_ids=partner_ids,
-            subtype_xmlid='mail.mt_comment',
+        subject = _("RFQ Refused: %s") % self.name
+        summary = _("RFQ Refused: %s") % self.name
+        note = _(
+            "Your Purchase Order %(name)s was refused by Purchase User %(user)s. "
+            "Please review and re-submit approval.",
+            name=self.name,
+            user=self.env.user.name,
         )
-
-        # Schedule notification activity for the Store User who created it
-        if creator and creator != self.env.user:
-            self.activity_schedule(
-                activity_type_id=self.env.ref('mail.mail_activity_data_todo').id,
-                summary=_("RFQ Refused: %s", self.name),
-                note=_(
-                    "Your Purchase Order %(name)s was refused by Purchase User %(user)s. "
-                    "Please review and re-submit approval.",
-                    name=self.name,
-                    user=self.env.user.name,
-                ),
-                user_id=creator.id,
-            )
+        self._send_role_notification(recipients, body, subject, summary, note)
 
     # -------------------------------------------------------
     # Button: Reset to Draft (from refused state)
