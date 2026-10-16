@@ -84,6 +84,18 @@
                 </attribute>
             </xpath>
 
+            <!-- 5b. Hide Receive header button and Receipt stat button for Purchase Users (visible ONLY to Store Users) -->
+            <xpath expr="//header/button[@name='action_view_picking']" position="attributes">
+                <attribute name="invisible">
+                    is_shipped or state not in ('purchase', 'done') or picking_count == 0 or not is_current_store_user
+                </attribute>
+            </xpath>
+            <xpath expr="//div[hasclass('oe_button_box')]/button[@name='action_view_picking']" position="attributes">
+                <attribute name="invisible">
+                    picking_count == 0 or not is_current_store_user
+                </attribute>
+            </xpath>
+
             <!-- 6. Approval info group - show approved by / date after approval -->
             <xpath expr="//sheet/group" position="inside">
                 <group name="approval_info"

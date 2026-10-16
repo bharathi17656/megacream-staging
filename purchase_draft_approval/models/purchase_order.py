@@ -70,15 +70,36 @@ class PurchaseOrder(models.Model):
     # -------------------------------------------------------
     # Compute
     # -------------------------------------------------------
+    @api.depends_context('uid')
     def _compute_current_user_roles(self):
         u = self.env.user
-        is_admin = u.has_group('base.group_system') or u.has_group('purchase.group_purchase_manager')
-        store_flag = bool(getattr(u, 'is_store_user', False) or is_admin)
-        purchase_flag = bool(getattr(u, 'is_purchase_user', False) or is_admin)
+        is_sys_admin = u._is_admin() or u.has_group('base.group_system')
+        store_user_flag = bool(getattr(u, 'is_store_user', False))
+        purchase_user_flag = bool(getattr(u, 'is_purchase_user', False))
+
+        if purchase_user_flag and not store_user_flag and not is_sys_admin:
+            store_flag = False
+        elif is_sys_admin or store_user_flag:
+            store_flag = True
+        else:
+            store_flag = bool(u.has_group('stock.group_stock_user') and not purchase_user_flag)
+
+        purchase_flag = bool(
+            purchase_user_flag
+            or u.has_group('purchase.group_purchase_manager')
+            or is_sys_admin
+        )
         for order in self:
             order.is_current_store_user = store_flag
             order.is_current_purchase_user = purchase_flag
             order.user_has_store_indent = False
+
+    def action_view_picking(self):
+        self._compute_current_user_roles()
+        for order in self:
+            if not order.is_current_store_user:
+                raise UserError(_("Only Store Users and Administrators can access receipts or receive products."))
+        return super().action_view_picking()
 
     # -------------------------------------------------------
     # Override create: start from 'draft_indent' not 'draft'

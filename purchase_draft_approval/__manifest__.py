@@ -16,7 +16,7 @@
         - Users with 'Store Indent' enabled do NOT need to add a vendor in Draft state
     """,
     'author': 'Custom',
-    'depends': ['purchase', 'l4e_role_notification'],
+    'depends': ['purchase', 'purchase_stock', 'l4e_role_notification'],
     'data': [
         'security/ir.model.access.csv',
         'data/mail_activity_data.xml',
