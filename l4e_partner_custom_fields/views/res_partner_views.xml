@@ -4,7 +4,7 @@
         <field name="name">res.partner.certificate.list</field>
         <field name="model">res.partner.certificate</field>
         <field name="arch" type="xml">
-            <list create="0" delete="1">
+            <list delete="1">
                 <field name="name" string="Certificate Name"/>
                 <field name="file_name" column_invisible="1"/>
                 <field name="certificate_file" filename="file_name" widget="binary" string="File"/>
@@ -36,13 +36,17 @@
         <field name="model">res.partner</field>
         <field name="inherit_id" ref="base.view_partner_form"/>
         <field name="arch" type="xml">
+            <xpath expr="//field[@name='vat']" position="attributes">
+                <attribute name="required">not parent_id</attribute>
+            </xpath>
+
             <xpath expr="//div[hasclass('o_address_format')]" position="after">
                 <field name="is_vendor"/>
                 <field name="is_customer"/>
-                <field name="accounts_contact_number"/>
-                <field name="accounts_name"/>
-                <field name="salesperson_name"/>
-                <field name="sales_contact_number"/>
+                <field name="accounts_contact_number" required="not parent_id"/>
+                <field name="accounts_name" required="not parent_id"/>
+                <field name="salesperson_name" required="not parent_id"/>
+                <field name="sales_contact_number" required="not parent_id"/>
             </xpath>
 
             <xpath expr="//field[@name='website']" position="before">
@@ -50,8 +54,8 @@
             </xpath>
 
             <xpath expr="//field[@name='category_id']" position="after">
-                <field name="store_person_name"/>
-                <field name="store_person_number"/>
+                <field name="store_person_name" required="not parent_id"/>
+                <field name="store_person_number" required="not parent_id"/>
             </xpath>
 
             <xpath expr="//notebook" position="inside">
@@ -61,7 +65,8 @@
                                 type="object"
                                 string="Upload Certificate"
                                 icon="fa-paperclip"
-                                class="btn-secondary"/>
+                                class="btn-secondary"
+                                context="{'skip_vendor_cert_check': True}"/>
                     </div>
                     <field name="certificate_ids" nolabel="1"/>
                 </page>
