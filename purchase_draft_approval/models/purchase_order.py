@@ -66,6 +66,10 @@ class PurchaseOrder(models.Model):
         string='User Has Store Indent',
         compute='_compute_current_user_roles',
     )
+    picking_count = fields.Integer(
+        string='Picking Count',
+        related='incoming_picking_count',
+    )
 
     # -------------------------------------------------------
     # Compute
