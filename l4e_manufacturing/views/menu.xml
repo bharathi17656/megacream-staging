@@ -61,4 +61,12 @@
         action="action_ice_cream_processing_batch"
         sequence="25"/>
 
+    <!-- Batch Wise Stock Report under Sales -> Reporting -->
+    <menuitem
+        id="menu_sale_batch_dispatch_report"
+        name="Batch Wise Stock Report"
+        parent="sale.menu_sale_report"
+        action="action_l4e_batch_dispatch_report"
+        sequence="60"/>
+
 </odoo>
