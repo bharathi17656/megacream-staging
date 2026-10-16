@@ -7,13 +7,35 @@ _logger = logging.getLogger(__name__)
 class AccountMove(models.Model):
     _inherit = 'account.move'
 
+    def init(self):
+        super().init()
+        # Automatically update existing Customer Invoices from format MMM/INV/XXX/YY-ZZ to MMM/INV/XXX/YY
+        self.env.cr.execute("""
+            UPDATE account_move
+            SET name = REGEXP_REPLACE(name, '^([A-Z]{3}/INV/[0-9]+/[0-9]{2})-[0-9]{2}$', '\\1')
+            WHERE move_type = 'out_invoice'
+              AND name ~ '^[A-Z]{3}/INV/[0-9]+/[0-9]{2}-[0-9]{2}$';
+
+            UPDATE account_move
+            SET payment_reference = REGEXP_REPLACE(payment_reference, '^([A-Z]{3}/INV/[0-9]+/[0-9]{2})-[0-9]{2}$', '\\1')
+            WHERE move_type = 'out_invoice'
+              AND payment_reference ~ '^[A-Z]{3}/INV/[0-9]+/[0-9]{2}-[0-9]{2}$';
+
+            UPDATE account_move_line aml
+            SET move_name = am.name
+            FROM account_move am
+            WHERE aml.move_id = am.id
+              AND am.move_type = 'out_invoice'
+              AND aml.move_name != am.name;
+        """)
+
     def _get_l4e_custom_sequence_name(self, move_type, move_date, company_id=None):
         """
         Generates custom sequence name in format: MMM/TYPE/SEQ/FY
-        Example: AUG/INV/001/26-27 for Customer Invoice
+        Example: AUG/INV/001/26 for Customer Invoice
                  AUG/BIL/001/26-27 for Vendor Bill
         - Resets sequence to 001 every month per move_type.
-        - Calculates Financial Year as YY-(YY+1) (e.g., 2026 -> 26-27).
+        - Calculates Year as YY (26) for Invoices, and Financial Year YY-(YY+1) (26-27) for Bills.
         """
         if not move_date:
             move_date = fields.Date.context_today(self)
@@ -24,10 +46,13 @@ class AccountMove(models.Model):
         # 2. Document type tag: INV for Customer Invoice, BIL for Vendor Bill
         type_tag = 'INV' if move_type == 'out_invoice' else 'BIL'
 
-        # 3. Financial Year: YY-(YY+1) e.g. 26-27 for year 2026
+        # 3. Year: YY (e.g. 26 for year 2026) for Invoice; YY-(YY+1) for Bill
         year_short = move_date.year % 100
-        next_year_short = (year_short + 1) % 100
-        fy_str = f"{year_short:02d}-{next_year_short:02d}"
+        if move_type == 'out_invoice':
+            fy_str = f"{year_short:02d}"
+        else:
+            next_year_short = (year_short + 1) % 100
+            fy_str = f"{year_short:02d}-{next_year_short:02d}"
 
         if not company_id:
             company_id = self.company_id.id if self and self.company_id else self.env.company.id
@@ -109,8 +134,7 @@ class AccountMove(models.Model):
                 inv_date = inv.invoice_date or inv.date or fields.Date.today()
                 month_str = inv_date.strftime('%b').upper()
                 year_short = inv_date.year % 100
-                next_year_short = (year_short + 1) % 100
-                fy_str = f"{year_short:02d}-{next_year_short:02d}"
+                fy_str = f"{year_short:02d}"
                 seq_str = f"{seq:03d}"
                 new_name = f"{month_str}/INV/{seq_str}/{fy_str}"
 
