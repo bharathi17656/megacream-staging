@@ -13,7 +13,7 @@ class L4eIceCreamProcessingBatch(models.Model):
     _description = "Ice Cream Processing Batch"
     _inherit = ["mail.thread", "mail.activity.mixin"]
     _order = "date desc, id desc"
-    _rec_name = "batch_number"
+    _rec_name = "name"
 
     # Processing Order Reference (e.g. MC2026-00001)
     name = fields.Char(
@@ -385,7 +385,7 @@ class L4eIceCreamProcessingBatch(models.Model):
     @api.depends("batch_number", "name")
     def _compute_display_name(self):
         for batch in self:
-            batch.display_name = batch.batch_number or batch.name or ""
+            batch.display_name = batch.name or batch.batch_number or ""
 
     # ─── Daily Auto-Sequencing: BATCH-DD-MMM-YY-001 (Resets Daily) ────────────
 
@@ -1132,6 +1132,8 @@ class L4eIceCreamProcessingBatch(models.Model):
                 "location_src_id": self.wip_location_id.id,
                 "location_dest_id": self.finished_location_id.id,
                 "origin": origin_ref,
+                "batch_number": self.batch_number,
+                "batch_id": self.id,
             }
             if bom:
                 mo_vals["bom_id"] = bom.id

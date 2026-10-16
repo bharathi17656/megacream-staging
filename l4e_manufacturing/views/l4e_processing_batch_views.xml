@@ -14,7 +14,6 @@
                   decoration-success="state == 'completed'"
                   decoration-muted="state == 'cancel'">
                 <field name="name" string="Order Reference"/>
-                <field name="batch_number" string="Batch Number"/>
                 <field name="date" string="Requested Date"/>
                 <field name="product_id" string="Finished Product"/>
                 <field name="total_raw_qty" string="Total Raw Qty" sum="Total Raw Material"/>
@@ -169,7 +168,6 @@
                     <group>
                         <group string="Batch Information">
                             <field name="date" string="Requested Date" readonly="state != 'draft'"/>
-                            <field name="batch_number" readonly="state != 'draft'"/>
                             <field name="company_id" groups="base.group_multi_company" readonly="state != 'draft'"/>
                         </group>
                         <group string="Locations">

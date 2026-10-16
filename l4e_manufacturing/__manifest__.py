@@ -22,6 +22,7 @@ Features:
         'security/ir.model.access.csv',
         'data/l4e_data.xml',
         'views/l4e_processing_batch_views.xml',
+        'views/mrp_production_views.xml',
         'views/sale_order_views.xml',
         'views/sale_order_batch_wizard_views.xml',
         'views/account_move_views.xml',
