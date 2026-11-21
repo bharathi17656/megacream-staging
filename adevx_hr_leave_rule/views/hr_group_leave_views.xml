@@ -133,7 +133,9 @@
                     <!-- STEP 4: Salary -->
                     <group string="Step 4 — Salary Calculation">
                         <group>
-                            <field name="regular_salary" string="Regular Salary (Wage − LOP Deduction)"/>
+                            <field name="regular_bank_salary" string="Regular Bank Salary"/>
+                            <field name="regular_cash_salary" string="Regular Cash Salary"/>
+                            <field name="regular_salary" string="Regular Salary (Full Base Wage)"/>
                             <field name="ot_amount" string="OT Amount (Double Pay Days × Per Day)"/>
                             <field name="gross_salary" string="Gross Salary (Regular + OT)"/>
                         </group>

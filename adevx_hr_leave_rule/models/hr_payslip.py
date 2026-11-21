@@ -30,6 +30,15 @@ class HrPayslip(models.Model):
         help="Net salary total for print report based on selected Cash/Bank options."
     )
 
+    @api.onchange('employee_id')
+    def _onchange_employee_regular_salary(self):
+        for slip in self:
+            if slip.employee_id:
+                slip.regular_bank_salary = slip.employee_id.bank_amount or 0.0
+                slip.regular_cash_salary = slip.employee_id.cash_amount or 0.0
+                wage = slip.employee_id.wage or 0.0
+                slip.regular_salary = wage or (slip.regular_bank_salary + slip.regular_cash_salary)
+
     @api.depends('cash_print', 'bank_print', 'cash_payable', 'bank_payable', 'pf_deduction', 'esi_deduction', 'net_payable')
     def _compute_print_amounts(self):
         for slip in self:
@@ -238,6 +247,8 @@ class HrPayslip(models.Model):
     total_festival_days_in_month = fields.Float(string="Total Festival Days", readonly=True)
     total_saturdays_in_month = fields.Float(string="Total Saturdays", readonly=True)
 
+    regular_bank_salary = fields.Monetary(string="Regular Bank Salary", readonly=True)
+    regular_cash_salary = fields.Monetary(string="Regular Cash Salary", readonly=True)
     regular_salary = fields.Monetary(string="Regular Salary", readonly=True)
     ot_amount = fields.Monetary(string="OT / Extra Salary", readonly=True)
     gross_salary = fields.Monetary(string="Gross Salary", readonly=True)
@@ -438,15 +449,20 @@ class HrPayslip(models.Model):
             unpaid_amount = round(final_lop * per_day, 2)
             extra_ot_amount = round(double_pay_days * per_day, 2)
 
-            regular_salary_val = round(wage - unpaid_amount, 2)
-            gross_salary_val = round(regular_salary_val + extra_ot_amount, 2)
+            bank_amount = employee.bank_amount or 0.0
+            cash_amount = employee.cash_amount or 0.0
+
+            # Regular Salary fields retain full contractual wage/allowances (not reduced by unpaid leave)
+            regular_bank_salary_val = round(bank_amount, 2)
+            regular_cash_salary_val = round(cash_amount, 2)
+            regular_salary_val = round(wage or (bank_amount + cash_amount), 2)
+
+            # Gross earned salary for the month (after LOP + OT)
+            gross_salary_val = round((wage - unpaid_amount) + extra_ot_amount, 2)
 
             # ---------------------------------------------------
             # Bank & Cash Split Logic
             # ---------------------------------------------------
-
-            bank_amount = employee.bank_amount or 0.0
-            cash_amount = employee.cash_amount or 0.0
             
             # If employee defined split
             if bank_amount or cash_amount:
@@ -508,6 +524,8 @@ class HrPayslip(models.Model):
             payslip.unpaid_amount = unpaid_amount
             # Total Paid Amount = net paid to employee (gross payables - employee deductions).
             payslip.paid_amount = net_payable_val
+            payslip.regular_bank_salary = regular_bank_salary_val
+            payslip.regular_cash_salary = regular_cash_salary_val
             payslip.regular_salary = regular_salary_val
             payslip.ot_amount = extra_ot_amount
             payslip.gross_salary = gross_salary_val

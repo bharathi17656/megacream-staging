@@ -204,6 +204,7 @@ class HrEmployeeIncrement(models.Model):
             if not rec._get_allowance_field() or not rec.employee_id:
                 continue
             rec.status = 'approved'
+            rec._apply_increment()
 
     def _apply_increment(self):
         self.ensure_one()
@@ -238,7 +239,6 @@ class HrPayslip(models.Model):
             due_increments = self.env['hr.employee.increment'].search([
                 ('employee_id', '=', payslip.employee_id.id),
                 ('status', '=', 'approved'),
-                ('applicable_date', '>=', payslip.date_from),
                 ('applicable_date', '<=', payslip.date_to),
             ])
             for rec in due_increments:
